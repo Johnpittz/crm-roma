@@ -252,8 +252,8 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
 
           {/* Lista de clientes */}
           {deveBuscar && (
-            <ScrollArea className="h-[500px]">
-              <div className="space-y-2">
+            <ScrollArea className="h-[600px]">
+              <div className="space-y-1">
                 {clientes && clientes.length > 0 ? (
                   clientes.map((cliente: any) => {
                     const semCompra = diasSemCompra(cliente.data_ultima_compra);
@@ -261,13 +261,13 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
                     return (
                       <div
                         key={cliente.id}
-                        className="flex items-center gap-4 p-4 rounded-lg border hover:bg-slate-50 transition-colors"
+                        className="flex items-center gap-3 p-2 rounded-lg border hover:bg-slate-50 transition-colors"
                       >
-                        <Avatar className="h-12 w-12">
+                        <Avatar className="h-8 w-8">
                           <AvatarImage
                             src={`https://api.dicebear.com/7.x/initials/svg?seed=${cliente.nome_razao_social}`}
                           />
-                          <AvatarFallback className="bg-slate-200 text-slate-700">
+                          <AvatarFallback className="bg-slate-200 text-slate-700 text-xs">
                             {cliente.nome_razao_social?.charAt(0) ?? "?"}
                           </AvatarFallback>
                         </Avatar>
@@ -290,17 +290,17 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
                               </Badge>
                             )}
                           </div>
-                          <div className="flex items-center gap-4 text-sm text-slate-500 mt-1 flex-wrap">
+                          <div className="flex items-center gap-3 text-xs text-slate-500 mt-0.5 flex-wrap">
                             <span className="flex items-center gap-1">
-                              <Phone className="h-3 w-3" />
+                              <Phone className="h-2.5 w-2.5" />
                               {cliente.telefone ?? "—"}
                             </span>
                             <span className="flex items-center gap-1">
-                              <Mail className="h-3 w-3" />
+                              <Mail className="h-2.5 w-2.5" />
                               {cliente.email ?? "—"}
                             </span>
                             <span className="flex items-center gap-1">
-                              <MapPin className="h-3 w-3" />
+                              <MapPin className="h-2.5 w-2.5" />
                               {cliente.cidade && cliente.estado
                                 ? `${cliente.cidade}/${cliente.estado}`
                                 : "—"}
@@ -323,7 +323,7 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
                           <Button variant="ghost" size="sm">
                             Ver
                           </Button>
-                          <Button variant="ghost" size="icon">
+                          <Button variant="ghost" size="icon" className="h-7 w-7">
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </div>
