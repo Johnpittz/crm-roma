@@ -31,12 +31,14 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
   const deveBuscar = busca || mostrarTodos;
 
   // Estatísticas — queries HEAD (só count, sem dados) em paralelo
-  const [totalRes, ativosRes, inativosRes, bloqueadosRes, prospectsRes] = await Promise.all([
+  const [totalRes, ativosRes, inativosRes, bloqueadosRes, prospectsRes, transferRes, excluidosRes] = await Promise.all([
     supabase.from("clientes").select("id", { count: "exact", head: true }),
     supabase.from("clientes").select("id", { count: "exact", head: true }).eq("status", "ativo"),
     supabase.from("clientes").select("id", { count: "exact", head: true }).eq("status", "inativo"),
     supabase.from("clientes").select("id", { count: "exact", head: true }).eq("status", "bloqueado"),
     supabase.from("clientes").select("id", { count: "exact", head: true }).eq("status", "prospect"),
+    supabase.from("clientes").select("id", { count: "exact", head: true }).eq("status", "transferido"),
+    supabase.from("clientes").select("id", { count: "exact", head: true }).eq("status", "excluido"),
   ]);
 
   const stats = {
@@ -45,6 +47,8 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
     inativos: inativosRes.count ?? 0,
     bloqueados: bloqueadosRes.count ?? 0,
     prospects: prospectsRes.count ?? 0,
+    transferidos: transferRes.count ?? 0,
+    excluidos: excluidosRes.count ?? 0,
   };
 
   // Só busca clientes se houver busca ou "mostrar todos"
@@ -72,26 +76,34 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
   return (
     <div className="flex flex-col h-full">
       {/* Stats compactos - 7 colunas */}
-      <div className="grid grid-cols-5 gap-2 mb-4">
-        <Card className="p-2">
-          <p className="text-[10px] text-slate-500 leading-tight">Total de Clientes</p>
-          <p className="text-2xl font-bold">{stats.total}</p>
+      <div className="grid grid-cols-7 gap-1.5 mb-4">
+        <Card className="p-1.5">
+          <p className="text-[9px] text-slate-500 leading-tight">Total de Clientes</p>
+          <p className="text-xl font-bold">{stats.total}</p>
         </Card>
-        <Card className="p-2">
-          <p className="text-[10px] text-slate-500 leading-tight">Ativos (30 dias)</p>
-          <p className="text-2xl font-bold text-emerald-600">{stats.ativos}</p>
+        <Card className="p-1.5">
+          <p className="text-[9px] text-slate-500 leading-tight">Ativos (30d)</p>
+          <p className="text-xl font-bold text-emerald-600">{stats.ativos}</p>
         </Card>
-        <Card className="p-2">
-          <p className="text-[10px] text-slate-500 leading-tight">Inativos (60 dias)</p>
-          <p className="text-2xl font-bold text-orange-500">{stats.inativos}</p>
+        <Card className="p-1.5">
+          <p className="text-[9px] text-slate-500 leading-tight">Inativos (60d)</p>
+          <p className="text-xl font-bold text-orange-500">{stats.inativos}</p>
         </Card>
-        <Card className="p-2">
-          <p className="text-[10px] text-slate-500 leading-tight">Bloqueados</p>
-          <p className="text-2xl font-bold text-slate-600">{stats.bloqueados}</p>
+        <Card className="p-1.5">
+          <p className="text-[9px] text-slate-500 leading-tight">Rec (61d+)</p>
+          <p className="text-xl font-bold text-red-600">{stats.bloqueados}</p>
         </Card>
-        <Card className="p-2">
-          <p className="text-[10px] text-slate-500 leading-tight">Prospect</p>
-          <p className="text-2xl font-bold text-amber-600">{stats.prospects}</p>
+        <Card className="p-1.5">
+          <p className="text-[9px] text-slate-500 leading-tight">Prospect</p>
+          <p className="text-xl font-bold text-amber-600">{stats.prospects}</p>
+        </Card>
+        <Card className="p-1.5">
+          <p className="text-[9px] text-slate-500 leading-tight">Transfer</p>
+          <p className="text-xl font-bold text-blue-600">{stats.transferidos}</p>
+        </Card>
+        <Card className="p-1.5">
+          <p className="text-[9px] text-slate-500 leading-tight">Excluir</p>
+          <p className="text-xl font-bold text-slate-400">{stats.excluidos}</p>
         </Card>
       </div>
 
@@ -163,9 +175,9 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
               <strong>Erro na query:</strong> {error.message} (code: {error.code})
             </div>
           )}
-          {(totalRes.error || ativosRes.error || inativosRes.error || bloqueadosRes.error || prospectsRes.error) && (
+          {(totalRes.error || ativosRes.error || inativosRes.error || bloqueadosRes.error || prospectsRes.error || transferRes.error || excluidosRes.error) && (
             <div className="rounded-md bg-red-50 p-3 text-sm text-red-600 mb-4">
-              <strong>Erro nas estatísticas:</strong> {(totalRes.error || ativosRes.error || inativosRes.error || bloqueadosRes.error || prospectsRes.error)?.message}
+              <strong>Erro nas estatísticas:</strong> {(totalRes.error || ativosRes.error || inativosRes.error || bloqueadosRes.error || prospectsRes.error || transferRes.error || excluidosRes.error)?.message}
             </div>
           )}
 
