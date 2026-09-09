@@ -31,14 +31,12 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
   const deveBuscar = busca || mostrarTodos;
 
   // Estatísticas — queries HEAD (só count, sem dados) em paralelo
-  const [totalRes, ativosRes, inativosRes, bloqueadosRes, prospectsRes, transferRes, excluidosRes] = await Promise.all([
+  const [totalRes, ativosRes, inativosRes, bloqueadosRes, prospectsRes] = await Promise.all([
     supabase.from("clientes").select("id", { count: "exact", head: true }),
     supabase.from("clientes").select("id", { count: "exact", head: true }).eq("status", "ativo"),
     supabase.from("clientes").select("id", { count: "exact", head: true }).eq("status", "inativo"),
     supabase.from("clientes").select("id", { count: "exact", head: true }).eq("status", "bloqueado"),
     supabase.from("clientes").select("id", { count: "exact", head: true }).eq("status", "prospect"),
-    supabase.from("clientes").select("id", { count: "exact", head: true }).eq("status", "transferido"),
-    supabase.from("clientes").select("id", { count: "exact", head: true }).eq("status", "excluido"),
   ]);
 
   const stats = {
@@ -47,8 +45,6 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
     inativos: inativosRes.count ?? 0,
     bloqueados: bloqueadosRes.count ?? 0,
     prospects: prospectsRes.count ?? 0,
-    transferidos: transferRes.count ?? 0,
-    excluidos: excluidosRes.count ?? 0,
   };
 
   // Só busca clientes se houver busca ou "mostrar todos"
@@ -99,11 +95,11 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
         </Card>
         <Card className="p-2">
           <p className="text-xs text-slate-500 leading-tight">Transfer</p>
-          <p className="text-3xl font-bold text-blue-600">{stats.transferidos}</p>
+          <p className="text-3xl font-bold text-blue-600">0</p>
         </Card>
         <Card className="p-2">
           <p className="text-xs text-slate-500 leading-tight">Excluir</p>
-          <p className="text-3xl font-bold text-slate-400">{stats.excluidos}</p>
+          <p className="text-3xl font-bold text-slate-400">0</p>
         </Card>
       </div>
 
@@ -175,9 +171,9 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
               <strong>Erro na query:</strong> {error.message} (code: {error.code})
             </div>
           )}
-          {(totalRes.error || ativosRes.error || inativosRes.error || bloqueadosRes.error || prospectsRes.error || transferRes.error || excluidosRes.error) && (
+          {(totalRes.error || ativosRes.error || inativosRes.error || bloqueadosRes.error || prospectsRes.error) && (
             <div className="rounded-md bg-red-50 p-3 text-sm text-red-600 mb-4">
-              <strong>Erro nas estatísticas:</strong> {(totalRes.error || ativosRes.error || inativosRes.error || bloqueadosRes.error || prospectsRes.error || transferRes.error || excluidosRes.error)?.message || "Verifique os dados no banco"}
+              <strong>Erro nas estatísticas:</strong> {(totalRes.error || ativosRes.error || inativosRes.error || bloqueadosRes.error || prospectsRes.error)?.message || "Verifique os dados no banco"}
             </div>
           )}
 
