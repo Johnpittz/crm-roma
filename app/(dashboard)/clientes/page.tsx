@@ -254,8 +254,8 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
 
           {/* Lista de clientes */}
           {deveBuscar && (
-            <div className="flex-1 min-h-0 overflow-y-auto mt-4" style={{maxHeight: 'calc(100vh - 350px)'}}>
-              <div className="space-y-0.5">
+            <div className="flex-1 min-h-0 overflow-y-auto mt-4 border rounded-lg" style={{height: 'calc(100vh - 380px)'}}>
+              <div className="space-y-0.5 p-2">
                 {clientes && clientes.length > 0 ? (
                   clientes.map((cliente: any) => (
                     <p key={cliente.id} className="text-sm text-muted-foreground py-0.5 truncate hover:text-foreground cursor-pointer transition-colors">
