@@ -175,9 +175,9 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
               <strong>Erro na query:</strong> {error.message} (code: {error.code})
             </div>
           )}
-          {(totalRes.error || ativosRes.error || inativosRes.error || recompraRes.error || prospectsRes.error || transferRes.error || excluidosRes.error) && (
+          {(totalRes.error || ativosRes.error || inativosRes.error || recRes.error || prospectsRes.error || transferRes.error || excluidosRes.error) && (
             <div className="rounded-md bg-red-50 p-3 text-sm text-red-600 mb-4">
-              <strong>Erro nas estatísticas:</strong> {(totalRes.error || ativosRes.error || inativosRes.error)?.message}
+              <strong>Erro nas estatísticas:</strong> {(totalRes.error || ativosRes.error || inativosRes.error || recRes.error || prospectsRes.error || transferRes.error || excluidosRes.error)?.message}
             </div>
           )}
 
