@@ -86,7 +86,7 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col">
       {/* Stats compactos - 7 colunas */}
       <div className="grid grid-cols-7 gap-1.5 mb-4">
         <Card className="p-2">
@@ -120,7 +120,7 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
       </div>
 
       {/* Conteúdo principal */}
-      <Card className="flex-1 flex flex-col min-h-0">
+      <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
@@ -134,7 +134,7 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
             <ModalNovoCliente />
           </div>
         </CardHeader>
-        <CardContent className="flex-1 flex flex-col min-h-0 p-6">
+        <CardContent className="p-6">
           {/* Barra de busca e filtros */}
           <div className="flex items-center gap-3 mb-4">
             <div className="relative flex-1">
@@ -251,7 +251,7 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
 
           {/* Lista de clientes */}
           {deveBuscar && (
-            <ScrollArea className="flex-1 min-h-0">
+            <div className="mt-4">
               <div>
                 {clientes && clientes.length > 0 ? (
                   clientes.map((cliente: any) => (
@@ -267,7 +267,7 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
                   </div>
                 )}
               </div>
-            </ScrollArea>
+            </div>
           )}
         </CardContent>
       </Card>
