@@ -80,7 +80,7 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
       ascending = true;
     }
 
-    const result = await query.order(orderField, { ascending }).limit(2000);
+    const result = await query.order(orderField, { ascending });
     clientes = result.data;
     count = result.count ?? 0;
     error = result.error;
@@ -254,8 +254,8 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
 
           {/* Lista de clientes */}
           {deveBuscar && (
-            <div className="flex-1 min-h-0 mt-4 border rounded-lg overflow-hidden flex flex-col">
-              <div className="flex-1 overflow-y-auto p-2" style={{minHeight: 0}}>
+            <div className="flex-1 min-h-0 mt-4 border rounded-lg overflow-hidden" style={{height: 'calc(100vh - 380px)'}}>
+              <div className="h-full overflow-y-auto p-2">
                 <div className="space-y-0.5">
                   {clientes && clientes.length > 0 ? (
                     clientes.map((cliente: any) => (
