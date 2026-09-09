@@ -77,33 +77,33 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
     <div className="flex flex-col h-full">
       {/* Stats compactos - 7 colunas */}
       <div className="grid grid-cols-7 gap-1.5 mb-4">
-        <Card className="p-1.5">
-          <p className="text-[9px] text-slate-500 leading-tight">Total de Clientes</p>
-          <p className="text-xl font-bold">{stats.total}</p>
+        <Card className="p-2">
+          <p className="text-xs text-slate-500 leading-tight">Total de Clientes</p>
+          <p className="text-3xl font-bold">{stats.total}</p>
         </Card>
-        <Card className="p-1.5">
-          <p className="text-[9px] text-slate-500 leading-tight">Ativos (30d)</p>
-          <p className="text-xl font-bold text-emerald-600">{stats.ativos}</p>
+        <Card className="p-2">
+          <p className="text-xs text-slate-500 leading-tight">Ativos (30d)</p>
+          <p className="text-3xl font-bold text-emerald-600">{stats.ativos}</p>
         </Card>
-        <Card className="p-1.5">
-          <p className="text-[9px] text-slate-500 leading-tight">Inativos (60d)</p>
-          <p className="text-xl font-bold text-orange-500">{stats.inativos}</p>
+        <Card className="p-2">
+          <p className="text-xs text-slate-500 leading-tight">Inativos (60d)</p>
+          <p className="text-3xl font-bold text-orange-500">{stats.inativos}</p>
         </Card>
-        <Card className="p-1.5">
-          <p className="text-[9px] text-slate-500 leading-tight">Rec (61d+)</p>
-          <p className="text-xl font-bold text-red-600">{stats.bloqueados}</p>
+        <Card className="p-2">
+          <p className="text-xs text-slate-500 leading-tight">Rec (61d+)</p>
+          <p className="text-3xl font-bold text-red-600">{stats.bloqueados}</p>
         </Card>
-        <Card className="p-1.5">
-          <p className="text-[9px] text-slate-500 leading-tight">Prospect</p>
-          <p className="text-xl font-bold text-amber-600">{stats.prospects}</p>
+        <Card className="p-2">
+          <p className="text-xs text-slate-500 leading-tight">Prospect</p>
+          <p className="text-3xl font-bold text-amber-600">{stats.prospects}</p>
         </Card>
-        <Card className="p-1.5">
-          <p className="text-[9px] text-slate-500 leading-tight">Transfer</p>
-          <p className="text-xl font-bold text-blue-600">{stats.transferidos}</p>
+        <Card className="p-2">
+          <p className="text-xs text-slate-500 leading-tight">Transfer</p>
+          <p className="text-3xl font-bold text-blue-600">{stats.transferidos}</p>
         </Card>
-        <Card className="p-1.5">
-          <p className="text-[9px] text-slate-500 leading-tight">Excluir</p>
-          <p className="text-xl font-bold text-slate-400">{stats.excluidos}</p>
+        <Card className="p-2">
+          <p className="text-xs text-slate-500 leading-tight">Excluir</p>
+          <p className="text-3xl font-bold text-slate-400">{stats.excluidos}</p>
         </Card>
       </div>
 
@@ -177,7 +177,7 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
           )}
           {(totalRes.error || ativosRes.error || inativosRes.error || bloqueadosRes.error || prospectsRes.error || transferRes.error || excluidosRes.error) && (
             <div className="rounded-md bg-red-50 p-3 text-sm text-red-600 mb-4">
-              <strong>Erro nas estatísticas:</strong> {(totalRes.error || ativosRes.error || inativosRes.error || bloqueadosRes.error || prospectsRes.error || transferRes.error || excluidosRes.error)?.message}
+              <strong>Erro nas estatísticas:</strong> {(totalRes.error || ativosRes.error || inativosRes.error || bloqueadosRes.error || prospectsRes.error || transferRes.error || excluidosRes.error)?.message || "Verifique os dados no banco"}
             </div>
           )}
 
