@@ -79,7 +79,7 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
       ascending = true;
     }
 
-    const result = await query.order(orderField, { ascending }).limit(200);
+    const result = await query.order(orderField, { ascending }).limit(2000);
     clientes = result.data;
     count = result.count ?? 0;
     error = result.error;
@@ -120,7 +120,7 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
       </div>
 
       {/* Conteúdo principal */}
-      <Card className="flex-1 flex flex-col min-h-0">
+      <Card className="flex-1 flex flex-col min-h-0 overflow-hidden">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
@@ -134,7 +134,7 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
             <ModalNovoCliente />
           </div>
         </CardHeader>
-        <CardContent className="p-6">
+        <CardContent className="flex-1 flex flex-col min-h-0 p-6 overflow-hidden">
           {/* Barra de busca e filtros */}
           <div className="flex items-center gap-3 mb-4">
             <div className="relative flex-1">
@@ -237,6 +237,13 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
             </div>
           )}
 
+          {/* Aviso ao mostrar todos */}
+          {mostrarTodos && !busca && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4 text-sm text-amber-700">
+              ⚠️ <strong>Modo completo:</strong> Carregando todos os {count} clientes. Use os filtros para refinar a busca.
+            </div>
+          )}
+
           {/* Debug */}
           {error && (
             <div className="rounded-md bg-red-50 p-3 text-sm text-red-600 mb-4">
@@ -251,7 +258,7 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
 
           {/* Lista de clientes */}
           {deveBuscar && (
-            <div className="mt-4 flex-1 min-h-0 overflow-auto max-h-[calc(100vh-320px)]">
+            <div className="flex-1 min-h-0 overflow-y-auto mt-4">
               <div className="space-y-0.5">
                 {clientes && clientes.length > 0 ? (
                   clientes.map((cliente: any) => (
