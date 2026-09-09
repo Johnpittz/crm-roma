@@ -69,62 +69,35 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
 
   return (
     <div className="flex flex-col h-full">
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-slate-500">Total de Clientes</p>
-                <p className="text-2xl font-bold">{stats.total}</p>
-              </div>
-              <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                <Users className="h-5 w-5 text-blue-600" />
-              </div>
-            </div>
-          </CardContent>
+      {/* Stats compactos - 7 colunas */}
+      <div className="grid grid-cols-7 gap-2 mb-4">
+        <Card className="p-2">
+          <p className="text-[10px] text-slate-500 leading-tight">Total de Clientes</p>
+          <p className="text-lg font-bold">{stats.total}</p>
         </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-slate-500">Clientes Ativos</p>
-                <p className="text-2xl font-bold text-emerald-600">{stats.ativos}</p>
-              </div>
-              <div className="h-10 w-10 rounded-full bg-emerald-100 flex items-center justify-center">
-                <TrendingUp className="h-5 w-5 text-emerald-600" />
-              </div>
-            </div>
-          </CardContent>
+        <Card className="p-2">
+          <p className="text-[10px] text-slate-500 leading-tight">Ativos (30 dias)</p>
+          <p className="text-lg font-bold text-emerald-600">{stats.ativos}</p>
         </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-slate-500">Em Churn</p>
-                <p className="text-2xl font-bold text-red-600">{stats.churn}</p>
-              </div>
-              <div className="h-10 w-10 rounded-full bg-red-100 flex items-center justify-center">
-                <TrendingDown className="h-5 w-5 text-red-600" />
-              </div>
-            </div>
-          </CardContent>
+        <Card className="p-2">
+          <p className="text-[10px] text-slate-500 leading-tight">Inativos (60 dias)</p>
+          <p className="text-lg font-bold text-orange-500">{stats.inativos ?? 0}</p>
         </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-slate-500">Prospects</p>
-                <p className="text-2xl font-bold text-amber-600">{stats.prospects}</p>
-              </div>
-              <div className="h-10 w-10 rounded-full bg-amber-100 flex items-center justify-center">
-                <Building2 className="h-5 w-5 text-amber-600" />
-              </div>
-            </div>
-          </CardContent>
+        <Card className="p-2">
+          <p className="text-[10px] text-slate-500 leading-tight">Rec (61+ dias)</p>
+          <p className="text-lg font-bold text-yellow-600">{stats.recencia ?? 0}</p>
+        </Card>
+        <Card className="p-2">
+          <p className="text-[10px] text-slate-500 leading-tight">Prospect</p>
+          <p className="text-lg font-bold text-amber-600">{stats.prospects}</p>
+        </Card>
+        <Card className="p-2">
+          <p className="text-[10px] text-slate-500 leading-tight">Transfer</p>
+          <p className="text-lg font-bold text-blue-600">{stats.transfer ?? 0}</p>
+        </Card>
+        <Card className="p-2">
+          <p className="text-[10px] text-slate-500 leading-tight">Excluir</p>
+          <p className="text-lg font-bold text-red-500">{stats.excluir ?? 0}</p>
         </Card>
       </div>
 
