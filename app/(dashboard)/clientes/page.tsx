@@ -75,23 +75,23 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
       <div className="grid grid-cols-5 gap-2 mb-4">
         <Card className="p-2">
           <p className="text-[10px] text-slate-500 leading-tight">Total de Clientes</p>
-          <p className="text-lg font-bold">{stats.total}</p>
+          <p className="text-2xl font-bold">{stats.total}</p>
         </Card>
         <Card className="p-2">
           <p className="text-[10px] text-slate-500 leading-tight">Ativos (30 dias)</p>
-          <p className="text-lg font-bold text-emerald-600">{stats.ativos}</p>
+          <p className="text-2xl font-bold text-emerald-600">{stats.ativos}</p>
         </Card>
         <Card className="p-2">
           <p className="text-[10px] text-slate-500 leading-tight">Inativos (60 dias)</p>
-          <p className="text-lg font-bold text-orange-500">{stats.inativos ?? 0}</p>
+          <p className="text-2xl font-bold text-orange-500">{stats.inativos}</p>
         </Card>
         <Card className="p-2">
           <p className="text-[10px] text-slate-500 leading-tight">Bloqueados</p>
-          <p className="text-lg font-bold text-slate-600">{stats.bloqueados}</p>
+          <p className="text-2xl font-bold text-slate-600">{stats.bloqueados}</p>
         </Card>
         <Card className="p-2">
           <p className="text-[10px] text-slate-500 leading-tight">Prospect</p>
-          <p className="text-lg font-bold text-amber-600">{stats.prospects}</p>
+          <p className="text-2xl font-bold text-amber-600">{stats.prospects}</p>
         </Card>
       </div>
 
