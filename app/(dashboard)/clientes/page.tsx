@@ -26,10 +26,11 @@ interface ClientesPageProps {
 export default async function ClientesPage({ searchParams }: ClientesPageProps) {
   const supabase = createClient();
   const busca = typeof searchParams.q === "string" ? searchParams.q : "";
+  const formSubmitido = typeof searchParams.q === "string" || typeof searchParams.status === "string";
   const filtroStatus = typeof searchParams.status === "string" ? searchParams.status : "todos";
   const ordenar = typeof searchParams.ordenar === "string" ? searchParams.ordenar : "az";
   const mostrarTodos = searchParams.mostrar === "todos";
-  const deveBuscar = true; // Sempre buscar — mostra todos se não houver busca
+  const deveBuscar = formSubmitido; // Só buscar se o formulário foi enviado (Enter pressionado)
 
   // Estatísticas — queries HEAD (só count, sem dados) em paralelo
   const [totalRes, ativosRes, inativosRes, bloqueadosRes, prospectsRes] = await Promise.all([
