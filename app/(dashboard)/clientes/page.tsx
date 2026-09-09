@@ -15,6 +15,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils/cn";
 import { createClient } from "@/lib/supabase/server";
 import { ModalNovoCliente } from "@/components/features/clientes/modal-novo-cliente";
+import { MostrarTodosButton } from "@/components/features/clientes/mostrar-todos-button";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -120,7 +121,7 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
       </div>
 
       {/* Conteúdo principal */}
-      <Card className="flex-1 flex flex-col min-h-0 overflow-hidden">
+      <Card className="flex-1 flex flex-col min-h-0">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
@@ -134,7 +135,7 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
             <ModalNovoCliente />
           </div>
         </CardHeader>
-        <CardContent className="flex-1 flex flex-col min-h-0 p-6 overflow-hidden">
+        <CardContent className="flex-1 flex flex-col min-h-0 p-6">
           {/* Barra de busca e filtros */}
           <div className="flex items-center gap-3 mb-4">
             <div className="relative flex-1">
@@ -226,12 +227,7 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
           {/* Ações abaixo da busca */}
           {!deveBuscar && (
             <div className="flex items-center justify-center gap-4 py-8 border-t border-dashed">
-              <Link href="/clientes?mostrar=todos">
-                <Button variant="outline" className="gap-2">
-                  <LayoutGrid className="h-4 w-4" />
-                  Mostrar grade
-                </Button>
-              </Link>
+              <MostrarTodosButton count={stats.total} />
               <span className="text-sm text-slate-400">ou</span>
               <ModalNovoCliente />
             </div>
@@ -258,7 +254,7 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
 
           {/* Lista de clientes */}
           {deveBuscar && (
-            <div className="flex-1 min-h-0 overflow-y-auto mt-4">
+            <div className="flex-1 min-h-0 overflow-y-auto mt-4" style={{maxHeight: 'calc(100vh - 350px)'}}>
               <div className="space-y-0.5">
                 {clientes && clientes.length > 0 ? (
                   clientes.map((cliente: any) => (
