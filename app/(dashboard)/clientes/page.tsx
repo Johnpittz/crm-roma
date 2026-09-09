@@ -68,7 +68,7 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
   }
 
   return (
-    <div className="flex flex-col" style={{height: 'calc(100vh - 64px)'}}>
+    <div className="flex flex-col h-full">
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>

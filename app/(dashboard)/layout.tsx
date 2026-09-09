@@ -57,11 +57,11 @@ function DashboardShell({
   };
 }) {
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="h-screen overflow-hidden bg-slate-50">
       <Sidebar user={user} />
-      <main className="min-h-screen transition-all duration-300 ease-in-out ml-64">
+      <main className="h-full flex flex-col transition-all duration-300 ease-in-out ml-64">
         <Header />
-        <div className="p-6">{children}</div>
+        <div className="flex-1 overflow-hidden p-6">{children}</div>
       </main>
     </div>
   );
