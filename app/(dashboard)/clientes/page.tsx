@@ -31,18 +31,24 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
   const deveBuscar = busca || mostrarTodos;
 
   // Estatísticas — queries HEAD (só count, sem dados) em paralelo
-  const [totalRes, ativosRes, churnRes, prospectsRes] = await Promise.all([
-    supabase.from("clientes").select("*", { count: "exact", head: true }),
-    supabase.from("clientes").select("*", { count: "exact", head: true }).eq("status", "ativo"),
-    supabase.from("clientes").select("*", { count: "exact", head: true }).eq("status", "churn"),
-    supabase.from("clientes").select("*", { count: "exact", head: true }).eq("status", "prospect"),
+  const [totalRes, ativosRes, inativosRes, recRes, prospectsRes, transferRes, excluidosRes] = await Promise.all([
+    supabase.from("clientes").select("id", { count: "exact", head: true }),
+    supabase.from("clientes").select("id", { count: "exact", head: true }).eq("status", "ativo"),
+    supabase.from("clientes").select("id", { count: "exact", head: true }).eq("status", "inativo"),
+    supabase.from("clientes").select("id", { count: "exact", head: true }).eq("status", "recomendacao"),
+    supabase.from("clientes").select("id", { count: "exact", head: true }).eq("status", "prospect"),
+    supabase.from("clientes").select("id", { count: "exact", head: true }).eq("status", "transferido"),
+    supabase.from("clientes").select("id", { count: "exact", head: true }).eq("status", "excluido"),
   ]);
 
   const stats = {
     total: totalRes.count ?? 0,
     ativos: ativosRes.count ?? 0,
-    churn: churnRes.count ?? 0,
+    inativos: inativosRes.count ?? 0,
+    rec: recRes.count ?? 0,
     prospects: prospectsRes.count ?? 0,
+    transfer: transferRes.count ?? 0,
+    excluidos: excluidosRes.count ?? 0,
   };
 
   // Só busca clientes se houver busca ou "mostrar todos"
@@ -85,7 +91,7 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
         </Card>
         <Card className="p-2">
           <p className="text-[10px] text-slate-500 leading-tight">Rec (61+ dias)</p>
-          <p className="text-lg font-bold text-yellow-600">{stats.recencia ?? 0}</p>
+          <p className="text-lg font-bold text-yellow-600">{stats.rec}</p>
         </Card>
         <Card className="p-2">
           <p className="text-[10px] text-slate-500 leading-tight">Prospect</p>
@@ -93,11 +99,11 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
         </Card>
         <Card className="p-2">
           <p className="text-[10px] text-slate-500 leading-tight">Transfer</p>
-          <p className="text-lg font-bold text-blue-600">{stats.transfer ?? 0}</p>
+          <p className="text-lg font-bold text-blue-600">{stats.transfer}</p>
         </Card>
         <Card className="p-2">
           <p className="text-[10px] text-slate-500 leading-tight">Excluir</p>
-          <p className="text-lg font-bold text-red-500">{stats.excluir ?? 0}</p>
+          <p className="text-lg font-bold text-red-500">{stats.excluidos}</p>
         </Card>
       </div>
 
