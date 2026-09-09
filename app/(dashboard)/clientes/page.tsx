@@ -27,6 +27,7 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
   const supabase = createClient();
   const busca = typeof searchParams.q === "string" ? searchParams.q : "";
   const filtroStatus = typeof searchParams.status === "string" ? searchParams.status : "todos";
+  const ordenar = typeof searchParams.ordenar === "string" ? searchParams.ordenar : "az";
   const mostrarTodos = searchParams.mostrar === "todos";
   const deveBuscar = busca || mostrarTodos;
 
@@ -63,7 +64,21 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
       query = query.eq("status", filtroStatus);
     }
 
-    const result = await query.order("nome_razao_social", { ascending: true }).limit(200);
+    // Ordenação dinâmica
+    let orderField = "nome_razao_social";
+    let ascending = true;
+    if (ordenar === "za") {
+      orderField = "nome_razao_social";
+      ascending = false;
+    } else if (ordenar === "recente") {
+      orderField = "created_at";
+      ascending = false;
+    } else if (ordenar === "antigo") {
+      orderField = "created_at";
+      ascending = true;
+    }
+
+    const result = await query.order(orderField, { ascending }).limit(200);
     clientes = result.data;
     count = result.count ?? 0;
     error = result.error;
@@ -119,8 +134,8 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
           </div>
         </CardHeader>
         <CardContent className="flex-1 flex flex-col min-h-0 p-6">
-          {/* Barra de busca sempre visível */}
-          <form className="flex items-center gap-3 mb-4">
+          {/* Barra de busca e filtros */}
+          <div className="flex items-center gap-3 mb-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
               <Input
@@ -130,26 +145,82 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
                 className="pl-10"
               />
             </div>
-            <div className="flex bg-slate-100 p-1 rounded-lg">
-              {["todos", "ativo", "churn", "prospect"].map((s) => (
+            <div className="flex bg-slate-100 p-1 rounded-lg flex-wrap gap-1">
+              {[
+                { value: "todos", label: "Todos" },
+                { value: "ativo", label: "Ativos" },
+                { value: "inativo", label: "Inativos" },
+                { value: "bloqueado", label: "Rec" },
+                { value: "prospect", label: "Prospect" },
+                { value: "transfer", label: "Transfer" },
+                { value: "excluir", label: "Excluir" },
+              ].map((s) => (
                 <Link
-                  key={s}
-                  href={`/clientes?status=${s}${busca ? `&q=${busca}` : ""}${mostrarTodos ? "&mostrar=todos" : ""}`}
+                  key={s.value}
+                  href={`/clientes?status=${s.value}${busca ? `&q=${busca}` : ""}${mostrarTodos ? "&mostrar=todos" : ""}`}
                   className={cn(
-                    "px-3 py-1.5 text-sm font-medium rounded-md transition-colors capitalize",
-                    filtroStatus === s
+                    "px-2 py-1 text-xs font-medium rounded-md transition-colors whitespace-nowrap",
+                    filtroStatus === s.value
                       ? "bg-white text-slate-900 shadow-sm"
                       : "text-slate-600 hover:text-slate-900"
                   )}
                 >
-                  {s === "todos" ? "Todos" : s === "ativo" ? "Ativos" : s === "churn" ? "Churn" : "Prospects"}
+                  {s.label}
                 </Link>
               ))}
             </div>
-            <Button variant="outline" size="icon" type="submit">
-              <Filter className="h-4 w-4" />
-            </Button>
-          </form>
+          </div>
+
+          {/* Barra de ordenação */}
+          <div className="flex items-center justify-between mb-3 pb-3 border-b">
+            <span className="text-xs text-slate-500">Ordenar por:</span>
+            <div className="flex items-center gap-1">
+              <Link
+                href={`/clientes?status=${filtroStatus}${busca ? `&q=${busca}` : ""}&ordenar=az${mostrarTodos ? "&mostrar=todos" : ""}`}
+                className={cn(
+                  "px-2 py-1 text-[10px] font-medium rounded transition-colors",
+                  ordenar === "az"
+                    ? "bg-slate-800 text-white"
+                    : "text-slate-500 hover:text-slate-800"
+                )}
+              >
+                A→Z
+              </Link>
+              <Link
+                href={`/clientes?status=${filtroStatus}${busca ? `&q=${busca}` : ""}&ordenar=za${mostrarTodos ? "&mostrar=todos" : ""}`}
+                className={cn(
+                  "px-2 py-1 text-[10px] font-medium rounded transition-colors",
+                  ordenar === "za"
+                    ? "bg-slate-800 text-white"
+                    : "text-slate-500 hover:text-slate-800"
+                )}
+              >
+                Z→A
+              </Link>
+              <Link
+                href={`/clientes?status=${filtroStatus}${busca ? `&q=${busca}` : ""}&ordenar=recente${mostrarTodos ? "&mostrar=todos" : ""}`}
+                className={cn(
+                  "px-2 py-1 text-[10px] font-medium rounded transition-colors",
+                  ordenar === "recente"
+                    ? "bg-slate-800 text-white"
+                    : "text-slate-500 hover:text-slate-800"
+                )}
+              >
+                Recentes
+              </Link>
+              <Link
+                href={`/clientes?status=${filtroStatus}${busca ? `&q=${busca}` : ""}&ordenar=antigo${mostrarTodos ? "&mostrar=todos" : ""}`}
+                className={cn(
+                  "px-2 py-1 text-[10px] font-medium rounded transition-colors",
+                  ordenar === "antigo"
+                    ? "bg-slate-800 text-white"
+                    : "text-slate-500 hover:text-slate-800"
+                )}
+              >
+                Antigos
+              </Link>
+            </div>
+          </div>
 
           {/* Ações abaixo da busca */}
           {!deveBuscar && (
