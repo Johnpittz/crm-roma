@@ -3,22 +3,11 @@ import {
   Users,
   Search,
   Filter,
-  MoreHorizontal,
-  Phone,
-  Mail,
-  MapPin,
-  Building2,
-  TrendingUp,
-  TrendingDown,
-  AlertTriangle,
   LayoutGrid,
-  Plus,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils/cn";
 import { createClient } from "@/lib/supabase/server";
@@ -74,46 +63,6 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
     count = result.count ?? 0;
     error = result.error;
   }
-
-  const formatCurrency = (value: number | null) =>
-    new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-    }).format(value ?? 0);
-
-  const statusBadge = (status: string) => {
-    switch (status) {
-      case "ativo":
-        return "bg-emerald-100 text-emerald-700 hover:bg-emerald-100";
-      case "churn":
-        return "bg-red-100 text-red-700 hover:bg-red-100";
-      case "prospect":
-        return "bg-amber-100 text-amber-700 hover:bg-amber-100";
-      default:
-        return "bg-slate-100 text-slate-700";
-    }
-  };
-
-  const statusLabel = (status: string) => {
-    switch (status) {
-      case "ativo":
-        return "Ativo";
-      case "churn":
-        return "Churn";
-      case "prospect":
-        return "Prospect";
-      default:
-        return status;
-    }
-  };
-
-  const diasSemCompra = (dataUltimaCompra: string | null) => {
-    if (!dataUltimaCompra) return null;
-    const diff = Math.floor(
-      (new Date().getTime() - new Date(dataUltimaCompra).getTime()) / (1000 * 60 * 60 * 24)
-    );
-    return diff > 0 ? diff : 0;
-  };
 
   return (
     <div className="space-y-6">
@@ -253,83 +202,13 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
           {/* Lista de clientes */}
           {deveBuscar && (
             <ScrollArea className="h-[600px]">
-              <div className="space-y-1">
+              <div>
                 {clientes && clientes.length > 0 ? (
-                  clientes.map((cliente: any) => {
-                    const semCompra = diasSemCompra(cliente.data_ultima_compra);
-
-                    return (
-                      <div
-                        key={cliente.id}
-                        className="flex items-center gap-3 p-2 rounded-lg border hover:bg-slate-50 transition-colors"
-                      >
-                        <Avatar className="h-8 w-8">
-                          <AvatarImage
-                            src={`https://api.dicebear.com/7.x/initials/svg?seed=${cliente.nome_razao_social}`}
-                          />
-                          <AvatarFallback className="bg-slate-200 text-slate-700 text-xs">
-                            {cliente.nome_razao_social?.charAt(0) ?? "?"}
-                          </AvatarFallback>
-                        </Avatar>
-
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <h3 className="font-semibold text-slate-900 truncate">
-                              {cliente.nome_razao_social}
-                            </h3>
-                             {cliente.grupo_economico_id && (
-                               <Badge variant="secondary" className="bg-purple-100 text-purple-700">
-                                 <Building2 className="h-3 w-3 mr-1" />
-                                 {cliente.grupo?.nome || "Grupo"}
-                               </Badge>
-                             )}
-                            {cliente.status === "churn" && semCompra != null && (
-                              <Badge variant="destructive" className="gap-1">
-                                <AlertTriangle className="h-3 w-3" />
-                                {semCompra} dias
-                              </Badge>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-3 text-xs text-slate-500 mt-0.5 flex-wrap">
-                            <span className="flex items-center gap-1">
-                              <Phone className="h-2.5 w-2.5" />
-                              {cliente.telefone ?? "—"}
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <Mail className="h-2.5 w-2.5" />
-                              {cliente.email ?? "—"}
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <MapPin className="h-2.5 w-2.5" />
-                              {cliente.cidade && cliente.estado
-                                ? `${cliente.cidade}/${cliente.estado}`
-                                : "—"}
-                            </span>
-                          </div>
-                        </div>
-
-                        <div className="text-right">
-                          <Badge className={cn(statusBadge(cliente.status))}>
-                            {statusLabel(cliente.status)}
-                          </Badge>
-                          {cliente.cpf_cnpj && (
-                            <p className="text-sm text-slate-500 mt-1">
-                              {cliente.cpf_cnpj}
-                            </p>
-                          )}
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          <Button variant="ghost" size="sm">
-                            Ver
-                          </Button>
-                          <Button variant="ghost" size="icon" className="h-7 w-7">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    );
-                  })
+                  clientes.map((cliente: any) => (
+                    <p key={cliente.id} className="text-sm text-muted-foreground py-0.5 truncate hover:text-foreground cursor-pointer transition-colors">
+                      {cliente.nome_razao_social}
+                    </p>
+                  ))
                 ) : (
                   <div className="text-center py-12 text-slate-500">
                     <Search className="h-12 w-12 mx-auto mb-4 text-slate-300" />
