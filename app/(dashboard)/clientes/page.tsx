@@ -29,7 +29,7 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
   const filtroStatus = typeof searchParams.status === "string" ? searchParams.status : "todos";
   const ordenar = typeof searchParams.ordenar === "string" ? searchParams.ordenar : "az";
   const mostrarTodos = searchParams.mostrar === "todos";
-  const deveBuscar = busca || mostrarTodos;
+  const deveBuscar = true; // Sempre buscar — mostra todos se não houver busca
 
   // Estatísticas — queries HEAD (só count, sem dados) em paralelo
   const [totalRes, ativosRes, inativosRes, bloqueadosRes, prospectsRes] = await Promise.all([
