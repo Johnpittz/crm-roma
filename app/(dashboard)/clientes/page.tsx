@@ -6,6 +6,7 @@ import {
   LayoutGrid,
   TrendingUp,
   TrendingDown,
+  Building2,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
