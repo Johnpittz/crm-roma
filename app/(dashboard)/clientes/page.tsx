@@ -4,6 +4,7 @@ import {
   Search,
   Filter,
   LayoutGrid,
+  TrendingUp,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
