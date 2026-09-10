@@ -56,34 +56,32 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
   let error: any = null;
 
   if (deveBuscar) {
-    let query = supabase.from("clientes").select("*, grupo:grupos_economicos!grupo_economico_id(id, nome)", { count: "exact" });
+    // Helper para montar query base
+    const buildQuery = (offset: number, limit: number) => {
+      let q = supabase.from("clientes").select("*, grupo:grupos_economicos!grupo_economico_id(id, nome)", { count: "exact" });
+      if (busca) q = q.ilike("nome_razao_social", `%${busca}%`);
+      if (filtroStatus !== "todos") q = q.eq("status", filtroStatus);
+      let orderField = "nome_razao_social";
+      let ascending = true;
+      if (ordenar === "za") { orderField = "nome_razao_social"; ascending = false; }
+      else if (ordenar === "recente") { orderField = "created_at"; ascending = false; }
+      else if (ordenar === "antigo") { orderField = "created_at"; ascending = true; }
+      return q.order(orderField, { ascending }).range(offset, offset + limit - 1);
+    };
 
-    if (busca) {
-      query = query.ilike("nome_razao_social", `%${busca}%`);
+    // Primeira query: pega count + primeiros 1000
+    const result1 = await buildQuery(0, 1000);
+    clientes = result1.data;
+    count = result1.count ?? 0;
+    error = result1.error;
+
+    // Se tem mais de 1000, busca o restante
+    if (!error && count > 1000) {
+      const result2 = await buildQuery(1000, count - 1000);
+      if (!result2.error && result2.data) {
+        clientes = [...(clientes || []), ...result2.data];
+      }
     }
-
-    if (filtroStatus !== "todos") {
-      query = query.eq("status", filtroStatus);
-    }
-
-    // Ordenação dinâmica
-    let orderField = "nome_razao_social";
-    let ascending = true;
-    if (ordenar === "za") {
-      orderField = "nome_razao_social";
-      ascending = false;
-    } else if (ordenar === "recente") {
-      orderField = "created_at";
-      ascending = false;
-    } else if (ordenar === "antigo") {
-      orderField = "created_at";
-      ascending = true;
-    }
-
-    const result = await query.order(orderField, { ascending });
-    clientes = result.data;
-    count = result.count ?? 0;
-    error = result.error;
   }
 
   return (
@@ -128,7 +126,7 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
               <CardTitle>Lista de Clientes</CardTitle>
               <CardDescription>
                 {deveBuscar
-                  ? `${count} cliente(s) encontrado(s)`
+                  ? `${clientes ? clientes.length : count} cliente(s) encontrado(s)`
                   : "Busque por nome ou CNPJ para encontrar clientes"}
               </CardDescription>
             </div>
