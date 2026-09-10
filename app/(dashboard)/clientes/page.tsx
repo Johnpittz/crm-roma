@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils/cn";
 import { createClient } from "@/lib/supabase/server";
 import { ModalNovoCliente } from "@/components/features/clientes/modal-novo-cliente";
 import { MostrarTodosButton } from "@/components/features/clientes/mostrar-todos-button";
+import { LimparUrlNoLoad } from "@/components/features/clientes/limpar-url-no-load";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -118,6 +119,8 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
         </Card>
       </div>
 
+      <LimparUrlNoLoad />
+      
       {/* Conteúdo principal */}
       <Card className="flex-1 flex flex-col min-h-0">
         <CardHeader>
