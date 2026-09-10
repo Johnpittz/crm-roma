@@ -186,21 +186,21 @@ function HeroCarousel({ lastUpdate }: { lastUpdate: Date }) {
       </div>
 
       {/* Banner Principal */}
-      <div className={`relative overflow-hidden rounded-xl bg-gradient-to-r ${banner.cor} text-white min-h-[340px] p-6`}>
+      <div className={`group relative overflow-hidden rounded-xl bg-gradient-to-r ${banner.cor} text-white min-h-[340px] p-6`}>
         {banner.imagemUrl ? (
           <img src={banner.imagemUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
         ) : null}
         
-        {/* Setas de navegação nos cantos */}
+        {/* Setas de navegação nos cantos - aparecem no hover */}
         <button
           onClick={goPrev}
-          className="absolute left-4 top-1/2 -translate-y-1/2 z-20 bg-white/20 hover:bg-white/40 rounded-full p-3 transition-all"
+          className="absolute left-4 top-1/2 -translate-y-1/2 z-20 bg-white/20 hover:bg-white/40 rounded-full p-3 transition-all opacity-0 group-hover:opacity-100"
         >
           <ChevronLeft className="h-6 w-6 text-white" />
         </button>
         <button
           onClick={goNext}
-          className="absolute right-4 top-1/2 -translate-y-1/2 z-20 bg-white/20 hover:bg-white/40 rounded-full p-3 transition-all"
+          className="absolute right-4 top-1/2 -translate-y-1/2 z-20 bg-white/20 hover:bg-white/40 rounded-full p-3 transition-all opacity-0 group-hover:opacity-100"
         >
           <ChevronRight className="h-6 w-6 text-white" />
         </button>
