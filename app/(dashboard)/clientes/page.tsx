@@ -10,13 +10,13 @@ import {
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils/cn";
 import { createClient } from "@/lib/supabase/server";
 import { ModalNovoCliente } from "@/components/features/clientes/modal-novo-cliente";
 import { MostrarTodosButton } from "@/components/features/clientes/mostrar-todos-button";
 import { LimparUrlNoLoad } from "@/components/features/clientes/limpar-url-no-load";
+import { SearchBar } from "@/components/features/clientes/search-bar";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -138,92 +138,12 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
         </CardHeader>
         <CardContent className="flex-1 flex flex-col min-h-0 p-6">
           {/* Barra de busca e filtros */}
-          <form className="flex items-center gap-3 mb-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
-              <Input
-                name="q"
-                defaultValue={busca}
-                placeholder="Digite o nome, CNPJ ou o que você procura..."
-                className="pl-10"
-              />
-            </div>
-            <div className="flex bg-slate-100 p-1 rounded-lg flex-wrap gap-1">
-              {[
-                { value: "todos", label: "Todos" },
-                { value: "ativo", label: "Ativos" },
-                { value: "inativo", label: "Inativos" },
-                { value: "bloqueado", label: "Rec" },
-                { value: "prospect", label: "Prospect" },
-                { value: "transfer", label: "Transfer" },
-                { value: "excluir", label: "Excluir" },
-              ].map((s) => (
-                <Link
-                  key={s.value}
-                  href={`/clientes?status=${s.value}${busca ? `&q=${busca}` : ""}${mostrarTodos ? "&mostrar=todos" : ""}`}
-                  className={cn(
-                    "px-2 py-1 text-xs font-medium rounded-md transition-colors whitespace-nowrap",
-                    filtroStatus === s.value
-                      ? "bg-white text-slate-900 shadow-sm"
-                      : "text-slate-600 hover:text-slate-900"
-                  )}
-                >
-                  {s.label}
-                </Link>
-              ))}
-            </div>
-          </form>
-
-          {/* Barra de ordenação */}
-          <div className="flex items-center justify-between mb-3 pb-3 border-b">
-            <span className="text-xs text-slate-500">Ordenar por:</span>
-            <div className="flex items-center gap-1">
-              <Link
-                href={`/clientes?status=${filtroStatus}${busca ? `&q=${busca}` : ""}&ordenar=az${mostrarTodos ? "&mostrar=todos" : ""}`}
-                className={cn(
-                  "px-2 py-1 text-[10px] font-medium rounded transition-colors",
-                  ordenar === "az"
-                    ? "bg-slate-800 text-white"
-                    : "text-slate-500 hover:text-slate-800"
-                )}
-              >
-                A→Z
-              </Link>
-              <Link
-                href={`/clientes?status=${filtroStatus}${busca ? `&q=${busca}` : ""}&ordenar=za${mostrarTodos ? "&mostrar=todos" : ""}`}
-                className={cn(
-                  "px-2 py-1 text-[10px] font-medium rounded transition-colors",
-                  ordenar === "za"
-                    ? "bg-slate-800 text-white"
-                    : "text-slate-500 hover:text-slate-800"
-                )}
-              >
-                Z→A
-              </Link>
-              <Link
-                href={`/clientes?status=${filtroStatus}${busca ? `&q=${busca}` : ""}&ordenar=recente${mostrarTodos ? "&mostrar=todos" : ""}`}
-                className={cn(
-                  "px-2 py-1 text-[10px] font-medium rounded transition-colors",
-                  ordenar === "recente"
-                    ? "bg-slate-800 text-white"
-                    : "text-slate-500 hover:text-slate-800"
-                )}
-              >
-                Recentes
-              </Link>
-              <Link
-                href={`/clientes?status=${filtroStatus}${busca ? `&q=${busca}` : ""}&ordenar=antigo${mostrarTodos ? "&mostrar=todos" : ""}`}
-                className={cn(
-                  "px-2 py-1 text-[10px] font-medium rounded transition-colors",
-                  ordenar === "antigo"
-                    ? "bg-slate-800 text-white"
-                    : "text-slate-500 hover:text-slate-800"
-                )}
-              >
-                Antigos
-              </Link>
-            </div>
-          </div>
+          <SearchBar
+            initialSearch={busca}
+            initialStatus={filtroStatus}
+            initialOrdenar={ordenar}
+            mostrarTodos={mostrarTodos}
+          />
 
           {/* Ações abaixo da busca */}
           {!deveBuscar && (
