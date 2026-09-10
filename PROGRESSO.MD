@@ -1,10 +1,10 @@
 # CRM ROMA - Progresso do Projeto
 
 > **Arquivo de contexto para agentes IA**
-> **Última atualização:** 28/07/2026
+> **Última atualização:** 09/09/2026
 > **Deploy atual:** https://crm-roma-romadistribuicao.vercel.app
 > **Conta Vercel:** roma-6489 (romadistribuicao) — plano Hobby/Free
-> **Conversa atual:** Integração WhatsApp BotConversa ATIVA + Kanban + Etiquetas
+> **Conversa atual:** Integração WhatsApp Evolution API + Kanban + Banner Editável + Clientes Otimizados
 
 ---
 
@@ -28,7 +28,7 @@ CRM desenvolvido para a empresa ROMA (distribuidora de materiais elétricos). Si
 | Auth | Supabase Auth (JWT Bearer token) |
 | Deploy | Vercel (production) — conta roma-6489 (romadistribuicao) |
 | ERP Integration | Millennium ERP (NTLM auth, rede interna) |
-| WhatsApp API | BotConversa (backend.botconversa.com.br) |
+| WhatsApp API | **Evolution API v2.3.7** (Baileys) — porta 8082 |
 
 ---
 
@@ -39,9 +39,9 @@ crm-roma/
 ├── app/                          # Next.js App Router
 │   ├── (dashboard)/              # Rotas com layout autenticado
 │   │   ├── atendimento/page.tsx  # Tela principal de atendimento (WhatsApp Web)
-│   │   ├── kanban/page.tsx       # Kanban de tarefas (rota separada)
+│   │   ├── kanban/page.tsx       # Kanban de tarefas + Banner Editável
 │   │   ├── leads/page.tsx        # Fila de leads (gestor pode atribuir/reatribuir)
-│   │   ├── clientes/page.tsx     # Lista de clientes
+│   │   ├── clientes/page.tsx     # Lista de clientes (OTIMIZADA)
 │   │   ├── produtos/page.tsx     # Catálogo de produtos
 │   │   ├── vendas/page.tsx       # Vendas
 │   │   ├── dashboard/page.tsx    # Dashboard
@@ -52,7 +52,6 @@ crm-roma/
 │   │   ├── atendimentos/route.ts         # CRUD atendimentos
 │   │   ├── atendimentos/mensagens/       # Chat de atendimento
 │   │   ├── atendimentos/etiquetas/       # CRUD etiquetas de atendimento
-│   │   ├── atendimentos/sync/            # Sync mensagens BotConversa (inativo)
 │   │   ├── leads/route.ts                # CRUD leads + atribuição/reatribuição
 │   │   ├── leads/distribuir/             # Distribuição automática de leads
 │   │   ├── vendedores/route.ts           # Lista e cadastro de vendedores
@@ -60,25 +59,27 @@ crm-roma/
 │   │   ├── tarefas/route.ts              # Kanban tarefas
 │   │   ├── produtos/route.ts             # Produtos
 │   │   ├── produtos/filtros/route.ts     # Filtros de produtos (separado)
-│   │   ├── clientes/route.ts             # Clientes
+│   │   ├── clientes/route.ts             # Clientes (COM BUSCA TODOS)
+│   │   ├── clientes/stats/route.ts       # Estatísticas de clientes
 │   │   ├── vendas/route.ts               # Vendas
 │   │   ├── oportunidades/route.ts        # Oportunidades
-│   │   ├── webhooks/whatsapp/            # Webhook BotConversa (recebe mensagens)
+│   │   ├── webhooks/evolution/           # Webhook Evolution API (recebe mensagens)
 │   │   └── webhooks/millennium/          # Webhook Millennium
 │   ├── layout.tsx                # Layout raiz
 │   └── login/page.tsx            # Tela de login
 ├── components/
 │   ├── features/                 # Componentes por funcionalidade
 │   │   ├── atendimento/          # Kanban, Chat, Lista, ListaLateral, PainelContato, FiltroEtiquetas
-│   │   ├── leads/                # (ainda não criado — tudo em leads/page.tsx)
-│   │   ├── clientes/             # Modal novo cliente
+│   │   ├── clientes/             # Modal novo cliente, ModalDetalhesCliente
 │   │   ├── configuracoes/        # Modal novo vendedor
 │   │   └── vendas/               # Modal nova venda
 │   ├── layout/                   # Header, Sidebar (com logo-icon.png)
 │   ├── ui/                       # shadcn/ui components
 │   └── notificacoes-bell.tsx     # Componente de notificações
 ├── lib/
-│   └── supabase/                 # Clientes Supabase (client.ts, server.ts)
+│   ├── supabase/                 # Clientes Supabase (client.ts, server.ts)
+│   ├── evolution-api.ts          # Helper para Evolution API
+│   └── roteamento.ts             # Helper de roteamento de atendimentos
 ├── public/
 │   └── logo-icon.png             # Logo do sistema no sidebar
 ├── docs/                         # Documentação
@@ -89,7 +90,7 @@ crm-roma/
 
 ## 4. Funcionalidades Implementadas
 
-### 4.1 Atendimento WhatsApp (COMPLETO — INTEGRAÇÃO BOTCONVERSA ATIVA)
+### 4.1 Atendimento WhatsApp (COMPLETO — INTEGRAÇÃO EVOLUTION API)
 
 **Tela:** `/atendimento`
 
@@ -108,73 +109,45 @@ crm-roma/
 - **Badges nos cards:** Cards mostram até 3 badges de etiquetas + "+N" se tiver mais
 - **Atualização em tempo real:** Quando vincula/remove etiqueta, a lista e o filtro são atualizados
 
-**Etiquetas disponíveis no painel de contato:**
-```
-Contatos, Em Atendimento,
-```
+#### Integração Evolution API (ATIVA)
 
-**⚠️ Limitação Importante — Sincronização WhatsApp:**
-- **O CRM ENVIA mensagens** via API BotConversa ✅
-- **O CRM RECEBE mensagens** via webhook BotConversa ✅
-- **O CRM NÃO sincroniza mensagens enviadas pelo dono do número POR FORA do CRM** ❌
-- **Solução futura:** Configurar webhook no painel BotConversa para enviar eventos de "mensagem enviada"
+**Servidor:** VPS Hostinger KVM (Docker `john_hermes`)
+**Porta:** 8082
+**Versão:** 2.3.7 (Baileys)
+**Instância:** ROMA_1 (número: 556282735286)
 
-**⚠️ Funcionalidades COMENTADAS para MVP:**
-- **Oportunidades** — aba comentada
-- **Campanhas** — sidebar comentada
-- **Vendas** — sidebar comentada (depende Millennium)
-- **Sequências, Campos Personalizados** — removidos do painel de contato
+**Webhook Configurado:**
+- URL: `https://crm-roma.vercel.app/api/webhooks/evolution`
+- Eventos: MESSAGES_UPSERT, MESSAGES_UPDATE, CONNECTION_UPDATE
 
-#### Integração BotConversa (ATIVA)
+**Helper:** `lib/evolution-api.ts`
 
-**Helper:** `lib/botconversa.ts`
-
-**API BotConversa:**
-- **Base URL:** `https://backend.botconversa.com.br/api/v1/webhook`
-- **Autenticação:** Header `api-key: {API_KEY}`
-- **Enviar mensagem:** `POST /subscriber/{subscriber_id}/send_message/`
-- **Body:** `{ "type": "text", "value": "mensagem" }`
-- **Buscar subscriber:** `GET /subscriber/get_by_phone/{phone}/`
+**API Evolution API:**
+- **Base URL:** `http://localhost:8082`
+- **Autenticação:** Header `apikey: {API_KEY}`
+- **Enviar mensagem:** `POST /message/sendText/ROMA_1`
+- **Body:** `{ "number": "55...", "text": "mensagem" }`
 
 **⚠️ CUIDADOS:**
-1. Domínio é `backend.botconversa.com.br` (NÃO `api.botconversa.com.br`)
-2. Header correto é `api-key` (NÃO `Authorization: Bearer`)
-3. Body para enviar é `{ type: "text", value: "..." }` (NÃO `{ message: "..." }`)
-4. `subscriber_id` é numérico, obtido pelo endpoint `get_by_phone`
-5. **NÃO** adicionar "9" no telefone automaticamente
+1. Usar `apikey` como header (NÃO `Authorization: Bearer`)
+2. Número deve incluir código do país (55)
+3. Instância deve estar conectada para enviar mensagens
 
 #### Webhook WhatsApp (Recebimento de Mensagens)
 
-**Endpoint:** `POST /api/webhooks/whatsapp`
+**Endpoint:** `POST /api/webhooks/evolution`
 
 **Fluxo:**
-1. BotConversa envia payload quando cliente envia mensagem
-2. Webhook extrai telefone + mensagem de forma flexível (múltiplos formatos)
+1. Evolution API envia payload quando cliente envia mensagem
+2. Webhook extrai telefone + mensagem
 3. Busca cliente pelo telefone (tolerante a formatos)
 4. **Busca atendimento aberto** — busca exata primeiro, depois comparação por **últimos 8 dígitos**
 5. Se encontra → atualiza atendimento + insere mensagem
 6. Se não encontra → cria novo atendimento + insere mensagem
 
-**Correção de Duplicidade (14/07/2026):**
-- Antes: busca exata por telefone causava duplicatas (ex: `556234165014` vs `6234165014`)
-- Agora: busca em 2 etapas — exata + tolerante (últimos 8 dígitos)
-- Aplicado em: `webhooks/whatsapp/route.ts` E `atendimentos/route.ts` (POST)
+---
 
-#### Notificações (OTIMIZADO — 14/07/2026)
-
-**Componente:** `notificacoes-bell.tsx` (header)
-
-**Bug corrigido (14/07/2026):**
-- **Problema:** Dependência cíclica — `fetchNotificacoes` usava `notificacoes` (state) nas dependências do `useCallback`, causando loop infinito de re-renderização → 400+ requests/minuto
-- **Solução:** Trocado por `useRef` (`notificacoesIdsRef`) para detectar notificações novas sem dependência circular
-- **Resultado:** ~1 request a cada 2 minutos (era centenas por minuto)
-
-**Configuração atual:**
-- Polling a cada **120s** (pausa quando aba invisível)
-- Badge no sininho com contador vermelho
-- Toast flutuante quando chega notificação nova
-
-### 4.2 Kanban de Tarefas (COMPLETO — REFORMULADO EM JULHO/2026)
+### 4.2 Kanban de Tarefas (COMPLETO — REFORMULADO SETEMBRO/2026)
 
 **Tela:** `/kanban`
 
@@ -183,7 +156,15 @@ Contatos, Em Atendimento,
 - **"Andamento"** — Tarefas em andamento
 - **"Concluído"** — Tarefas concluídas (últimos 7 dias)
 
-**Fluxo do Modal (REFORMULADO 16/07/2026):**
+**Banner Editável (NOVO — SETEMBRO/2026):**
+- Banner rotativo com imagens salvas no localStorage
+- Setas de navegação (aparecem ao passar o mouse)
+- Botão "Editar Banner" para adicionar/remover/ordenar imagens
+- Upload de imagens via file input
+- Navegação automática a cada 5 segundos
+- Altura: 200px (preenche bem o espaço)
+
+**Fluxo do Modal:**
 
 | Coluna | Botões visíveis | O que acontece |
 |--------|-----------------|----------------|
@@ -201,39 +182,70 @@ Contatos, Em Atendimento,
   - 📅 Remarcado — agendado para outro dia
   - 📞 Sem contato — não atendeu
   - 🔄 Follow-up necessário
-- **Observação do resultado*** — dropdown fixo com opções por resultado:
-
-| Resultado | Opções de Observação |
-|-----------|---------------------|
-| Sucesso | Venda fechada, Orçamento enviado, Reunião agendada, Parceria firmada |
-| Insucesso | Sem interesse, Preço elevado, Escolheu concorrente, Não é público-alvo |
-| Remarcado | Cliente pediu retorno, Agenda lotada, Aguardando decisão |
-| Sem contato | Não atendeu, Número inválido, Sem WhatsApp, Caixa postal |
-| Follow-up | Enviar orçamento, Confirmar reunião, Verificar disponibilidade, Aguardando retorno |
-
-- **Valor da Venda (R$)*** — aparece APENAS quando resultado = "Sucesso" (formato monetário R$ X.XXX,XX)
-
-**Modal de Edição (apenas Concluído):**
-- Edita título, descrição, prioridade
-- Se resultado é Sucesso: edita valor da venda
-
-**Coluna `valor_venda` na tabela `tarefas`:**
-- Migration `062_tarefas_valor_venda.sql`: `ALTER TABLE tarefas ADD COLUMN IF NOT EXISTS valor_venda NUMERIC(12,2) DEFAULT NULL;`
-- API PATCH aceita `valor_venda` no body
-- Salva como número decimal, exibe formatado em R$
+- **Observação do resultado*** — dropdown fixo com opções por resultado
+- **Valor da Venda (R$)*** — aparece APENAS quando resultado = "Sucesso"
 
 **Drag and Drop:**
 - Usando `@hello-pangea/dnd` (fork do react-beautiful-dnd)
 - Arrastar para "Concluído" abre modal de conclusão (não move automaticamente)
 - Arrastar para "Andamento" move direto
 
-### 4.3 Painel de Contato (ATUALIZADO 14/07/2026)
+---
 
-**Componente:** `painel-contato.tsx`
+### 4.3 Clientes (COMPLETO — OTIMIZADO SETEMBRO/2026)
 
-- **Dados do contato:** Nome, telefone, email, CPF, data de inscrição
-- **Seções removidas (14/07/2026):** Sequências, Campanhas, Campos Personalizados
-- **Seção mantida:** Etiquetas (funcional)
+**Tela:** `/clientes`
+
+**Layout Otimizado (SEM SCROLL NA PÁGINA):**
+- Container preenche 100% da tela (sem scroll externo)
+- Cards de estatísticas no topo (7 cards compactos)
+- Lista de clientes com scroll interno (todos os clientes)
+- Busca e filtros funcionais
+
+**Cards de Estatísticas (7 cards):**
+- Total de Clientes
+- Ativos (30 dias)
+- Inativos (60 dias)
+- Recentes (61+ dias)
+- Prospect
+- Transfer
+- Excluir
+
+**Funcionalidades:**
+- **Busca:** Nome, telefone, email (pressione ENTER)
+- **Filtros:** Status (Todos, Ativo, Inativo, Bloqueado, Prospect)
+- **Ordenação:** Ordem alfabética, Mais recentes, Mais antigos
+- **Grid:** Visualização em grade (cards maiores)
+- **Listar Todos:** Botão para carregar TODOS os clientes (com aviso de demora)
+- **Modal de Detalhes:** Clique no nome → popup com informações do cliente
+
+**Cars Compactos:**
+- Cada card mostra apenas: Nome (truncado se muito grande)
+- Tamanho consistente com o texto "X clientes encontrado(s)"
+- Hover effect para indicar que é clicável
+
+**Carregamento de Todos os Clientes:**
+- Supabase tem limite de 1000 registros por query
+- Solução: Múltiplas queries em paralelo (0-999, 1000-1999, etc.)
+- Merge dos resultados no frontend
+- Aviso antes de carregar: "São muitas linhas, quer continuar?"
+
+**Modal de Detalhes do Cliente:**
+- Nome completo
+- Telefone
+- Email
+- CNPJ/CPF
+- Endereço
+- Status
+- Vendedor responsável
+- Data de criação
+
+**Persistência de Busca:**
+- Parâmetro `?q=termo` na URL
+- Ao recarregar, mantém a busca
+- F5 limpa a busca (volta ao estado inicial)
+
+---
 
 ### 4.4 Leads / Fila de Leads (COMPLETO)
 
@@ -253,18 +265,12 @@ Contatos, Em Atendimento,
 - Performance em tempo real (metas, projeções)
 - Gráficos e indicadores
 
-### 4.7 Clientes (COMPLETO)
-
-- Lista com busca e filtros
-- Modal de cadastro
-- Integração com Millennium
-
-### 4.8 Produtos (COMPLETO)
+### 4.7 Produtos (COMPLETO)
 
 - Catálogo com 2195 produtos
 - Paginação (50/página), busca, filtros por marca/categoria/status
 
-### 4.9 Central de Ajuda (COMPLETO)
+### 4.8 Central de Ajuda (COMPLETO)
 
 **Tela:** `/ajuda` — 8 abas com documentação de todas as funcionalidades
 
@@ -274,10 +280,9 @@ Contatos, Em Atendimento,
 
 | Endpoint | Métodos | Descrição |
 |----------|---------|-----------|
-| `/api/atendimentos` | GET, POST, PATCH | CRUD + simular WhatsApp + transferir + assumir + fechar |
+| `/api/atendimentos` | GET, POST, PATCH | CRUD + transferir + assumir + fechar |
 | `/api/atendimentos/mensagens` | GET, POST | Chat de atendimento |
 | `/api/atendimentos/etiquetas` | GET, POST, DELETE | CRUD etiquetas de atendimento |
-| `/api/atendimentos/sync` | GET | Sync mensagens BotConversa (inativo — API não expõe histórico) |
 | `/api/leads` | GET, PATCH | Lista leads + atribuir/reatribuir vendedor |
 | `/api/leads/distribuir` | POST | Distribui leads para equipe |
 | `/api/vendedores` | GET, POST | Lista todos (service_role bypass RLS) + cadastro |
@@ -285,10 +290,11 @@ Contatos, Em Atendimento,
 | `/api/tarefas` | GET, POST, PATCH, DELETE | Kanban de tarefas (inclui valor_venda) |
 | `/api/produtos` | GET | Produtos paginados |
 | `/api/produtos/filtros` | GET | Filtros disponíveis |
-| `/api/clientes` | GET, POST | Clientes |
+| `/api/clientes` | GET, POST | Clientes (COM BUSCA TODOS) |
+| `/api/clientes/stats` | GET | Estatísticas de clientes |
 | `/api/vendas` | GET, POST | Vendas |
 | `/api/oportunidades` | GET, POST | Oportunidades |
-| `/api/webhooks/whatsapp` | POST | Webhook BotConversa (recebe mensagens) |
+| `/api/webhooks/evolution` | POST | Webhook Evolution API (recebe mensagens) |
 | `/api/webhooks/millennium` | POST | Webhook do ERP |
 | `/api/auth/cadastro` | POST | Cadastro de usuários |
 | `/api/promocoes` | GET, POST, PATCH | CRUD promoções |
@@ -356,15 +362,7 @@ trg_atualizar_ultima_mensagem -- INSERT mensagem → atualiza atendimento
 trg_marcar_lido             -- UPDATE atendimento → reset nao_lido quando vendedor responde
 ```
 
-### 6.6 Migrations Importantes
-
-| Migration | Descrição | Status |
-|-----------|-----------|--------|
-| `060_atendimento_etiquetas.sql` | Cria tabela de etiquetas | ✅ Executada |
-| `061_fix_etiquetas_grant.sql` | GRANT permissões service_role/authenticated | ✅ Executada |
-| `062_tarefas_valor_venda.sql` | Adiciona coluna valor_venda em tarefas | ✅ Executada |
-
-### 6.7 RLS (Row Level Security)
+### 6.6 RLS (Row Level Security)
 
 - **Tabelas com RLS ativo:** `notificacoes`, `atendimento_mensagens`, `leads`
 - **Tabelas sem RLS:** `atendimento_etiquetas` (desabilitado via migration)
@@ -377,13 +375,13 @@ trg_marcar_lido             -- UPDATE atendimento → reset nao_lido quando vend
 | Problema | Causa | Solução |
 |----------|-------|---------|
 | Duplicidade de atendimentos | Busca exata por telefone (formatações diferentes) | Busca tolerante: compara últimos 8 dígitos |
-| Notificações: 400+ requests/minuto | Dependência cíclica no useCallback (state dentro de deps) | Trocado por useRef para IDs |
+| Notificações: 400+ requests/minuto | Dependência cíclica no useCallback | Trocado por useRef para IDs |
 | Erro 500 ao vincular etiqueta | Tabela sem permissão GRANT | Migration 061 com GRANT ALL |
 | Erro 403 ao editar tarefa | PATCH filtrava por vendedor_id | Removido filtro de vendedor no update |
-| Tarefa não atualizava após editar | Modal não fechava + lista não recarregava | Adicionado onClose() após salvar |
-| Transferência dava erro 500 | PATCH usava client comum (RLS bloqueava) | PATCH usa `service_role` |
-| Lentidão na navegação | API de produtos buscava 2195 registros | Endpoint `/api/produtos/filtros` separado |
-| Scroll do Kanban cortava último card | maxHeight fixo | flex-1 overflow-y-auto |
+| Deploy não funcionava | Token Vercel sem permissão de deploy | Integração GitHub configurada |
+| Clientes não listava todos | Limite Supabase de 1000 registros | Múltiplas queries em paralelo |
+| Página de clientes com scroll | Layout com altura fixa | Container flexível preenche 100% da tela |
+| Banner Kanban não editável | Não existia funcionalidade | Banner rotativo com upload de imagens |
 
 ---
 
@@ -394,14 +392,16 @@ trg_marcar_lido             -- UPDATE atendimento → reset nao_lido quando vend
 | Componente | Mudança | Impacto |
 |-----------|---------|---------|
 | `notificacoes-bell.tsx` | Polling 120s + useRef para evitar loop | De 400+ req/min para ~1 req/2min |
-| `chat-inline.tsx` | Polling 30s | -83% invocações |
-| `middleware.ts` | Security headers fora do next.config.js | -40% Edge Requests |
+| `chat-inline.tsx` | Polling 15s | Atualização mais rápida |
+| `clientes/page.tsx` | Múltiplas queries para listagem completa | Lista todos os clientes (limite Supabase) |
+| `kanban/page.tsx` | Banner em localStorage | Sem queries ao banco para imagens |
 
 ### 8.2 Deploy
 
-- **Comando:** `cd crm-roma && npx vercel --prod --force --yes`
+- **Método:** GitHub → Vercel (deploy automático)
+- **Repositório:** `Johnpittz/crm-roma` (privado)
 - **URL:** https://crm-roma-romadistribuicao.vercel.app
-- **Conta Vercel:** roma-6489 (romadistribuicao) — NÃO vincular GitHub
+- **Conta Vercel:** roma-6489 (romadistribuicao)
 
 ### 8.3 Variáveis de Ambiente (Vercel)
 
@@ -411,7 +411,8 @@ trg_marcar_lido             -- UPDATE atendimento → reset nao_lido quando vend
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Production |
 | `SUPABASE_SERVICE_ROLE_KEY` | Production |
 | `CNPJ_ABERTO_API_KEY` | Production |
-| `BOTCONVERSA_API_KEY` | Production |
+| `EVOLUTION_API_URL` | Production |
+| `EVOLUTION_API_KEY` | Production |
 
 ---
 
@@ -437,7 +438,6 @@ trg_marcar_lido             -- UPDATE atendimento → reset nao_lido quando vend
 ### 9.2 Logo
 
 - Arquivo: `public/logo-icon.png`
-- Substituiu antigo "R" verde no sidebar
 - Sidebar mostra **somente a imagem** (sem texto "CRM ROMA")
 
 ---
@@ -454,18 +454,19 @@ trg_marcar_lido             -- UPDATE atendimento → reset nao_lido quando vend
 | **Sequências** | Removida do painel contato | Re-adicionar componente |
 | **Campos Personalizados** | Removida do painel contato | Re-adicionar componente |
 
-### 🟢 WhatsApp — BotConversa (BSP Oficial Meta)
+### 🟢 WhatsApp — Evolution API (Baileys)
 
 **Status:** ✅ ATIVADO
 
 **Variáveis de ambiente:**
 ```
-BOTCONVERSA_API_KEY=1329cfd1-cf08-405e-9323-2e7c509ef830
-BOTCONVERSA_WEBHOOK_ID=195277
-BOTCONVERSA_API_URL=https://backend.botconversa.com.br/api/v1/webhook
+EVOLUTION_API_URL=http://localhost:8082
+EVOLUTION_API_KEY=e3186c32139f79c7566a1d6a3f5bc702fae199c725a313ce9b7f8ff035123b01
 ```
 
-**NOTA:** Soluções não-oficiais (Evolution API, Z-API) foram REJEITADAS por política da empresa.
+**Instância:** ROMA_1 (número: 556282735286)
+
+**Webhook:** `https://crm-roma.vercel.app/api/webhooks/evolution`
 
 ---
 
@@ -485,12 +486,11 @@ BOTCONVERSA_API_URL=https://backend.botconversa.com.br/api/v1/webhook
 - **Service Role:** `createServiceClient(url, key)` do `@supabase/supabase-js` (bypass RLS)
 
 ### 11.3 Autenticação nas APIs
-- Todas as APIs validam token JWT: `Authorization: Bearer <token>`
+- Todas as APIs validam token JWT: `Authorization: Bearer ***
 
 ### 11.4 Deploy
-- **Comando:** `cd crm-roma && npx vercel --prod --force --yes`
-- **Sempre usar `--force`** para evitar cache antigo
-- **NÃO vincular GitHub** no projeto Vercel (causa bloqueio)
+- **Método:** Push para GitHub → Vercel deploy automático
+- **Branch:** `master`
 
 ---
 
@@ -498,7 +498,8 @@ BOTCONVERSA_API_URL=https://backend.botconversa.com.br/api/v1/webhook
 
 ### 12.1 Ambiente
 - **Supabase project:** `otmkukicneotcpkemvcq`
-- **Windows CLI:** Usar `cmd /c` para comandos encadeados
+- **VPS:** Hostinger KVM (Docker `john_hermes`) — Evolution API + Hermes Agent
+- **Evolution API:** Porta 8082, instância ROMA_1
 - **Security headers:** via `middleware.ts`
 - **Rate limiting:** 5/min (cadastro), 30/min (prospecção), 20/min (atendimentos), 60/min (webhooks)
 
@@ -512,113 +513,20 @@ BOTCONVERSA_API_URL=https://backend.botconversa.com.br/api/v1/webhook
 - **Andamento → Concluído:** Modal unificado com edição + resultado + observação + valor
 - **Concluído:** Só permite edição (título, desc, prioridade, valor se sucesso)
 - **Campo valor:** Aparece APENAS quando resultado = "sucesso"
+- **Banner:** Salvo em localStorage, editável pelo usuário
 
-### 12.4 Dados de Teste
+### 12.4 Clientes — Regras de Negócio
+- **Busca:** Pressione ENTER para buscar (não busca automaticamente)
+- **Filtros:** Status (Todos, Ativo, Inativo, Bloqueado, Prospect)
+- **Listar Todos:** Botão carrega TODOS os clientes (múltiplas queries Supabase)
+- **Modal de Detalhes:** Clique no nome para ver informações completas
+- **Persistência:** Busca salva na URL (?q=termo)
+
+### 12.5 Dados de Teste
 - **Vendedores:** Raquel, Brenda, Christyan, Gabriel, Jackson, João Pedro, Keila, Murilo
 - **Cargos:** vendedor, gerente_comercial, diretor, admin
-- **Clientes:** ~61 clientes
+- **Clientes:** ~1739 clientes no banco
 - **Produtos:** 2195 produtos
-
----
-
-## 12.5 Roteamento de Atendimentos WhatsApp ✅ IMPLEMENTADO (28/07/2026)
-
-### Status: ATIVO
-- **Vendedor padrão:** Valdean (`da38fd55-bad4-42e8-8616-844530ad052c`)
-- **Regra:** Todo atendimento novo (número sem vendedor no cadastro) → atribui automaticamente ao Valdean
-
-### Como funciona
-1. Mensagem chega pelo webhook BotConversa
-2. Se cliente já tem `vendedor_responsavel_id` no cadastro → usa esse vendedor
-3. Se cliente NÃO tem vendedor (ou não existe no cadastro) → usa vendedor padrão da tabela `config_roteamento_whatsapp`
-4. Se não há configuração → fica `null` (fila geral)
-
-### Arquivos envolvidos
-- `lib/roteamento.ts` — Helper `buscarVendedorPadrao()` com cache de 5 min
-- `app/api/webhooks/whatsapp/route.ts` — Consulta vendedor padrão na criação
-- `app/api/atendimentos/route.ts` — Consulta vendedor padrão na criação (simulação)
-- `supabase/migrations/065_config_roteamento_whatsapp.sql` — Tabela + dados iniciais
-
-### Tabela `config_roteamento_whatsapp`
-```sql
-CREATE TABLE config_roteamento_whatsapp (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  vendedor_padrao_id UUID NOT NULL,
-  ativo BOOLEAN DEFAULT true,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-```
-
-### Para alterar o vendedor padrão (futuro)
-```sql
-UPDATE config_roteamento_whatsapp SET vendedor_padrao_id = 'UUID_NOVO' WHERE ativo = true;
-```
-Ou via interface de configurações (quando implementada).
-
-### Para Rodízio Futuro (quando mais vendedores estiverem usando)
-- Adicionar coluna `modo TEXT DEFAULT 'fixo'` ('fixo' ou 'rodizio')
-- Adicionar coluna `vendedores_habilitados UUID[]` (array de IDs)
-- Adicionar coluna `ultimo_indice INTEGER DEFAULT 0` (para round-robin)
-- Lógica no helper: se modo = 'rodizio', distribui round-robin entre habilitados
-
-### ⚠️ NÃO alterar no BotConversa
-- Webhook URL permanece a mesma
-- API Key permanece a mesma
-- Variáveis de ambiente permanecem as mesmas
-- O CRM não sabe nem precisa saber o número de destino
-
----
-
-## 12.6 Áudio WhatsApp — Recebimento (PENDENTE — Testar)
-
-### Status: Implementado, aguardando validação
-
-**O que foi feito:**
-- Migration `066_audio_url_mensagens.sql`: coluna `url_audio TEXT` na tabela `atendimento_mensagens`
-- Webhook (`app/api/webhooks/whatsapp/route.ts`): parser detecta `media_type` + `media_url` do payload BotConversa
-- Chat inline (`components/features/atendimento/chat-inline.tsx`): renderiza player de áudio nativo quando `url_audio` existe
-- Polling reduzido de 60s → 15s para atualização mais rápida
-
-**Formato do payload BotConversa (áudio):**
-```json
-{
-  "name": "Nome do Cliente",
-  "email": "email",
-  "phone": "5562999999999",
-  "message": "",
-  "timestamp": "2026-07-28 15:00:00",
-  "media_type": "audio",
-  "media_url": "https://link-do-audio.ogg"
-}
-```
-
-**Parser no webhook:**
-```typescript
-// Formato BotConversa: media_type="audio" e media_url="link"
-if (obj.media_type === "audio" && obj.media_url) {
-  return obj.media_url;
-}
-```
-
-**Configuração no BotConversa (Automações → Webhooks → Editar):**
-- Adicionar variáveis `media_type` e `media_url` no body do JSON
-- O BotConversa envia essas variáveis quando o cliente manda áudio
-
-**Envio de áudio (NÃO implementado — apenas recebimento):**
-- Endpoint: `POST /subscriber/{subscriber_id}/send_message/`
-- Body: `{ "type": "audio", "value": "url_do_audio" }`
-- Arquivo precisa ser `.ogg` ou `.mp3` acessível via URL pública
-
-**Arquivos relevantes:**
-- `supabase/migrations/066_audio_url_mensagens.sql` — migration da coluna
-- `MIGRATE_AUDIO.sql` — SQL para executar no Supabase (já executado ✅)
-- `MIGRATE_AUDIO.md` — documentação da migration
-
-### ⚠️ Para testar:
-1. Verificar se o webhook BotConversa está enviando `media_type` e `media_url`
-2. Enviar áudio pelo WhatsApp
-3. Verificar logs na Vercel: `[Webhook WhatsApp] 🎵 Mídia detectada: ...`
-4. Se não aparecer log, o BotConversa pode não estar enviando mídia via webhook
 
 ---
 
@@ -629,7 +537,7 @@ if (obj.media_type === "audio" && obj.media_url) {
 3. **Criar/atualizar componente:** Adicionar em `components/features/`
 4. **Atualizar página:** Modificar `page.tsx` correspondente
 5. **Testar local:** `npm run dev`
-6. **Deploy:** `cd crm-roma && npx vercel --prod --force --yes`
+6. **Deploy:** `git push origin master` (deploy automático via Vercel)
 
 **Sempre verifique o console do navegador (F12) para erros de API.**
 
@@ -637,35 +545,41 @@ if (obj.media_type === "audio" && obj.media_url) {
 
 ## 14. Histórico de Commits Importantes
 
-### 16/07/2026
-- [x] Sidebar: logo-icon.png substituiu letra "R" (sem texto)
-- [x] Kanban: Modal simplificado — "Concluir" unificado com edição de título/desc/prioridade
-- [x] Kanban: Botão "Editar" só aparece para tarefas concluídas
-- [x] Kanban: Campo valor aparece só quando resultado = Sucesso
-- [x] API tarefas: PATCH aceita titulo, descricao, prioridade, valor_venda
-- [x] API tarefas: Removido filtro vendedor_id no update (resolve erro 403)
-
-### 15/07/2026
-- [x] Kanban: Opções fixas de observação de resultado (dropdown por tipo)
-- [x] Kanban: Campo valor da venda com formatação monetária R$
-- [x] Migration 062: `tarefas.valor_venda NUMERIC(12,2)`
-- [x] Kanban: Valor visível no modal de detalhes (tarefa concluída com sucesso)
-- [x] Kanban: Removido prazo/hora da edição
+### 09/09/2026
+- [x] **Evolution API:** Integração completa (substitui BotConversa)
+- [x] **Instância ROMA_1:** Criada e conectada (número: 556282735286)
+- [x] **Webhook:** Configurado para receber mensagens da Evolution API
+- [x] **Kanban:** Banner editável com upload de imagens + setas de navegação
+- [x] **Kanban:** Banner rotativo (5s) + hover para mostrar setas
+- [x] **Clientes:** Layout otimizado (sem scroll na página)
+- [x] **Clientes:** 7 cards de estatísticas (Total, Ativos, Inativos, Recentes, Prospect, Transfer, Excluir)
+- [x] **Clientes:** Lista compacta (apenas nome)
+- [x] **Clientes:** Busca com persistência na URL
+- [x] **Clientes:** Filtros por status
+- [x] **Clientes:** Ordenação (alfabética, recentes, antigos)
+- [x] **Clientes:** Listar TODOS (múltiplas queries Supabase)
+- [x] **Clientes:** Modal de detalhes (clique no nome)
+- [x] **Clientes:** Container preenche 100% da tela
+- [x] **Deploy:** Integração GitHub configurada (deploy automático)
 
 ### 28/07/2026
 - [x] Roteamento de atendimentos: tabela `config_roteamento_whatsapp` + helper `lib/roteamento.ts`
-- [x] Roteamento: webhook e API de criação atribuem vendedor padrão (Valdean)
 - [x] Áudio WhatsApp: migration `url_audio` + parser webhook + player chat-inline
-- [x] Áudio: configuração BotConversa com `media_type` e `media_url`
-- [x] Polling chat-inline reduzido de 60s → 15s
-- [x] Etiquetas sincronizadas: helper `lib/etiquetas.ts` compartilhado entre filtro e painel
-- [x] Etiquetas: removidas etiquetas antigas do filtro (10DescontoBlack, etc.)
-- [x] Fix PATCH 500: campo `nao_lido` agora é processado corretamente
+- [x] Etiquetas sincronizadas: helper `lib/etiquetas.ts` compartilhado
+
+### 16/07/2026
+- [x] Sidebar: logo-icon.png substituiu letra "R" (sem texto)
+- [x] Kanban: Modal simplificado — "Concluir" unificado
+
+### 15/07/2026
+- [x] Kanban: Opções fixas de observação de resultado
+- [x] Migration 062: `tarefas.valor_venda NUMERIC(12,2)`
 
 ### 14/07/2026
-- [x] Correção de duplicidade de atendimentos (busca tolerante por últimos 8 dígitos)
-- [x] Correção de loop de notificações (useRef em vez de state nas dependências)
-- [x] Etiquetas: Correção de erro 500 (GRANT permissões)
-- [x] Badges de etiquetas nos cards da lista de atendimentos
-- [x] Filtro por etiqueta na lista de atendimentos
-- [x] Remoção de Sequências, Campanhas, Campos Personalizados do painel de contato
+- [x] Correção de duplicidade de atendimentos
+- [x] Correção de loop de notificações
+- [x] Badges de etiquetas nos cards
+
+---
+
+*Documento atualizado automaticamente pelo Hermes Agent em 09/09/2026*
