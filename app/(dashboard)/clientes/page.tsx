@@ -138,7 +138,7 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
         </CardHeader>
         <CardContent className="flex-1 flex flex-col min-h-0 p-6">
           {/* Barra de busca e filtros */}
-          <div className="flex items-center gap-3 mb-4">
+          <form className="flex items-center gap-3 mb-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
               <Input
@@ -172,7 +172,7 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
                 </Link>
               ))}
             </div>
-          </div>
+          </form>
 
           {/* Barra de ordenação */}
           <div className="flex items-center justify-between mb-3 pb-3 border-b">
