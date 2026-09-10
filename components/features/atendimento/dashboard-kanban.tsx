@@ -68,7 +68,7 @@ export function DashboardKanban() {
     clientesNovos: 0,
     followUpsPendentes: 0,
   });
-  const [tarefasRecentes, setTarefasRecentes] = useState<Tarefa[]>([]);
+  const [tarefasRecentes, setTarefasRecentes] = useState<TarefaRecente[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
   const supabase = createClient();
