@@ -85,7 +85,7 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
   }
 
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col h-full overflow-hidden">
       {/* Stats compactos - 7 colunas */}
       <div className="grid grid-cols-7 gap-1.5 mb-4">
         <Card className="p-2">
@@ -252,8 +252,8 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
 
           {/* Lista de clientes */}
           {deveBuscar && (
-            <div className="flex-1 min-h-0 mt-4 border rounded-lg overflow-hidden" style={{height: 'calc(100vh - 380px)'}}>
-              <div className="h-full overflow-y-auto p-2">
+            <div className="flex-1 min-h-0 mt-4 border rounded-lg overflow-hidden flex flex-col">
+              <div className="flex-1 min-h-0 overflow-y-auto p-2">
                 <div className="space-y-0.5">
                   {clientes && clientes.length > 0 ? (
                     clientes.map((cliente: any) => (
