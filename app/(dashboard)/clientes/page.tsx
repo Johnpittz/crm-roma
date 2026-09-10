@@ -17,6 +17,7 @@ import { ModalNovoCliente } from "@/components/features/clientes/modal-novo-clie
 import { MostrarTodosButton } from "@/components/features/clientes/mostrar-todos-button";
 import { LimparUrlNoLoad } from "@/components/features/clientes/limpar-url-no-load";
 import { SearchBar } from "@/components/features/clientes/search-bar";
+import { ClientList } from "@/components/features/clientes/client-list";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -177,21 +178,15 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
           {deveBuscar && (
             <div className="flex-1 min-h-0 mt-4 border rounded-lg overflow-hidden flex flex-col">
               <div className="flex-1 min-h-0 overflow-y-auto p-2">
-                <div className="space-y-0.5">
-                  {clientes && clientes.length > 0 ? (
-                    clientes.map((cliente: any) => (
-                      <p key={cliente.id} className="text-sm text-muted-foreground py-0.5 truncate hover:text-foreground cursor-pointer transition-colors">
-                        {cliente.nome_razao_social}
-                      </p>
-                    ))
-                  ) : (
-                    <div className="text-center py-12 text-slate-500">
-                      <Search className="h-12 w-12 mx-auto mb-4 text-slate-300" />
-                      <p className="text-lg font-medium">Nenhum cliente encontrado</p>
-                      <p className="text-sm">Tente ajustar a busca ou os filtros.</p>
-                    </div>
-                  )}
-                </div>
+                {clientes && clientes.length > 0 ? (
+                  <ClientList clientes={clientes} />
+                ) : (
+                  <div className="text-center py-12 text-slate-500">
+                    <Search className="h-12 w-12 mx-auto mb-4 text-slate-300" />
+                    <p className="text-lg font-medium">Nenhum cliente encontrado</p>
+                    <p className="text-sm">Tente ajustar a busca ou os filtros.</p>
+                  </div>
+                )}
               </div>
             </div>
           )}
