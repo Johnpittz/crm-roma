@@ -164,6 +164,25 @@ function HeroCarousel({ lastUpdate }: { lastUpdate: Date }) {
         >
           Editar Banner
         </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={addBanner}
+          className="h-8 text-xs gap-1"
+        >
+          <Plus className="h-3 w-3" />
+          Novo
+        </Button>
+        {banners.length > 1 && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => removeBanner(currentIndex)}
+            className="h-8 text-xs gap-1 text-red-600 hover:text-red-700"
+          >
+            <Trash2 className="h-3 w-3" />
+          </Button>
+        )}
       </div>
 
       {/* Banner Principal */}
@@ -223,28 +242,6 @@ function HeroCarousel({ lastUpdate }: { lastUpdate: Date }) {
           ))}
         </div>
 
-        {/* Botões extras */}
-        <div className="flex gap-2 ml-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={addBanner}
-            className="h-8 text-xs gap-1"
-          >
-            <Plus className="h-3 w-3" />
-            Novo
-          </Button>
-          {banners.length > 1 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => removeBanner(currentIndex)}
-              className="h-8 text-xs gap-1 text-red-600 hover:text-red-700"
-            >
-              <Trash2 className="h-3 w-3" />
-            </Button>
-          )}
-        </div>
       </div>
 
       {/* Painel de Edição */}
