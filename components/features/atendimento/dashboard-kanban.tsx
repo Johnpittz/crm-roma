@@ -151,11 +151,40 @@ function HeroCarousel({ lastUpdate }: { lastUpdate: Date }) {
 
   return (
     <div className="relative">
+      {/* Botões de edição - acima do banner */}
+      <div className="flex items-center gap-2 mb-3">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            setEditIndex(currentIndex);
+            setIsEditing(!isEditing);
+          }}
+          className="h-8 text-xs gap-1"
+        >
+          Editar Banner
+        </Button>
+      </div>
+
       {/* Banner Principal */}
-      <div className={`relative overflow-hidden rounded-xl bg-gradient-to-r ${banner.cor} text-white min-h-[300px] p-8`}>
+      <div className={`relative overflow-hidden rounded-xl bg-gradient-to-r ${banner.cor} text-white min-h-[350px] p-8`}>
         {banner.imagemUrl ? (
           <img src={banner.imagemUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
         ) : null}
+        
+        {/* Setas de navegação nos cantos */}
+        <button
+          onClick={goPrev}
+          className="absolute left-4 top-1/2 -translate-y-1/2 z-20 bg-white/20 hover:bg-white/40 rounded-full p-3 transition-all"
+        >
+          <ChevronLeft className="h-6 w-6 text-white" />
+        </button>
+        <button
+          onClick={goNext}
+          className="absolute right-4 top-1/2 -translate-y-1/2 z-20 bg-white/20 hover:bg-white/40 rounded-full p-3 transition-all"
+        >
+          <ChevronRight className="h-6 w-6 text-white" />
+        </button>
         <div className="relative z-10">
           <div className="flex items-center gap-2 mb-2">
             {getIcon(banner.icone)}
@@ -179,18 +208,9 @@ function HeroCarousel({ lastUpdate }: { lastUpdate: Date }) {
         </div>
       </div>
 
-      {/* Controles do Carousel */}
+      {/* Controles do Carousel - setas nos cantos */}
       <div className="flex items-center justify-center gap-4 mt-3">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={goPrev}
-          className="h-8 w-8 p-0"
-        >
-          <ChevronLeft className="h-4 w-4" />
-        </Button>
-
-        {/* Indicadores */}
+        {/* Indicadores no centro */}
         <div className="flex gap-2">
           {banners.map((_, i) => (
             <button
@@ -203,28 +223,8 @@ function HeroCarousel({ lastUpdate }: { lastUpdate: Date }) {
           ))}
         </div>
 
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={goNext}
-          className="h-8 w-8 p-0"
-        >
-          <ChevronRight className="h-4 w-4" />
-        </Button>
-
-        {/* Botões de edição */}
+        {/* Botões extras */}
         <div className="flex gap-2 ml-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              setEditIndex(currentIndex);
-              setIsEditing(!isEditing);
-            }}
-            className="h-8 text-xs gap-1"
-          >
-            Editar
-          </Button>
           <Button
             variant="ghost"
             size="sm"
