@@ -3,9 +3,9 @@
 import { useState, useEffect, useCallback } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, X, Download, Loader2 } from "lucide-react";
+import { Search, X, LayoutDashboard, Columns3 } from "lucide-react";
 import { KanbanTarefas } from "@/components/features/atendimento/kanban-tarefas";
-import { PerformanceKanban } from "@/components/features/atendimento/performance-kanban";
+import { DashboardKanban } from "@/components/features/atendimento/dashboard-kanban";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
@@ -26,6 +26,7 @@ interface Atendimento {
 }
 
 export default function KanbanPage() {
+  const [view, setView] = useState<"dashboard" | "kanban">("dashboard");
   const [atendimentos, setAtendimentos] = useState<Atendimento[]>([]);
   const [loadingAtendimentos, setLoadingAtendimentos] = useState(true);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -87,71 +88,108 @@ export default function KanbanPage() {
   }, [fetchAtendimentos]);
 
   const handleAbrirChat = () => {
-    // No Kanban, não precisamos abrir chat (poderíamos redirecionar para /atendimento no futuro)
+    // No Kanban, não precisamos abrir chat
   };
 
   return (
     <div className="h-[calc(100vh-9rem)] flex flex-col overflow-hidden">
       
-      {/* HEADER - Performance Kanban */}
-      <div className="shrink-0">
-        <PerformanceKanban refreshTrigger={refreshTrigger} />
-      </div>
-
-      {/* FILTROS */}
-      <div className="shrink-0 flex items-center gap-2 flex-wrap mt-2">
-        <div className="relative">
-          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-          <Input
-            placeholder="Buscar tarefa, cliente..."
-            value={busca}
-            onChange={(e) => setBusca(e.target.value)}
-            className="w-[220px] h-8 text-xs pl-7"
-          />
-        </div>
-        <div className="flex items-center gap-1">
-          <Input
-            type="date"
-            value={dataInicio}
-            onChange={(e) => setDataInicio(e.target.value)}
-            className="w-[130px] h-8 text-xs"
-          />
-          <span className="text-slate-400 text-xs">→</span>
-          <Input
-            type="date"
-            value={dataFim}
-            onChange={(e) => setDataFim(e.target.value)}
-            className="w-[130px] h-8 text-xs"
-          />
-        </div>
-        {(busca || dataInicio || dataFim) && (
+      {/* Header com toggle de visualização */}
+      <div className="shrink-0 flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2 bg-slate-100 rounded-lg p-1">
           <Button
-            variant="ghost"
             size="sm"
-            className="h-8 text-xs gap-1"
-            onClick={() => {
-              setBusca("");
-              setDataInicio("");
-              setDataFim("");
-            }}
+            variant={view === "dashboard" ? "default" : "ghost"}
+            className={cn(
+              "h-8 text-xs px-3 gap-1",
+              view === "dashboard"
+                ? "bg-white shadow-sm text-slate-900"
+                : "text-slate-500 hover:text-slate-700"
+            )}
+            onClick={() => setView("dashboard")}
           >
-            <X className="h-3 w-3" />
-            Limpar
+            <LayoutDashboard className="h-4 w-4" />
+            Visão principal
           </Button>
+          <Button
+            size="sm"
+            variant={view === "kanban" ? "default" : "ghost"}
+            className={cn(
+              "h-8 text-xs px-3 gap-1",
+              view === "kanban"
+                ? "bg-white shadow-sm text-slate-900"
+                : "text-slate-500 hover:text-slate-700"
+            )}
+            onClick={() => setView("kanban")}
+          >
+            <Columns3 className="h-4 w-4" />
+            Kanban
+          </Button>
+        </div>
+
+        {/* FILTROS - só aparece no modo Kanban */}
+        {view === "kanban" && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="relative">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+              <Input
+                placeholder="Buscar tarefa, cliente..."
+                value={busca}
+                onChange={(e) => setBusca(e.target.value)}
+                className="w-[220px] h-8 text-xs pl-7"
+              />
+            </div>
+            <div className="flex items-center gap-1">
+              <Input
+                type="date"
+                value={dataInicio}
+                onChange={(e) => setDataInicio(e.target.value)}
+                className="w-[130px] h-8 text-xs"
+              />
+              <span className="text-slate-400 text-xs">→</span>
+              <Input
+                type="date"
+                value={dataFim}
+                onChange={(e) => setDataFim(e.target.value)}
+                className="w-[130px] h-8 text-xs"
+              />
+            </div>
+            {(busca || dataInicio || dataFim) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 text-xs gap-1"
+                onClick={() => {
+                  setBusca("");
+                  setDataInicio("");
+                  setDataFim("");
+                }}
+              >
+                <X className="h-3 w-3" />
+                Limpar
+              </Button>
+            )}
+          </div>
         )}
       </div>
 
-      {/* KANBAN - Tela cheia */}
-      <div className="flex-1 min-h-0 mt-2 overflow-hidden">
-        <KanbanTarefas
-          atendimentos={atendimentosFiltrados}
-          onAbrirChat={handleAbrirChat}
-          onRefresh={fetchAtendimentos}
-          onTarefaAtualizada={() => setRefreshTrigger((t) => t + 1)}
-          busca={busca}
-          dataInicio={dataInicio}
-          dataFim={dataFim}
-        />
+      {/* Conteúdo */}
+      <div className="flex-1 min-h-0 overflow-hidden">
+        {view === "dashboard" ? (
+          <div className="h-full overflow-y-auto pr-2">
+            <DashboardKanban />
+          </div>
+        ) : (
+          <KanbanTarefas
+            atendimentos={atendimentosFiltrados}
+            onAbrirChat={handleAbrirChat}
+            onRefresh={fetchAtendimentos}
+            onTarefaAtualizada={() => setRefreshTrigger((t) => t + 1)}
+            busca={busca}
+            dataInicio={dataInicio}
+            dataFim={dataFim}
+          />
+        )}
       </div>
     </div>
   );
