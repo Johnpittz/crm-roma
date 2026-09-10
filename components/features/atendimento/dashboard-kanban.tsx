@@ -186,7 +186,7 @@ function HeroCarousel({ lastUpdate }: { lastUpdate: Date }) {
       </div>
 
       {/* Banner Principal */}
-      <div className={`relative overflow-hidden rounded-xl bg-gradient-to-r ${banner.cor} text-white min-h-[280px] p-6`}>
+      <div className={`relative overflow-hidden rounded-xl bg-gradient-to-r ${banner.cor} text-white min-h-[340px] p-6`}>
         {banner.imagemUrl ? (
           <img src={banner.imagemUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
         ) : null}
