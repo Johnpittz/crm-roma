@@ -152,7 +152,7 @@ function HeroCarousel({ lastUpdate }: { lastUpdate: Date }) {
   return (
     <div className="relative">
       {/* Botões de edição - acima do banner */}
-      <div className="flex items-center gap-2 mb-3">
+      <div className="flex items-center gap-2 mb-2">
         <Button
           variant="ghost"
           size="sm"
@@ -186,7 +186,7 @@ function HeroCarousel({ lastUpdate }: { lastUpdate: Date }) {
       </div>
 
       {/* Banner Principal */}
-      <div className={`relative overflow-hidden rounded-xl bg-gradient-to-r ${banner.cor} text-white min-h-[350px] p-8`}>
+      <div className={`relative overflow-hidden rounded-xl bg-gradient-to-r ${banner.cor} text-white min-h-[280px] p-6`}>
         {banner.imagemUrl ? (
           <img src={banner.imagemUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
         ) : null}
@@ -228,7 +228,7 @@ function HeroCarousel({ lastUpdate }: { lastUpdate: Date }) {
       </div>
 
       {/* Controles do Carousel - setas nos cantos */}
-      <div className="flex items-center justify-center gap-4 mt-3">
+      <div className="flex items-center justify-center gap-4 mt-2">
         {/* Indicadores no centro */}
         <div className="flex gap-2">
           {banners.map((_, i) => (
@@ -460,15 +460,15 @@ export function DashboardKanban() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Hero Banner - Carousel Editável */}
       <HeroCarousel lastUpdate={lastUpdate} />
 
       {/* Cards de Métricas Principais */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="border border-slate-200">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between mb-2">
+          <CardContent className="p-3">
+            <div className="flex items-center justify-between mb-1">
               <span className="text-xs text-slate-500 font-medium">Pedidos Hoje</span>
               <Badge variant="secondary" className="bg-blue-100 text-blue-700 text-xs">
                 ● HOJE
@@ -480,8 +480,8 @@ export function DashboardKanban() {
         </Card>
 
         <Card className="border border-slate-200">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between mb-2">
+          <CardContent className="p-3">
+            <div className="flex items-center justify-between mb-1">
               <span className="text-xs text-slate-500 font-medium">Faturamento</span>
               <Badge variant="secondary" className="bg-green-100 text-green-700 text-xs">
                 ● HOJE
@@ -493,8 +493,8 @@ export function DashboardKanban() {
         </Card>
 
         <Card className="border border-slate-200">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between mb-2">
+          <CardContent className="p-3">
+            <div className="flex items-center justify-between mb-1">
               <span className="text-xs text-slate-500 font-medium">Vendas</span>
               <Badge variant="secondary" className="bg-purple-100 text-purple-700 text-xs">
                 ● MÊS
@@ -506,8 +506,8 @@ export function DashboardKanban() {
         </Card>
 
         <Card className="border border-slate-200">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between mb-2">
+          <CardContent className="p-3">
+            <div className="flex items-center justify-between mb-1">
               <span className="text-xs text-slate-500 font-medium">Ticket Médio</span>
               <Badge variant="secondary" className="bg-orange-100 text-orange-700 text-xs">
                 ● MÉDIA
