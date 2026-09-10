@@ -42,7 +42,7 @@ interface DashboardStats {
   followUpsPendentes: number;
 }
 
-interface Tarefa recente {
+interface TarefaRecente {
   id: string;
   titulo: string;
   cliente_nome: string | null;
