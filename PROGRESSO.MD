@@ -1,7 +1,7 @@
 # CRM ROMA - Progresso do Projeto
 
 > **Arquivo de contexto para agentes IA**
-> **Última atualização:** 09/09/2026
+> **Última atualização:** 09/09/2026 (atualizado com WhatsApp conectado)
 > **Deploy atual:** https://crm-roma-romadistribuicao.vercel.app
 > **Conta Vercel:** roma-6489 (romadistribuicao) — plano Hobby/Free
 > **Conversa atual:** Integração WhatsApp Evolution API + Kanban + Banner Editável + Clientes Otimizados
@@ -114,7 +114,7 @@ crm-roma/
 **Servidor:** VPS Hostinger KVM (Docker `john_hermes`)
 **Porta:** 8082
 **Versão:** 2.3.7 (Baileys)
-**Instância:** ROMA_1 (número: 556282735286)
+**Instância:** ROMA_1 (número: 556234165014 — CONECTADO)
 
 **Webhook Configurado:**
 - URL: `https://crm-roma.vercel.app/api/webhooks/evolution`
@@ -464,7 +464,7 @@ EVOLUTION_API_URL=http://localhost:8082
 EVOLUTION_API_KEY=e3186c32139f79c7566a1d6a3f5bc702fae199c725a313ce9b7f8ff035123b01
 ```
 
-**Instância:** ROMA_1 (número: 556282735286)
+**Instância:** ROMA_1 (número: 556234165014 — CONECTADO)
 
 **Webhook:** `https://crm-roma.vercel.app/api/webhooks/evolution`
 
@@ -499,7 +499,11 @@ EVOLUTION_API_KEY=e3186c32139f79c7566a1d6a3f5bc702fae199c725a313ce9b7f8ff035123b
 ### 12.1 Ambiente
 - **Supabase project:** `otmkukicneotcpkemvcq`
 - **VPS:** Hostinger KVM (Docker `john_hermes`) — Evolution API + Hermes Agent
-- **Evolution API:** Porta 8082, instância ROMA_1
+- **Evolution API:** Porta 8082, versão 2.3.7 (Baileys)
+- **Instâncias WhatsApp:**
+  - `ROMA_1` — 556234165014 (CONECTADO ✅) — CRM-ROMA
+  - `STK` — 556299190117 (desconectada)
+  - `minha-conexao` — removida
 - **Security headers:** via `middleware.ts`
 - **Rate limiting:** 5/min (cadastro), 30/min (prospecção), 20/min (atendimentos), 60/min (webhooks)
 
