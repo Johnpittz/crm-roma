@@ -260,6 +260,75 @@ export async function POST(request: NextRequest) {
 
 // ==================== FUNÇÕES AUXILIARES ====================
 
+// ==================== EXTRATOR DE MÍDIA ====================
+
+/**
+ * Extract base64 data from a media message object.
+ * Checks multiple possible field locations used by different
+ * Evolution API versions and configurations.
+ */
+function extractMediaBase64(mediaMessage: any): string | null {
+  if (!mediaMessage) return null;
+  // Primary: message.data (webhookBase64=true)
+  if (mediaMessage.data) return mediaMessage.data;
+  // Alternative field name
+  if (mediaMessage.base64) return mediaMessage.base64;
+  // Fallback: thumbnail data (lower quality but still usable)
+  if (mediaMessage.jpgThumbnail) return mediaMessage.jpgThumbnail;
+  if (mediaMessage.pngThumbnail) return mediaMessage.pngThumbnail;
+  return null;
+}
+
+/**
+ * Recursively search for a media message type inside wrapper objects.
+ * Evolution API wraps certain message types (viewOnceMessage, ephemeralMessage,
+ * viewOnceMessageV2, editedMessage) in an additional layer:
+ *   { viewOnceMessage: { message: { imageMessage: {...} } } }
+ *
+ * @param obj - The message object to search (usually msg.message)
+ * @param targetKey - The message type key to find (e.g. "imageMessage")
+ * @param maxDepth - Maximum recursion depth (default 3)
+ * @returns The found media message object or null
+ */
+function findMediaType(obj: any, targetKey: string, maxDepth = 3): any {
+  if (!obj || typeof obj !== "object" || maxDepth <= 0) return null;
+
+  // Direct match at this level
+  if (obj[targetKey]) return obj[targetKey];
+
+  // Known wrapper keys used by WhatsApp/Evolution API
+  const wrapperKeys = [
+    "viewOnceMessage",
+    "viewOnceMessageV2",
+    "viewOnceMessageV2Extension",
+    "ephemeralMessage",
+    "editedMessage",
+    "botInvokeMessage",
+    "message",       // generic nesting
+  ];
+
+  for (const key of wrapperKeys) {
+    if (obj[key]) {
+      // Some wrappers have the actual message under a nested .message property
+      const inner = obj[key].message || obj[key];
+      const result = findMediaType(inner, targetKey, maxDepth - 1);
+      if (result) return result;
+    }
+  }
+
+  // Generic fallback: scan all object values one level deeper
+  for (const key of Object.keys(obj)) {
+    if (wrapperKeys.includes(key)) continue; // already checked above
+    const val = obj[key];
+    if (val && typeof val === "object") {
+      const result = findMediaType(val, targetKey, maxDepth - 1);
+      if (result) return result;
+    }
+  }
+
+  return null;
+}
+
 /**
  * Extrai dados do payload da Evolution API (webhookBase64 format)
  * 
@@ -299,51 +368,90 @@ function extrairDadosEvolutionAPI(payload: any) {
     if (msg.message) {
       // DEBUG: log message keys to understand payload structure
       const msgKeys = Object.keys(msg.message);
-      if (!msgKeys.includes('conversation') && !msgKeys.includes('extendedTextMessage')) {
-        console.log("[Webhook Evolution] MSG_KEYS:", JSON.stringify(msgKeys));
-        console.log("[Webhook Evolution] MSG_SAMPLE:", JSON.stringify(msg.message).substring(0, 500));
-      }
+      console.log("[Webhook Evolution] MSG_KEYS:", JSON.stringify(msgKeys));
+
+      // --- PHASE 1: Direct message type checks ---
       // Mensagem de texto
       if (msg.message.conversation) {
         mensagem = msg.message.conversation;
       } else if (msg.message.extendedTextMessage?.text) {
         mensagem = msg.message.extendedTextMessage.text;
-      } 
+      }
       // Imagem
       else if (msg.message.imageMessage) {
         mediaType = "image";
-        // Try base64 data first, then URL
-        mediaBase64 = msg.message.imageMessage.data || null;
+        mediaBase64 = extractMediaBase64(msg.message.imageMessage);
         mediaUrl = msg.message.imageMessage.url || null;
         mensagem = msg.message.imageMessage.caption || "[Imagem]";
       }
       // Áudio
       else if (msg.message.audioMessage) {
         mediaType = "audio";
-        mediaBase64 = msg.message.audioMessage.data || null;
+        mediaBase64 = extractMediaBase64(msg.message.audioMessage);
         mediaUrl = msg.message.audioMessage.url || null;
         mensagem = "[Áudio]";
       }
       // Vídeo
       else if (msg.message.videoMessage) {
         mediaType = "video";
-        mediaBase64 = msg.message.videoMessage.data || null;
+        mediaBase64 = extractMediaBase64(msg.message.videoMessage);
         mediaUrl = msg.message.videoMessage.url || null;
         mensagem = msg.message.videoMessage.caption || "[Vídeo]";
       }
       // Sticker
       else if (msg.message.stickerMessage) {
         mediaType = "sticker";
-        mediaBase64 = msg.message.stickerMessage.data || null;
+        mediaBase64 = extractMediaBase64(msg.message.stickerMessage);
         mediaUrl = msg.message.stickerMessage.url || null;
         mensagem = "[Sticker]";
       }
       // Documento
       else if (msg.message.documentMessage) {
         mediaType = "document";
-        mediaBase64 = msg.message.documentMessage.data || null;
+        mediaBase64 = extractMediaBase64(msg.message.documentMessage);
         mediaUrl = msg.message.documentMessage.url || null;
         mensagem = msg.message.documentMessage.fileName || "[Documento]";
+      }
+
+      // --- PHASE 2: Wrapped message type detection ---
+      // If no type was detected yet, search recursively for wrapped types
+      // (viewOnceMessage, ephemeralMessage, editedMessage, etc.)
+      if (!mediaType && !mensagem) {
+        console.log("[Webhook Evolution] No direct match — searching wrapped message types...");
+        const mediaTypeMap: [string, string][] = [
+          ["imageMessage", "image"],
+          ["audioMessage", "audio"],
+          ["videoMessage", "video"],
+          ["stickerMessage", "sticker"],
+          ["documentMessage", "document"],
+        ];
+
+        for (const [msgKey, typeLabel] of mediaTypeMap) {
+          const found = findMediaType(msg.message, msgKey);
+          if (found) {
+            console.log(`[Webhook Evolution] Found ${msgKey} inside wrapped message`);
+            mediaType = typeLabel;
+            mediaBase64 = extractMediaBase64(found);
+            mediaUrl = found.url || null;
+
+            if (typeLabel === "image" || typeLabel === "video") {
+              mensagem = found.caption || `[${typeLabel}]`;
+            } else if (typeLabel === "audio") {
+              mensagem = "[Áudio]";
+            } else if (typeLabel === "sticker") {
+              mensagem = "[Sticker]";
+            } else if (typeLabel === "document") {
+              mensagem = found.fileName || "[Documento]";
+            }
+            break;
+          }
+        }
+
+        if (!mediaType) {
+          console.log("[Webhook Evolution] STILL no type detected. Full message keys:");
+          console.log("[Webhook Evolution] msg.message keys:", JSON.stringify(Object.keys(msg.message)));
+          console.log("[Webhook Evolution] msg.message snapshot:", JSON.stringify(msg.message).substring(0, 800));
+        }
       }
     }
     
