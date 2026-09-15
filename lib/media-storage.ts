@@ -29,6 +29,10 @@ export async function uploadMediaToStorage(
   prefix: string
 ): Promise<string | null> {
   try {
+    // Normalize MIME type — bucket allowed_mime_types uses base types only
+    // e.g. "audio/ogg; codecs=opus" → "audio/ogg"
+    const normalizedMime = mimeType.split(";")[0].trim();
+
     const buffer = Buffer.from(base64Data, "base64");
 
     // Determine extension from MIME type
@@ -40,7 +44,7 @@ export async function uploadMediaToStorage(
     const { data, error } = await storage.storage
       .from("chat-media")
       .upload(filename, buffer, {
-        contentType: mimeType,
+        contentType: normalizedMime,
         upsert: false,
       });
 
