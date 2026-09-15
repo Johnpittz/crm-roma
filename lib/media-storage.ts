@@ -38,7 +38,7 @@ export async function uploadMediaToStorage(
     const storage = getStorageClient();
 
     const { data, error } = await storage.storage
-      .from("media")
+      .from("chat-media")
       .upload(filename, buffer, {
         contentType: mimeType,
         upsert: false,
@@ -51,7 +51,7 @@ export async function uploadMediaToStorage(
 
     // Get public URL
     const { data: urlData } = storage.storage
-      .from("media")
+      .from("chat-media")
       .getPublicUrl(data.path);
 
     console.log("[MediaStorage] Uploaded:", filename, "->", urlData.publicUrl);
