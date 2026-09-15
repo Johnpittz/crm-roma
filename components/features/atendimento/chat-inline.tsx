@@ -441,7 +441,12 @@ export function ChatInline({ atendimento, onMarcarResolvido, onMensagemEnviada, 
       resolvedUrl = `/api/media?url=${encodeURIComponent(mediaUrl)}&type=${mediaType || "image"}`;
     }
 
-    switch (mediaType) {
+    // Normalizar tipos PT -> EN para o switch
+    const tipoNormalizado = mediaType === "imagem" ? "image"
+      : mediaType === "documento" ? "document"
+      : mediaType;
+
+    switch (tipoNormalizado) {
       case "image":
         if (resolvedUrl && !resolvedUrl.includes("[media_proxy_needed]")) {
           return <img src={resolvedUrl} alt="Imagem" className="max-w-[250px] rounded-lg cursor-pointer hover:opacity-90" onClick={() => window.open(resolvedUrl!, "_blank")} />;

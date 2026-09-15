@@ -179,24 +179,22 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Parse the base64 data URI: "data:audio/ogg;base64,AAAA..."
+    // Parse the base64 data URI: "data:audio/ogg;base64,AAAA..." or raw base64
     const base64String: string = evoData.base64;
     const commaIndex = base64String.indexOf(",");
-    if (commaIndex === -1) {
-      console.error(`[MediaDownload] Formato base64 inválido`);
-      return NextResponse.json({ error: "Formato base64 inválido" }, { status: 500 });
-    }
-
-    const dataUri = base64String.substring(0, commaIndex);
-    const rawBase64 = base64String.substring(commaIndex + 1);
-
-    // Extract content type from data URI: "data:audio/ogg;base64" -> "audio/ogg"
-    let contentType = "application/octet-stream";
-    const contentTypeMatch = dataUri.match(/^data:([^;]+)/);
-    if (contentTypeMatch) {
-      contentType = contentTypeMatch[1];
+    
+    let rawBase64: string;
+    let contentType: string;
+    
+    if (commaIndex !== -1) {
+      // Format: "data:audio/ogg;base64,AAAA..."
+      const dataUri = base64String.substring(0, commaIndex);
+      rawBase64 = base64String.substring(commaIndex + 1);
+      const contentTypeMatch = dataUri.match(/^data:([^;]+)/);
+      contentType = contentTypeMatch ? contentTypeMatch[1] : "application/octet-stream";
     } else {
-      // Fallback by type param
+      // Raw base64 without data: prefix (common in Evolution API)
+      rawBase64 = base64String;
       const typeMap: Record<string, string> = {
         audio: "audio/ogg",
         image: "image/jpeg",

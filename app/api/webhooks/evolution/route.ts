@@ -195,7 +195,7 @@ export async function POST(request: NextRequest) {
         remetente: "cliente",
         conteudo: conteudoMensagem,
         enviada_por: null,
-        tipo_midia: dados.mediaType || null,
+        tipo_midia: mapearTipoMidia(dados.mediaType),
         url_midia: urlFinalMidia,
         whatsapp_message_id: dados.messageId || null,
       });
@@ -241,7 +241,7 @@ export async function POST(request: NextRequest) {
       remetente: "cliente",
       conteudo: conteudoMensagem,
       enviada_por: null,
-      tipo_midia: dados.mediaType || null,
+      tipo_midia: mapearTipoMidia(dados.mediaType),
       url_midia: urlFinalMidia,
       whatsapp_message_id: dados.messageId || null,
     });
@@ -261,6 +261,25 @@ export async function POST(request: NextRequest) {
 // ==================== FUNÇÕES AUXILIARES ====================
 
 // ==================== EXTRATOR DE MÍDIA ====================
+
+/**
+ * Mapeia tipo de mídia (inglês) para o valor aceito pelo CHECK constraint do banco.
+ * Constraint: 'texto', 'audio', 'imagem', 'documento'
+ */
+function mapearTipoMidia(tipo: string | null): string | null {
+  if (!tipo) return null;
+  const mapa: Record<string, string> = {
+    image: "imagem",
+    audio: "audio",
+    video: "video",
+    sticker: "sticker",
+    document: "documento",
+    texto: "texto",
+    imagem: "imagem",
+    documento: "documento",
+  };
+  return mapa[tipo] || tipo;
+}
 
 /**
  * Extract base64 data from a media message object.
