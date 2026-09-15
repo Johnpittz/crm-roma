@@ -30,15 +30,15 @@ export async function GET(request: NextRequest) {
     diagnostics.buckets = buckets?.map((b: any) => b.id) || [];
     diagnostics.listError = listError?.message || null;
 
-    // Try upload
-    const testContent = "dGVzdA=="; // "test" in base64
+    // Try upload with audio MIME (bucket only allows image/audio/video)
+    const testContent = "UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA="; // minimal ogg header
     const buffer = Buffer.from(testContent, "base64");
-    const testPath = `test/debug-${Date.now()}.txt`;
+    const testPath = `audio/debug-${Date.now()}.ogg`;
 
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from("chat-media")
       .upload(testPath, buffer, {
-        contentType: "text/plain",
+        contentType: "audio/ogg",
         upsert: true,
       });
 
