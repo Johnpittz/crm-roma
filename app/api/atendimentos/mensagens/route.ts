@@ -97,8 +97,9 @@ export async function POST(request: NextRequest) {
     .update(updateData)
     .eq("id", atendimento_id);
 
-  // Send via WhatsApp if vendor is replying
-  if (remetente === "vendedor" && process.env.EVOLUTION_API_KEY) {
+  // Send via WhatsApp if vendor is replying (skip if media already sent)
+  const isMediaPlaceholder = conteudo.match(/^\[(Áudio|audio|Imagem|image|Vídeo|video|Sticker|sticker|Documento|document)\]$/i);
+  if (remetente === "vendedor" && process.env.EVOLUTION_API_KEY && !isMediaPlaceholder) {
     try {
       // Get atendimento info (phone + instance)
       const { data: atendimento } = await supabase
