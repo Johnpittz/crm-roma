@@ -142,6 +142,16 @@ export default function AtendimentoPage() {
     return () => clearInterval(interval);
   }, [fetchAtendimentos]);
 
+  // Sincronizar atendimentoChat com a lista atualizada (para mostrar novas mensagens)
+  useEffect(() => {
+    if (atendimentoChat && atendimentos.length > 0) {
+      const atualizado = atendimentos.find((a) => a.id === atendimentoChat.id);
+      if (atualizado) {
+        setAtendimentoChat(atualizado);
+      }
+    }
+  }, [atendimentos]);
+
   const handleAbrirChat = (a: Atendimento) => {
     setAtendimentoChat(a);
   };

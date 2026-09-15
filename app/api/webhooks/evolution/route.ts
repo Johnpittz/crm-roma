@@ -297,6 +297,12 @@ function extrairDadosEvolutionAPI(payload: any) {
     let mediaBase64 = null;
     
     if (msg.message) {
+      // DEBUG: log message keys to understand payload structure
+      const msgKeys = Object.keys(msg.message);
+      if (!msgKeys.includes('conversation') && !msgKeys.includes('extendedTextMessage')) {
+        console.log("[Webhook Evolution] MSG_KEYS:", JSON.stringify(msgKeys));
+        console.log("[Webhook Evolution] MSG_SAMPLE:", JSON.stringify(msg.message).substring(0, 500));
+      }
       // Mensagem de texto
       if (msg.message.conversation) {
         mensagem = msg.message.conversation;
