@@ -38,7 +38,7 @@ function setCachedMedia(key: string, data: ArrayBuffer, contentType: string) {
   mediaCache.set(key, { data, contentType, timestamp: Date.now() });
   // Evict old entries if cache grows too large (max 100 entries)
   if (mediaCache.size > 100) {
-    const oldest = [...mediaCache.entries()]
+    const oldest = Array.from(mediaCache.entries())
       .sort((a, b) => a[1].timestamp - b[1].timestamp)[0];
     if (oldest) mediaCache.delete(oldest[0]);
   }
