@@ -123,7 +123,7 @@ export async function POST(request: NextRequest) {
         remetente: "cliente",
         conteudo: conteudoMensagem,
         enviada_por: null,
-        tipo: dados.mediaType || "texto",
+        tipo_midia: dados.mediaType || "texto",
         url_midia: dados.mediaUrl || null,
       });
 
@@ -168,7 +168,7 @@ export async function POST(request: NextRequest) {
       remetente: "cliente",
       conteudo: conteudoMensagem,
       enviada_por: null,
-      tipo: dados.mediaType || "texto",
+      tipo_midia: dados.mediaType || "texto",
       url_midia: dados.mediaUrl || null,
     });
 
