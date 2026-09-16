@@ -608,15 +608,15 @@ export function ChatInline({ atendimento, onMarcarResolvido, onMensagemEnviada, 
                     key={msg.id}
                     className={cn(
                       "flex",
-                      isCliente ? "justify-end" : "justify-start"
+                      isCliente ? "justify-start" : "justify-end"
                     )}
                   >
                     <div
                       className={cn(
                         "max-w-[80%] rounded-2xl px-3 py-2 text-sm",
                         isCliente
-                          ? "bg-green-600 text-white rounded-br-sm"
-                          : "bg-white border border-slate-200 text-slate-800 rounded-bl-sm shadow-sm"
+                          ? "bg-white border border-slate-200 text-slate-800 rounded-bl-sm shadow-sm"
+                          : "bg-green-600 text-white rounded-br-sm"
                       )}
                     >
                       {/* Renderizar mídia ou texto */}
