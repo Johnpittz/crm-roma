@@ -112,7 +112,7 @@ export function Sidebar({ user }: SidebarProps) {
     >
       {/* Logo */}
       <div className="flex items-center border-b border-[#14919B]/20 h-36">
-        <Link href="/atendimento" className="flex-1 flex items-center justify-center h-full overflow-hidden px-2 py-2">
+        <Link href="/atendimento" className="flex-1 flex items-center justify-center h-full overflow-hidden px-0.5 py-0.5">
           <img src="/logo-icon.png" alt="CRM ROMA" className="w-full h-full object-contain" />
         </Link>
         <button
