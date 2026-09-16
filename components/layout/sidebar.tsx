@@ -111,7 +111,7 @@ export function Sidebar({ user }: SidebarProps) {
       )}
     >
       {/* Logo */}
-      <div className="flex items-center border-b border-[#14919B]/20 h-28">
+      <div className="flex items-center border-b border-[#14919B]/20 h-36">
         <Link href="/atendimento" className="flex-1 flex items-center justify-center h-full overflow-hidden px-4">
           <img src="/logo-icon.png" alt="CRM ROMA" className="w-full h-full object-contain object-left" />
         </Link>
