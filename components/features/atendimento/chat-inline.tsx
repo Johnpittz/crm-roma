@@ -591,11 +591,7 @@ export function ChatInline({ atendimento, onMarcarResolvido, onMensagemEnviada, 
         <>
           {/* Área de mensagens */}
           <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50/50 min-h-0">
-            {loading ? (
-              <div className="flex items-center justify-center h-full text-slate-400 text-sm">
-                Carregando mensagens...
-              </div>
-            ) : mensagens.length === 0 ? (
+            {mensagens.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-slate-400 text-sm gap-2">
                 <MessageCircle className="h-8 w-8 opacity-40" />
                 <p>Nenhuma mensagem ainda</p>
