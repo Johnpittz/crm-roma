@@ -688,36 +688,81 @@ async function evolutionEnviarMensagem(instanceName: string, telefone: string, m
 /**
  * Chama o AI Sales pra responder o cliente e possívelmente criar tarefa no kanban
  */
+const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
+
+/**
+ * Chama Gemini direto (sem self-call HTTP) pra responder o cliente
+ */
 async function chamarAISales(telefone: string, instanceName: string | null) {
-  const appUrl = process.env.VERCEL_URL
-    ? `https://${process.env.VERCEL_URL}`
-    : process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    console.log("[AI Sales] GEMINI_API_KEY não configurada, pulando");
+    return;
+  }
 
   try {
-    const response = await fetch(`${appUrl}/api/ai-sales`, {
+    // 1. Busca atendimento aberto
+    let query = getSupabase()
+      .from("atendimentos")
+      .select("id, nome_cliente")
+      .eq("telefone_cliente", telefone)
+      .eq("status", "aberto");
+    if (instanceName) query = query.eq("instance_name", instanceName);
+
+    const { data: atendimento } = await query.single();
+    if (!atendimento) return;
+
+    // 2. Busca últimas 20 mensagens
+    const { data: mensagens } = await getSupabase()
+      .from("atendimento_mensagens")
+      .select("remetente, conteudo")
+      .eq("atendimento_id", atendimento.id)
+      .order("created_at", { ascending: true })
+      .limit(20);
+
+    if (!mensagens || mensagens.length === 0) return;
+
+    const nomeCliente = atendimento.nome_cliente || "Cliente";
+    const historico = mensagens.map((m) =>
+      `${m.remetente === "cliente" ? "Cliente" : "Vendedor"}: ${m.conteudo}`
+    ).join("\n");
+
+    // 3. Chama Gemini
+    const geminiPrompt = montarPromptVendas(nomeCliente, historico);
+    const geminiResp = await fetch(`${GEMINI_URL}?key=${apiKey}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ telefone, instance: instanceName }),
-      signal: AbortSignal.timeout(25000),
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: geminiPrompt }] }],
+        generationConfig: { temperature: 0.7, maxOutputTokens: 500 },
+      }),
+      signal: AbortSignal.timeout(15000),
     });
 
-    if (!response.ok) return;
+    const geminiData = await geminiResp.json();
+    const textoResposta = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
-    const data = await response.json();
+    if (!textoResposta) return;
 
-    // Se tem resposta, envia pro cliente
-    if (data.resposta && instanceName) {
-      await evolutionEnviarMensagem(instanceName, telefone, data.resposta);
+    // 4. Envia resposta pro cliente
+    if (instanceName) {
+      await evolutionEnviarMensagem(instanceName, telefone, textoResposta);
       console.log(`[AI Sales] Resposta enviada para ${telefone}`);
     }
 
-    // Se deve criar tarefa no kanban
-    if (data.criarTarefa && data.tarefa) {
-      await criarTarefaKanban(data.tarefa, instanceName);
+    // 5. Analisa se deve criar tarefa no kanban
+    const oportunidade = await analisarOportunidadeIA(apiKey, nomeCliente, historico, textoResposta);
+    if (oportunidade.criar && oportunidade.titulo) {
+      await criarTarefaKanban({
+        titulo: oportunidade.titulo,
+        descricao: oportunidade.descricao || `Oportunidade para ${nomeCliente}`,
+        prioridade: oportunidade.prioridade || "media",
+        cliente_nome: nomeCliente,
+      }, instanceName);
     }
 
   } catch (err) {
-    console.error("[AI Sales] Erro ao chamar:", err);
+    console.error("[AI Sales] Erro:", err);
   }
 }
 
@@ -775,6 +820,100 @@ async function criarTarefaKanban(tarefa: {
     console.log(`[AI Sales] Tarefa criada: ${tarefa.titulo}`);
   } catch (err) {
     console.error("[AI Sales] Erro ao criar tarefa:", err);
+  }
+}
+
+/**
+ * Monta prompt de vendas da Roma Distribuidora
+ */
+function montarPromptVendas(nomeCliente: string, historico: string): string {
+  return `Você é um assistente de vendas da Roma Distribuidora de Materiais Elétricos.
+
+SEU PAPEL:
+- Responder mensagens de clientes no WhatsApp de forma simples e direta
+- Fazer perguntas para qualificar o lead (descobrir o que precisa, quanto compra, frequência)
+- Ser cordial mas não enrolar
+
+SCRIPT DE VENDAS - SIGA ESTA ORDEM:
+1. Primeira interação: "Olá! Somos a Roma Distribuidora de Materiais Elétricos. Como posso ajudar?"
+2. Descobrir o que o cliente precisa: "Qual material elétrico você está procurando?"
+3. Quantidade: "É para qual projeto? Precisa de quanto?"
+4. Frequência: "Você compra com que frequência? É recorrente?"
+5. Empresa/Loja: "Qual o nome da sua empresa/loja?"
+6. Contato: "Pode me passar o nome e o melhor contato?"
+
+REGRAS:
+- Responda em NO MÁXIMO 2-3 frases curtas
+- Não invente preços nem estoque
+- Se o cliente pedir preço, diga que um vendedor vai entrar em contato
+- Se o cliente não responde ou manda mensagem genérica ("oi", "bom dia"), seja breve
+- Use linguagem simples e amigável
+- NUNCA use emojis em excesso (máximo 1 por mensagem)
+- Se o cliente já respondeu todas as perguntas, agradeça e diga que um vendedor entrará em contato
+
+CONTEXTO DO CLIENTE: ${nomeCliente}
+
+HISTÓRICO DA CONVERSA:
+${historico}
+
+Responda APENAS com a mensagem para o cliente (sem explicação, sem "Resposta:" no início).`;
+}
+
+/**
+ * Analisa se a conversa indica oportunidade de venda
+ */
+async function analisarOportunidadeIA(
+  apiKey: string,
+  nomeCliente: string,
+  historico: string,
+  ultimaResposta: string
+): Promise<{ criar: boolean; titulo?: string; descricao?: string; prioridade?: string }> {
+  try {
+    const prompt = `Analise esta conversa de vendas e diga se o cliente é uma OPORTUNIDADE DE VENDA.
+
+Critérios para criar tarefa:
+- Cliente demonstrou interesse concreto em comprar
+- Cliente forneceu nome da empresa
+- Cliente tem projeto em andamento que precisa de materiais
+- Cliente é comprador recorrente
+
+Responda APENAS com JSON (sem markdown):
+{
+  "criar": true/false,
+  "titulo": "breve título da oportunidade (ex: 'Projeto elétrico - Empresa X')",
+  "descricao": "resumo do que o cliente precisa",
+  "prioridade": "alta/media/baixa"
+}
+
+CONVERSA:
+${historico}
+
+ÚLTIMA RESPOSTA DO ASSISTENTE:
+${ultimaResposta}`;
+
+    const resposta = await fetch(`${GEMINI_URL}?key=${apiKey}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.1, maxOutputTokens: 200 },
+      }),
+      signal: AbortSignal.timeout(10000),
+    });
+
+    const data = await resposta.json();
+    const texto = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+
+    const jsonMatch = texto.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      return JSON.parse(jsonMatch[0]);
+    }
+
+    return { criar: false };
+
+  } catch (err) {
+    console.error("[AI Sales] Erro ao analisar oportunidade:", err);
+    return { criar: false };
   }
 }
 

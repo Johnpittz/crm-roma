@@ -10,9 +10,8 @@ const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemi
  * POST /api/ai-sales
  * Body: { telefone: string, instance?: string }
  *
- * 1. Busca últimas mensagens do atendimento
- * 2. Envia pro Gemini com script de vendas
- * 3. Retorna resposta + se deve criar tarefa no kanban
+ * Endpoint standalone pra testes manuais.
+ * Na prática, o webhook chama direto as funções auxiliares.
  */
 export async function POST(request: NextRequest) {
   if (!GEMINI_API_KEY) {
@@ -20,9 +19,6 @@ export async function POST(request: NextRequest) {
   }
 
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
-  // Webhook pode chamar sem auth (service_role), então aceita sem user
   const body = await request.json();
   const { telefone, instance } = body;
 
@@ -30,10 +26,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Telefone é obrigatório" }, { status: 400 });
   }
 
-  // Limpa telefone
   const tel = telefone.replace(/\D/g, "");
 
-  // Busca atendimento aberto
   let query = supabase
     .from("atendimentos")
     .select("id, nome_cliente, vendedor_id")
@@ -49,7 +43,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Atendimento não encontrado" }, { status: 404 });
   }
 
-  // Busca últimas 20 mensagens
   const { data: mensagens } = await supabase
     .from("atendimento_mensagens")
     .select("remetente, conteudo, created_at")
@@ -61,15 +54,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ resposta: null, criarTarefa: false });
   }
 
-  // Monta histórico pro Gemini
   const historico = mensagens.map((m) => {
     const papel = m.remetente === "cliente" ? "Cliente" : "Vendedor";
     return `${papel}: ${m.conteudo}`;
   }).join("\n");
 
   const nomeCliente = atendimento.nome_cliente || "Cliente";
-
-  // Chama Gemini
   const geminiPrompt = montarPrompt(nomeCliente, historico);
 
   try {
@@ -78,10 +68,7 @@ export async function POST(request: NextRequest) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         contents: [{ parts: [{ text: geminiPrompt }] }],
-        generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 500,
-        },
+        generationConfig: { temperature: 0.7, maxOutputTokens: 500 },
       }),
     });
 
@@ -89,11 +76,9 @@ export async function POST(request: NextRequest) {
     const textoResposta = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
     if (!textoResposta) {
-      console.log("[AI Sales] Gemini não retornou resposta");
       return NextResponse.json({ resposta: null, criarTarefa: false });
     }
 
-    // Pergunta ao Gemini se deve criar tarefa
     const deveCriarTarefa = await analisarOportunidade(nomeCliente, historico, textoResposta);
 
     return NextResponse.json({
@@ -187,17 +172,13 @@ ${ultimaResposta}`;
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          temperature: 0.1,
-          maxOutputTokens: 200,
-        },
+        generationConfig: { temperature: 0.1, maxOutputTokens: 200 },
       }),
     });
 
     const data = await resposta.json();
     const texto = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
-    // Tenta parsear JSON (pode vir com ```json no início)
     const jsonMatch = texto.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
       return JSON.parse(jsonMatch[0]);
