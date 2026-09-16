@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { montarPromptVendas } from "@/lib/ai-sales-prompts/vendas";
+import { analisarOportunidadeIA } from "@/lib/ai-sales-prompts/oportunidades";
 
 export const dynamic = "force-dynamic";
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
-const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
+const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
 
 /**
  * POST /api/ai-sales
@@ -60,7 +62,7 @@ export async function POST(request: NextRequest) {
   }).join("\n");
 
   const nomeCliente = atendimento.nome_cliente || "Cliente";
-  const geminiPrompt = montarPrompt(nomeCliente, historico);
+  const geminiPrompt = montarPromptVendas(nomeCliente, historico);
 
   try {
     const resposta = await fetch(`${GEMINI_URL}?key=${GEMINI_API_KEY}`, {
@@ -79,7 +81,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ resposta: null, criarTarefa: false });
     }
 
-    const deveCriarTarefa = await analisarOportunidade(nomeCliente, historico, textoResposta);
+    const deveCriarTarefa = await analisarOportunidadeIA(GEMINI_API_KEY, nomeCliente, historico, textoResposta);
 
     return NextResponse.json({
       resposta: textoResposta,
@@ -95,99 +97,5 @@ export async function POST(request: NextRequest) {
   } catch (err) {
     console.error("[AI Sales] Erro Gemini:", err);
     return NextResponse.json({ error: "Erro ao chamar Gemini" }, { status: 500 });
-  }
-}
-
-/**
- * Monta o prompt com script de vendas para a Roma Distribuidora
- */
-function montarPrompt(nomeCliente: string, historico: string): string {
-  return `Você é um assistente de vendas da Roma Distribuidora de Materiais Elétricos.
-
-SEU PAPEL:
-- Responder mensagens de clientes no WhatsApp de forma simples e direta
-- Fazer perguntas para qualificar o lead (descobrir o que precisa, quanto compra, frequência)
-- Ser cordial mas não enrolar
-
-SCRIPT DE VENDAS - SIGA ESTA ORDEM:
-1. Primeira interação: "Olá! Somos a Roma Distribuidora de Materiais Elétricos. Como posso ajudar?"
-2. Descobrir o que o cliente precisa: "Qual material elétrico você está procurando?"
-3. Quantidade: "É para qual projeto? Precisa de quanto?"
-4. Frequência: "Você compra com que frequência? É recorrente?"
-5. Empresa/Loja: "Qual o nome da sua empresa/loja?"
-6. Contato: "Pode me passar o nome e o melhor contato?"
-
-REGRAS:
-- Responda em NO MÁXIMO 2-3 frases curtas
-- Não invente preços nem estoque
-- Se o cliente pedir preço, diga que um vendedor vai entrar em contato
-- Se o cliente não responde ou manda mensagem genérica ("oi", "bom dia"), seja breve
-- Use linguagem simples e amigável
-- NUNCA use emojis em excesso (máximo 1 por mensagem)
-- Se o cliente já respondeu todas as perguntas, agradeça e diga que um vendedor entrará em contato
-
-CONTEXTO DO CLIENTE: ${nomeCliente}
-
-HISTÓRICO DA CONVERSA:
-${historico}
-
-Responda APENAS com a mensagem para o cliente (sem explicação, sem "Resposta:" no início).`;
-}
-
-/**
- * Analisa se a conversa indica uma oportunidade de venda
- */
-async function analisarOportunidade(
-  nomeCliente: string,
-  historico: string,
-  ultimaResposta: string
-): Promise<{ criar: boolean; titulo?: string; descricao?: string; prioridade?: string }> {
-  if (!GEMINI_API_KEY) return { criar: false };
-
-  try {
-    const prompt = `Analise esta conversa de vendas e diga se o cliente é uma OPORTUNIDADE DE VENDA.
-
-Critérios para criar tarefa:
-- Cliente demonstrou interesse concreto em comprar
-- Cliente forneceu nome da empresa
-- Cliente tem projeto em andamento que precisa de materiais
-- Cliente é comprador recorrente
-
-Responda APENAS com JSON (sem markdown):
-{
-  "criar": true/false,
-  "titulo": "breve título da oportunidade (ex: 'Projeto elétrico - Empresa X')",
-  "descricao": "resumo do que o cliente precisa",
-  "prioridade": "alta/media/baixa"
-}
-
-CONVERSA:
-${historico}
-
-ÚLTIMA RESPOSTA DO ASSISTENTE:
-${ultimaResposta}`;
-
-    const resposta = await fetch(`${GEMINI_URL}?key=${GEMINI_API_KEY}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.1, maxOutputTokens: 200 },
-      }),
-    });
-
-    const data = await resposta.json();
-    const texto = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
-
-    const jsonMatch = texto.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      return JSON.parse(jsonMatch[0]);
-    }
-
-    return { criar: false };
-
-  } catch (err) {
-    console.error("[AI Sales] Erro ao analisar oportunidade:", err);
-    return { criar: false };
   }
 }

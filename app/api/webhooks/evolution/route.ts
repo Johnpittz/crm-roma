@@ -12,6 +12,8 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { montarPromptVendas } from "@/lib/ai-sales-prompts/vendas";
+import { analisarOportunidadeIA } from "@/lib/ai-sales-prompts/oportunidades";
 import { rateLimit } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
@@ -756,6 +758,29 @@ async function chamarAISales(telefone: string, instanceName: string | null) {
     if (instanceName) {
       const enviou = await evolutionEnviarMensagem(instanceName, telefone, textoResposta);
       console.log(`[AI Sales] Resposta enviada para ${telefone}: ${enviou ? "OK" : "FALHOU"}`);
+
+      // Salva a resposta da IA no banco pra aparecer no CRM
+      await getSupabase().from("atendimento_mensagens").insert({
+        atendimento_id: atendimento.id,
+        remetente: "vendedor",
+        conteudo: `[IA] ${textoResposta}`,
+        enviada_por: null,
+        tipo_midia: "texto",
+        created_at: new Date().toISOString(),
+      });
+
+      // Atualiza última mensagem do atendimento
+      await getSupabase()
+        .from("atendimentos")
+        .update({
+          ultima_mensagem: `[IA] ${textoResposta}`,
+          ultima_mensagem_data: new Date().toISOString(),
+          ultima_mensagem_remetente: "vendedor",
+          nao_lido: true,
+        })
+        .eq("id", atendimento.id);
+
+      console.log(`[AI Sales] Resposta salva no atendimento ${atendimento.id}`);
     }
 
     // 5. Analisa se deve criar tarefa no kanban
@@ -830,99 +855,4 @@ async function criarTarefaKanban(tarefa: {
     console.error("[AI Sales] Erro ao criar tarefa:", err);
   }
 }
-
-/**
- * Monta prompt de vendas da Roma Distribuidora
- */
-function montarPromptVendas(nomeCliente: string, historico: string): string {
-  return `Você é um assistente de vendas da Roma Distribuidora de Materiais Elétricos.
-
-SEU PAPEL:
-- Responder mensagens de clientes no WhatsApp de forma simples e direta
-- Fazer perguntas para qualificar o lead (descobrir o que precisa, quanto compra, frequência)
-- Ser cordial mas não enrolar
-
-SCRIPT DE VENDAS - SIGA ESTA ORDEM:
-1. Primeira interação: "Olá! Somos a Roma Distribuidora de Materiais Elétricos. Como posso ajudar?"
-2. Descobrir o que o cliente precisa: "Qual material elétrico você está procurando?"
-3. Quantidade: "É para qual projeto? Precisa de quanto?"
-4. Frequência: "Você compra com que frequência? É recorrente?"
-5. Empresa/Loja: "Qual o nome da sua empresa/loja?"
-6. Contato: "Pode me passar o nome e o melhor contato?"
-
-REGRAS:
-- Responda em NO MÁXIMO 2-3 frases curtas
-- Não invente preços nem estoque
-- Se o cliente pedir preço, diga que um vendedor vai entrar em contato
-- Se o cliente não responde ou manda mensagem genérica ("oi", "bom dia"), seja breve
-- Use linguagem simples e amigável
-- NUNCA use emojis em excesso (máximo 1 por mensagem)
-- Se o cliente já respondeu todas as perguntas, agradeça e diga que um vendedor entrará em contato
-
-CONTEXTO DO CLIENTE: ${nomeCliente}
-
-HISTÓRICO DA CONVERSA:
-${historico}
-
-Responda APENAS com a mensagem para o cliente (sem explicação, sem "Resposta:" no início).`;
-}
-
-/**
- * Analisa se a conversa indica oportunidade de venda
- */
-async function analisarOportunidadeIA(
-  apiKey: string,
-  nomeCliente: string,
-  historico: string,
-  ultimaResposta: string
-): Promise<{ criar: boolean; titulo?: string; descricao?: string; prioridade?: string }> {
-  try {
-    const prompt = `Analise esta conversa de vendas e diga se o cliente é uma OPORTUNIDADE DE VENDA.
-
-Critérios para criar tarefa:
-- Cliente demonstrou interesse concreto em comprar
-- Cliente forneceu nome da empresa
-- Cliente tem projeto em andamento que precisa de materiais
-- Cliente é comprador recorrente
-
-Responda APENAS com JSON (sem markdown):
-{
-  "criar": true/false,
-  "titulo": "breve título da oportunidade (ex: 'Projeto elétrico - Empresa X')",
-  "descricao": "resumo do que o cliente precisa",
-  "prioridade": "alta/media/baixa"
-}
-
-CONVERSA:
-${historico}
-
-ÚLTIMA RESPOSTA DO ASSISTENTE:
-${ultimaResposta}`;
-
-    const resposta = await fetch(`${GEMINI_URL}?key=${apiKey}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.1, maxOutputTokens: 200 },
-      }),
-      signal: AbortSignal.timeout(10000),
-    });
-
-    const data = await resposta.json();
-    const texto = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
-
-    const jsonMatch = texto.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      return JSON.parse(jsonMatch[0]);
-    }
-
-    return { criar: false };
-
-  } catch (err) {
-    console.error("[AI Sales] Erro ao analisar oportunidade:", err);
-    return { criar: false };
-  }
-}
-
 
