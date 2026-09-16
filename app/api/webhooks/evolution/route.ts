@@ -723,7 +723,8 @@ async function chamarAISales(telefone: string, instanceName: string | null) {
     if (!mensagens || mensagens.length === 0) return;
 
     const nomeCliente = atendimento.nome_cliente || "Cliente";
-    const historico = mensagens.map((m) =>
+    const msgList = mensagens as { remetente: string; conteudo: string }[];
+    const historico = msgList.map((m) =>
       `${m.remetente === "cliente" ? "Cliente" : "Vendedor"}: ${m.conteudo}`
     ).join("\n");
 
