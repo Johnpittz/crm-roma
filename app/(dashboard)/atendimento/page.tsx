@@ -259,7 +259,7 @@ export default function AtendimentoPage() {
             <ListaAtendimentosLateral
               atendimentos={atendimentosFiltrados}
               loading={loadingAtendimentos}
-              onRefresh={fetchAtendimentos}
+              onRefresh={() => fetchAtendimentos(true)}
               onAbrirChat={handleAbrirChat}
               etiquetas={atendimentosComEtiquetas}
             />
@@ -271,7 +271,7 @@ export default function AtendimentoPage() {
           <ChatInline
             atendimento={atendimentoChat}
             onMarcarResolvido={handleFecharAtendimento}
-            onMensagemEnviada={fetchAtendimentos}
+            onMensagemEnviada={() => fetchAtendimentos(true)}
             onFechar={() => setAtendimentoChat(null)}
           />
         </div>
