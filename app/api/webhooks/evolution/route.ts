@@ -174,15 +174,6 @@ export async function POST(request: NextRequest) {
     const cliente = await buscarClientePorTelefone(telefoneLimpo);
 
     // ==================== RESOLVER NOME DO CLIENTE ====================
-    // Prioridade: 1) nome no banco (se cliente cadastrado) > 2) pushName (se não for do vendedor) > 3) "Cliente"
-    // Se fromMe=true, NÃO usa pushName (é o nome do vendedor)
-    const nomeResolvido = resolverNomeCliente({
-      fromMe: dados.fromMe,
-      pushName,
-      clienteNome: cliente?.nome_razao_social || null,
-      nomeAtual: atendimentoExistente?.nome_cliente || null,
-    });
-
     // ==================== ATENDIMENTO EXISTENTE ====================
     const atendimentoExistente = await buscarAtendimentoAberto(telefoneLimpo, instanceName);
 
@@ -201,7 +192,6 @@ export async function POST(request: NextRequest) {
           ultima_mensagem_data: new Date().toISOString(),
           ultima_mensagem_remetente: remetente,
           nao_lido: true,
-          nome_cliente: nomeResolvido,
           cliente_id: cliente?.id || atendimentoExistente.cliente_id,
           vendedor_id: vendedorUpdate,
         })
@@ -224,6 +214,12 @@ export async function POST(request: NextRequest) {
     }
 
     // ==================== NOVO ATENDIMENTO ====================
+    // Nome: 1) do banco (se cadastrado) > 2) pushName (se mensagem do cliente) > 3) "Cliente"
+    // NÃO usa pushName quando fromMe=true (é o nome do vendedor)
+    const nomeResolvido = cliente?.nome_razao_social
+      || (!dados.fromMe && pushName ? pushName.trim() : null)
+      || "Cliente";
+
     const vendedorPadrao = await buscarVendedorPadrao();
     const vendedorFinal = cliente?.vendedor_responsavel_id || vendedorPadrao || null;
 
@@ -650,44 +646,4 @@ function obterMimeType(mediaType: string): string {
   }
 }
 
-/**
- * Resolve o nome do cliente para exibição no CRM.
- *
- * Prioridade:
- * 1. Se cliente cadastrado no banco → nome_razao_social (sempre confiável)
- * 2. Se pushName existe E mensagem NÃO é do vendedor → pushName (nome que o cliente definiu no WhatsApp)
- * 3. Se já tem nome registrado no atendimento e não tem nada melhor → manter
- * 4. Fallback → "Cliente"
- *
- * Regra importante: quando fromMe=true, o pushName é SEMPRE o nome do vendedor,
- * então nunca usamos para definir nome do cliente.
- */
-function resolverNomeCliente(ops: {
-  fromMe: boolean;
-  pushName: string | null;
-  clienteNome: string | null;
-  nomeAtual: string | null;
-}): string {
-  // 1. Se cliente cadastrado, sempre usar o nome do banco
-  if (ops.clienteNome && ops.clienteNome.trim()) {
-    return ops.clienteNome.trim();
-  }
 
-  // 2. Se é mensagem do vendedor, NÃO usar pushName (é o nome dele)
-  if (ops.fromMe) {
-    return ops.nomeAtual || "Cliente";
-  }
-
-  // 3. Se pushName existe e não é vendedor, usar (é o nome que o cliente salvou)
-  if (ops.pushName && ops.pushName.trim()) {
-    return ops.pushName.trim();
-  }
-
-  // 4. Se já tem nome registrado, manter
-  if (ops.nomeAtual && ops.nomeAtual.trim()) {
-    return ops.nomeAtual.trim();
-  }
-
-  // 5. Fallback
-  return "Cliente";
-}
