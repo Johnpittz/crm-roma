@@ -107,6 +107,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, action: "ignored_group" });
     }
 
+    // Ignorar mensagens enviadas por nós (vendedor) — o CRM já salva quando envia
+    if (dados.fromMe) {
+      console.log("[Webhook Evolution] Mensagem enviada por nós ignorada (fromMe=true)");
+      return NextResponse.json({ success: true, action: "ignored_fromMe" });
+    }
+
     if (!dados.telefone) {
       console.error("[Webhook Evolution] Telefone não encontrado no payload");
       return NextResponse.json(
@@ -375,6 +381,9 @@ function extrairDadosEvolutionAPI(payload: any) {
     // Nome do push (quem enviou)
     const nome = msg.pushName || msg.notifyName || null;
     
+    // Se a mensagem foi enviada por nós (vendedor), pular
+    const fromMe = msg.key?.fromMe || false;
+    
     // Message ID for dedup
     const messageId = msg.key?.id || null;
     
@@ -489,18 +498,19 @@ function extrairDadosEvolutionAPI(payload: any) {
       mediaBase64,
       messageId,
       instance,
+      fromMe,
     };
   }
   
   // Evento de conexão (ignorar)
   if (payload.event === "connection.update") {
     console.log("[Webhook Evolution] Evento de conexão ignorado");
-    return { remoteJid: null, telefone: null, nome: null, mensagem: null, mediaType: null, mediaUrl: null, mediaBase64: null, messageId: null, instance };
+    return { remoteJid: null, telefone: null, nome: null, mensagem: null, mediaType: null, mediaUrl: null, mediaBase64: null, messageId: null, instance, fromMe: false };
   }
   
   // Evento desconhecido
   console.log("[Webhook Evolution] Evento desconhecido:", payload.event);
-  return { remoteJid: null, telefone: null, nome: null, mensagem: null, mediaType: null, mediaUrl: null, mediaBase64: null, messageId: null, instance };
+  return { remoteJid: null, telefone: null, nome: null, mensagem: null, mediaType: null, mediaUrl: null, mediaBase64: null, messageId: null, instance, fromMe: false };
 }
 
 /**
