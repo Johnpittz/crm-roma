@@ -690,7 +690,7 @@ async function evolutionEnviarMensagem(instanceName: string, telefone: string, m
 /**
  * Chama o AI Sales pra responder o cliente e possívelmente criar tarefa no kanban
  */
-const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
+const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
 
 /**
  * Chama Gemini direto (sem self-call HTTP) pra responder o cliente
