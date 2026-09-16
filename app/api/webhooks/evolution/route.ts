@@ -107,12 +107,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, action: "ignored_group" });
     }
 
-    // Ignorar mensagens enviadas por nós (vendedor) — o CRM já salva quando envia
-    if (dados.fromMe) {
-      console.log("[Webhook Evolution] Mensagem enviada por nós ignorada (fromMe=true)");
-      return NextResponse.json({ success: true, action: "ignored_fromMe" });
-    }
-
     if (!dados.telefone) {
       console.error("[Webhook Evolution] Telefone não encontrado no payload");
       return NextResponse.json(
@@ -125,6 +119,9 @@ export async function POST(request: NextRequest) {
     const instanceName = dados.instance || null;
     const mensagem = dados.mensagem || "";
     const nomeCliente = dados.nome || null;
+
+    // Determinar remetente: fromMe=true é o vendedor (mandou do celular)
+    const remetente = dados.fromMe ? "vendedor" : "cliente";
 
     // Verificar se tem mídia
     const temMidia = dados.mediaType !== null;
@@ -187,7 +184,7 @@ export async function POST(request: NextRequest) {
         .update({
           ultima_mensagem: conteudoMensagem,
           ultima_mensagem_data: new Date().toISOString(),
-          ultima_mensagem_remetente: "cliente",
+          ultima_mensagem_remetente: remetente,
           nao_lido: true,
           nome_cliente: nomeCliente || atendimentoExistente.nome_cliente,
           cliente_id: cliente?.id || atendimentoExistente.cliente_id,
@@ -198,7 +195,7 @@ export async function POST(request: NextRequest) {
       // Insere mensagem no chat
       await getSupabase().from("atendimento_mensagens").insert({
         atendimento_id: atendimentoExistente.id,
-        remetente: "cliente",
+        remetente: remetente,
         conteudo: conteudoMensagem,
         enviada_por: null,
         tipo_midia: mapearTipoMidia(dados.mediaType),
@@ -229,7 +226,7 @@ export async function POST(request: NextRequest) {
         assunto: conteudoMensagem.substring(0, 100),
         ultima_mensagem: conteudoMensagem,
         ultima_mensagem_data: new Date().toISOString(),
-        ultima_mensagem_remetente: "cliente",
+        ultima_mensagem_remetente: remetente,
         nao_lido: true,
         instance_name: instanceName,
       })
@@ -244,7 +241,7 @@ export async function POST(request: NextRequest) {
     // Insere mensagem inicial no chat
     await getSupabase().from("atendimento_mensagens").insert({
       atendimento_id: novoAtendimento.id,
-      remetente: "cliente",
+      remetente: remetente,
       conteudo: conteudoMensagem,
       enviada_por: null,
       tipo_midia: mapearTipoMidia(dados.mediaType),
