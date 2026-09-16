@@ -123,6 +123,11 @@ export async function POST(request: NextRequest) {
     // Determinar remetente: fromMe=true é o vendedor (mandou do celular)
     const remetente = dados.fromMe ? "vendedor" : "cliente";
 
+    // Usar timestamp real do WhatsApp para ordenação correta
+    const createdAtWhatsApp = dados.messageTimestamp 
+      ? new Date(dados.messageTimestamp * 1000).toISOString()
+      : new Date().toISOString();
+
     // Verificar se tem mídia
     const temMidia = dados.mediaType !== null;
     const conteudoMensagem = temMidia ? `[${dados.mediaType}]` : mensagem;
@@ -201,6 +206,7 @@ export async function POST(request: NextRequest) {
         tipo_midia: mapearTipoMidia(dados.mediaType),
         url_midia: urlFinalMidia,
         whatsapp_message_id: dados.messageId || null,
+        created_at: createdAtWhatsApp,
       });
 
       console.log(`[Webhook Evolution] Mensagem adicionada ao atendimento ${atendimentoExistente.id}`);
@@ -247,6 +253,7 @@ export async function POST(request: NextRequest) {
       tipo_midia: mapearTipoMidia(dados.mediaType),
       url_midia: urlFinalMidia,
       whatsapp_message_id: dados.messageId || null,
+      created_at: createdAtWhatsApp,
     });
 
     console.log(`[Webhook Evolution] Novo atendimento criado: ${novoAtendimento.id}`);
@@ -381,6 +388,9 @@ function extrairDadosEvolutionAPI(payload: any) {
     // Se a mensagem foi enviada por nós (vendedor), pular
     const fromMe = msg.key?.fromMe || false;
     
+    // Timestamp real da mensagem (quando foi enviada no WhatsApp)
+    const messageTimestamp = msg.messageTimestamp || null;
+    
     // Message ID for dedup
     const messageId = msg.key?.id || null;
     
@@ -496,18 +506,19 @@ function extrairDadosEvolutionAPI(payload: any) {
       messageId,
       instance,
       fromMe,
+      messageTimestamp,
     };
   }
   
   // Evento de conexão (ignorar)
   if (payload.event === "connection.update") {
     console.log("[Webhook Evolution] Evento de conexão ignorado");
-    return { remoteJid: null, telefone: null, nome: null, mensagem: null, mediaType: null, mediaUrl: null, mediaBase64: null, messageId: null, instance, fromMe: false };
+    return { remoteJid: null, telefone: null, nome: null, mensagem: null, mediaType: null, mediaUrl: null, mediaBase64: null, messageId: null, instance, fromMe: false, messageTimestamp: null };
   }
-  
+
   // Evento desconhecido
   console.log("[Webhook Evolution] Evento desconhecido:", payload.event);
-  return { remoteJid: null, telefone: null, nome: null, mensagem: null, mediaType: null, mediaUrl: null, mediaBase64: null, messageId: null, instance, fromMe: false };
+  return { remoteJid: null, telefone: null, nome: null, mensagem: null, mediaType: null, mediaUrl: null, mediaBase64: null, messageId: null, instance, fromMe: false, messageTimestamp: null };
 }
 
 /**
