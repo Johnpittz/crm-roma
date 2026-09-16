@@ -213,7 +213,8 @@ export async function POST(request: NextRequest) {
 
       // Chama AI Sales pra responder (só pra mensagens de texto do cliente)
       if (remetente === "cliente" && !dados.mediaType && conteudoMensagem) {
-        chamarAISales(telefoneLimpo, instanceName).catch(() => {});
+        console.log(`[Webhook Evolution] Disparando AI Sales para atendimento existente ${atendimentoExistente.id}`);
+        chamarAISales(telefoneLimpo, instanceName).catch((e) => console.error("[AI Sales] Erro na chamada:", e));
       }
 
       return NextResponse.json({ success: true, atendimento_id: atendimentoExistente.id, action: "updated" });
@@ -272,7 +273,8 @@ export async function POST(request: NextRequest) {
 
     // Chama AI Sales pra responder (só pra mensagens de texto do cliente)
     if (remetente === "cliente" && !dados.mediaType && conteudoMensagem) {
-      chamarAISales(telefoneLimpo, instanceName).catch(() => {});
+      console.log(`[Webhook Evolution] Disparando AI Sales para novo atendimento ${novoAtendimento.id}`);
+      chamarAISales(telefoneLimpo, instanceName).catch((e) => console.error("[AI Sales] Erro na chamada:", e));
     }
 
     return NextResponse.json({ success: true, atendimento_id: novoAtendimento.id, action: "created" });
@@ -695,6 +697,7 @@ const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemi
  */
 async function chamarAISales(telefone: string, instanceName: string | null) {
   const apiKey = process.env.GEMINI_API_KEY;
+  console.log(`[AI Sales] Iniciando para ${telefone}, instance=${instanceName}, apiKey=${apiKey ? "PRESENTE" : "AUSENTE"}`);
   if (!apiKey) {
     console.log("[AI Sales] GEMINI_API_KEY não configurada, pulando");
     return;
@@ -702,6 +705,7 @@ async function chamarAISales(telefone: string, instanceName: string | null) {
 
   try {
     // 1. Busca atendimento aberto
+    console.log(`[AI Sales] Buscando atendimento para ${telefone}`);
     let query = getSupabase()
       .from("atendimentos")
       .select("id, nome_cliente")
@@ -709,7 +713,8 @@ async function chamarAISales(telefone: string, instanceName: string | null) {
       .eq("status", "aberto");
     if (instanceName) query = query.eq("instance_name", instanceName);
 
-    const { data: atendimento } = await query.single();
+    const { data: atendimento, error: errAtend } = await query.single();
+    console.log(`[AI Sales] Atendimento encontrado:`, atendimento ? `${atendimento.id} (${atendimento.nome_cliente})` : "NENHUM", errAtend ? `erro: ${errAtend.message}` : "");
     if (!atendimento) return;
 
     // 2. Busca últimas 20 mensagens
@@ -730,6 +735,7 @@ async function chamarAISales(telefone: string, instanceName: string | null) {
 
     // 3. Chama Gemini
     const geminiPrompt = montarPromptVendas(nomeCliente, historico);
+    console.log(`[AI Sales] Chamando Gemini para ${nomeCliente}...`);
     const geminiResp = await fetch(`${GEMINI_URL}?key=${apiKey}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -742,13 +748,14 @@ async function chamarAISales(telefone: string, instanceName: string | null) {
 
     const geminiData = await geminiResp.json();
     const textoResposta = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    console.log(`[AI Sales] Gemini respondeu:`, textoResposta ? `"${textoResposta.substring(0, 80)}..."` : "VAZIO", `status=${geminiResp.status}`);
 
     if (!textoResposta) return;
 
     // 4. Envia resposta pro cliente
     if (instanceName) {
-      await evolutionEnviarMensagem(instanceName, telefone, textoResposta);
-      console.log(`[AI Sales] Resposta enviada para ${telefone}`);
+      const enviou = await evolutionEnviarMensagem(instanceName, telefone, textoResposta);
+      console.log(`[AI Sales] Resposta enviada para ${telefone}: ${enviou ? "OK" : "FALHOU"}`);
     }
 
     // 5. Analisa se deve criar tarefa no kanban
