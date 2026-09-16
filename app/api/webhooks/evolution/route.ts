@@ -210,6 +210,12 @@ export async function POST(request: NextRequest) {
       });
 
       console.log(`[Webhook Evolution] Mensagem adicionada ao atendimento ${atendimentoExistente.id}`);
+
+      // Chama AI Sales pra responder (só pra mensagens de texto do cliente)
+      if (remetente === "cliente" && !dados.mediaType && conteudoMensagem) {
+        chamarAISales(telefoneLimpo, instanceName).catch(() => {});
+      }
+
       return NextResponse.json({ success: true, atendimento_id: atendimentoExistente.id, action: "updated" });
     }
 
@@ -263,6 +269,12 @@ export async function POST(request: NextRequest) {
     });
 
     console.log(`[Webhook Evolution] Novo atendimento criado: ${novoAtendimento.id}`);
+
+    // Chama AI Sales pra responder (só pra mensagens de texto do cliente)
+    if (remetente === "cliente" && !dados.mediaType && conteudoMensagem) {
+      chamarAISales(telefoneLimpo, instanceName).catch(() => {});
+    }
+
     return NextResponse.json({ success: true, atendimento_id: novoAtendimento.id, action: "created" });
 
   } catch (error: any) {
@@ -643,6 +655,126 @@ function obterMimeType(mediaType: string): string {
     case "sticker": return "image/webp";
     case "document": return "application/octet-stream";
     default: return "application/octet-stream";
+  }
+}
+
+/**
+ * Envia mensagem de texto via Evolution API
+ */
+async function evolutionEnviarMensagem(instanceName: string, telefone: string, mensagem: string): Promise<boolean> {
+  const apiUrl = process.env.EVOLUTION_API_URL;
+  const apiKey = process.env.EVOLUTION_API_KEY;
+  if (!apiUrl || !apiKey) return false;
+
+  try {
+    const response = await fetch(`${apiUrl}/message/sendText/${instanceName}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": apiKey,
+      },
+      body: JSON.stringify({
+        number: telefone,
+        text: mensagem,
+      }),
+    });
+    return response.ok;
+  } catch (err) {
+    console.error("[Evolution Send] Erro:", err);
+    return false;
+  }
+}
+
+/**
+ * Chama o AI Sales pra responder o cliente e possívelmente criar tarefa no kanban
+ */
+async function chamarAISales(telefone: string, instanceName: string | null) {
+  const appUrl = process.env.VERCEL_URL
+    ? `https://${process.env.VERCEL_URL}`
+    : process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
+  try {
+    const response = await fetch(`${appUrl}/api/ai-sales`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ telefone, instance: instanceName }),
+      signal: AbortSignal.timeout(25000),
+    });
+
+    if (!response.ok) return;
+
+    const data = await response.json();
+
+    // Se tem resposta, envia pro cliente
+    if (data.resposta && instanceName) {
+      await evolutionEnviarMensagem(instanceName, telefone, data.resposta);
+      console.log(`[AI Sales] Resposta enviada para ${telefone}`);
+    }
+
+    // Se deve criar tarefa no kanban
+    if (data.criarTarefa && data.tarefa) {
+      await criarTarefaKanban(data.tarefa, instanceName);
+    }
+
+  } catch (err) {
+    console.error("[AI Sales] Erro ao chamar:", err);
+  }
+}
+
+/**
+ * Cria tarefa no Kanban via service_role
+ */
+async function criarTarefaKanban(tarefa: {
+  titulo: string;
+  descricao: string;
+  prioridade: string;
+  cliente_nome: string;
+}, instanceName: string | null) {
+  try {
+    // Busca vendedor do atendimento mais recente desta instância
+    const { data: atendimento } = await getSupabase()
+      .from("atendimentos")
+      .select("vendedor_id")
+      .eq("instance_name", instanceName)
+      .eq("status", "aberto")
+      .order("ultima_mensagem_data", { ascending: false })
+      .limit(1)
+      .single();
+
+    const vendedorId = atendimento?.vendedor_id;
+    if (!vendedorId) {
+      console.log("[AI Sales] Sem vendedor para atribuir tarefa");
+      return;
+    }
+
+    // Pega maior ordem da coluna
+    const { data: ultimaOrdem } = await getSupabase()
+      .from("tarefas")
+      .select("ordem")
+      .eq("vendedor_id", vendedorId)
+      .eq("coluna_kanban", "a_fazer")
+      .order("ordem", { ascending: false })
+      .limit(1)
+      .single();
+
+    const novaOrdem = (ultimaOrdem?.ordem || 0) + 1;
+
+    await getSupabase().from("tarefas").insert({
+      vendedor_id: vendedorId,
+      titulo: tarefa.titulo,
+      descricao: tarefa.descricao || `Oportunidade identificada pela IA para ${tarefa.cliente_nome}`,
+      tipo: "oportunidade",
+      prioridade: tarefa.prioridade || "media",
+      status: "pendente",
+      coluna_kanban: "a_fazer",
+      ordem: novaOrdem,
+      cliente_nome: tarefa.cliente_nome,
+      data_inicio: new Date().toISOString().split("T")[0],
+    });
+
+    console.log(`[AI Sales] Tarefa criada: ${tarefa.titulo}`);
+  } catch (err) {
+    console.error("[AI Sales] Erro ao criar tarefa:", err);
   }
 }
 
