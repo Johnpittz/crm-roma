@@ -120,12 +120,12 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
     }
   }, [atendimento, supabase]);
 
-  // Carregar etiquetas quando o atendimento muda
+  // Carregar etiquetas quando o atendimento muda (usa id para evitar reset por polling)
   useEffect(() => {
     if (atendimento) {
       fetchEtiquetas();
       setEtiquetasBusca("");
-      // Reset formulário de tarefa
+      // Reset formulário de tarefa APENAS quando troca de conversa (id diferente)
       setTarefaTitulo("");
       setTarefaTipo("whatsapp");
       setTarefaPrioridade("media");
@@ -136,7 +136,7 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
     } else {
       setEtiquetasVinculadas([]);
     }
-  }, [atendimento, fetchEtiquetas]);
+  }, [atendimento?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Vincular etiqueta ao atendimento
   const vincularEtiqueta = async (etiqueta: string) => {
