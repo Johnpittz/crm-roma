@@ -546,7 +546,7 @@ export function DashboardKanban() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
                 <div className="p-2 bg-blue-100 rounded-lg">
                   <Phone className="h-5 w-5 text-blue-600" />
