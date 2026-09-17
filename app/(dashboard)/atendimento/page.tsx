@@ -6,9 +6,7 @@ import { ListaAtendimentosLateral } from "@/components/features/atendimento/list
 import { ChatInline } from "@/components/features/atendimento/chat-inline";
 import { PainelContato } from "@/components/features/atendimento/painel-contato";
 import { FiltroEtiquetas } from "@/components/features/atendimento/filtro-etiquetas";
-import { Search, Calendar, HelpCircle, Bell } from "lucide-react";
-import { SimularWhatsAppModal } from "@/components/features/atendimento/simular-whatsapp-modal";
-import { ToggleAISales } from "@/components/features/atendimento/toggle-ai-sales";
+import { Search } from "lucide-react";
 import { BarraMetricasAtendimento } from "@/components/features/atendimento/barra-metricas";
 import { createClient } from "@/lib/supabase/client";
 
@@ -190,48 +188,6 @@ export default function AtendimentoPage() {
   return (
     <div className="h-[calc(100vh-9rem)] flex flex-col overflow-hidden">
       
-      {/* HEADER COMPACTO — IA + Data + Busca + Ícones */}
-      <div className="shrink-0 flex items-center gap-3 mb-2">
-        <ToggleAISales />
-
-        <div className="flex items-center gap-3 ml-auto shrink-0">
-          {/* Data */}
-          <div className="hidden lg:flex items-center gap-1.5 text-xs text-slate-500">
-            <Calendar className="h-3.5 w-3.5" />
-            <span className="capitalize">{hoje}</span>
-          </div>
-
-          {/* Botão Simular WhatsApp — apenas para demonstração */}
-          {userCargo === "demonstracao" && (
-            <SimularWhatsAppModal onSuccess={fetchAtendimentos} />
-          )}
-
-          {/* Busca geral */}
-          <div className="relative">
-            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-            <Input
-              placeholder="Buscar..."
-              value={busca}
-              onChange={(e) => setBusca(e.target.value)}
-              className="w-48 h-8 text-xs pl-7"
-            />
-          </div>
-
-          {/* Botão info painel lateral */}
-          <button
-            onClick={() => setPainelContatoAberto(!painelContatoAberto)}
-            className={`h-8 w-8 rounded-lg border flex items-center justify-center transition-colors ${
-              painelContatoAberto
-                ? "bg-blue-50 border-blue-200 text-blue-600"
-                : "bg-white border-slate-200 text-slate-400 hover:text-slate-600"
-            }`}
-            title={painelContatoAberto ? "Fechar painel de contato" : "Abrir painel de contato"}
-          >
-            <Bell className="h-4 w-4" />
-          </button>
-        </div>
-      </div>
-
       {/* BARRA DE MÉTRICAS + GAUGE REALIZADO vs META */}
       <BarraMetricasAtendimento />
 
