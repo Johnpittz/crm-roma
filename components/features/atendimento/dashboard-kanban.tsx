@@ -727,11 +727,11 @@ export function DashboardKanban() {
           </CardContent>
         </Card>
 
-        {/* Performance */}
+        {/* Performance do Funil */}
         <Card className="border border-slate-200">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-semibold text-slate-700">Performance</CardTitle>
+              <CardTitle className="text-sm font-semibold text-slate-700">Performance do Funil</CardTitle>
               <Badge variant="secondary" className="bg-blue-100 text-blue-700 text-xs">
                 ● AO VIVO
               </Badge>
@@ -740,20 +740,20 @@ export function DashboardKanban() {
           <CardContent className="space-y-4">
             <div>
               <div className="flex items-center justify-between mb-1">
-                <span className="text-xs text-slate-500">Tarefas concluídas</span>
+                <span className="text-xs text-slate-500">Enviado, sem retorno</span>
                 <span className="text-xs font-semibold text-slate-700">
-                  {stats.tarefasConcluidas}/{stats.totalTarefas}
+                  {stats.tarefasAFazer}
                 </span>
               </div>
               <Progress 
-                value={stats.totalTarefas > 0 ? (stats.tarefasConcluidas / stats.totalTarefas) * 100 : 0} 
+                value={stats.totalTarefas > 0 ? (stats.tarefasAFazer / stats.totalTarefas) * 100 : 0} 
                 className="h-2" 
               />
             </div>
 
             <div>
               <div className="flex items-center justify-between mb-1">
-                <span className="text-xs text-slate-500">Em andamento</span>
+                <span className="text-xs text-slate-500">Negociação Inicial (Produto/Prazo)</span>
                 <span className="text-xs font-semibold text-blue-600">
                   {stats.tarefasEmAndamento}
                 </span>
@@ -766,14 +766,27 @@ export function DashboardKanban() {
 
             <div>
               <div className="flex items-center justify-between mb-1">
-                <span className="text-xs text-slate-500">A fazer</span>
-                <span className="text-xs font-semibold text-orange-600">
-                  {stats.tarefasAFazer}
+                <span className="text-xs text-slate-500">Negociação Final (Desconto/Prazo)</span>
+                <span className="text-xs font-semibold text-purple-600">
+                  {stats.followUpsPendentes}
                 </span>
               </div>
               <Progress 
-                value={stats.totalTarefas > 0 ? (stats.tarefasAFazer / stats.totalTarefas) * 100 : 0} 
-                className="h-2 bg-orange-100"
+                value={stats.totalTarefas > 0 ? (stats.followUpsPendentes / stats.totalTarefas) * 100 : 0} 
+                className="h-2 bg-purple-100"
+              />
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs text-slate-500">Acordo Verbal</span>
+                <span className="text-xs font-semibold text-green-600">
+                  {stats.tarefasConcluidas}
+                </span>
+              </div>
+              <Progress 
+                value={stats.totalTarefas > 0 ? (stats.tarefasConcluidas / stats.totalTarefas) * 100 : 0} 
+                className="h-2 bg-green-100"
               />
             </div>
 
