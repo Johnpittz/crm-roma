@@ -11,7 +11,7 @@ import { FiltroEtiquetas } from "@/components/features/atendimento/filtro-etique
 import { Search, Calendar, HelpCircle, Bell } from "lucide-react";
 import { SimularWhatsAppModal } from "@/components/features/atendimento/simular-whatsapp-modal";
 import { ToggleAISales } from "@/components/features/atendimento/toggle-ai-sales";
-import { GraficoRealizadoMeta } from "@/components/features/atendimento/grafico-realizado-meta";
+import { BarraMetricasAtendimento } from "@/components/features/atendimento/barra-metricas";
 import { createClient } from "@/lib/supabase/client";
 
 interface Atendimento {
@@ -236,8 +236,8 @@ export default function AtendimentoPage() {
         </div>
       </div>
 
-      {/* GRÁFICO REALIZADO vs META ACUMULADA */}
-      <GraficoRealizadoMeta />
+      {/* BARRA DE MÉTRICAS + GAUGE REALIZADO vs META */}
+      <BarraMetricasAtendimento />
 
       {/* WhatsApp Web 3 COLUNAS: Lista + Chat + Painel Contato */}
       <div className="flex-1 min-h-0 flex border border-slate-200 rounded-lg overflow-hidden bg-white">
