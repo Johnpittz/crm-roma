@@ -325,6 +325,8 @@ interface DashboardStats {
   tarefasAFazer: number;
   tarefasEmAndamento: number;
   tarefasConcluidas: number;
+  tarefasPendentes: number;
+  tarefasAtrasadas: number;
   tarefasHoje: number;
   vendasTotal: number;
   vendasQuantidade: number;
@@ -352,6 +354,8 @@ export function DashboardKanban() {
     tarefasAFazer: 0,
     tarefasEmAndamento: 0,
     tarefasConcluidas: 0,
+    tarefasPendentes: 0,
+    tarefasAtrasadas: 0,
     tarefasHoje: 0,
     vendasTotal: 0,
     vendasQuantidade: 0,
@@ -402,13 +406,18 @@ export function DashboardKanban() {
         tarefasAFazer: tarefas.filter((t: any) => t.coluna_kanban === "a_fazer").length,
         tarefasEmAndamento: tarefas.filter((t: any) => t.coluna_kanban === "em_andamento").length,
         tarefasConcluidas: tarefas.filter((t: any) => t.coluna_kanban === "concluida").length,
+        tarefasPendentes: tarefas.filter((t: any) => t.status === "pendente" && t.coluna_kanban !== "concluida").length,
+        tarefasAtrasadas: tarefas.filter((t: any) => {
+          if (t.coluna_kanban === "concluida" || !t.data_fim) return false;
+          return new Date(t.data_fim) < new Date();
+        }).length,
         tarefasHoje: tarefasHoje.length,
         vendasTotal: vendas.reduce((acc: number, v: any) => acc + (v.valor_total || 0), 0),
         vendasQuantidade: vendas.length,
         ticketMedio: vendas.length > 0 ? vendas.reduce((acc: number, v: any) => acc + (v.valor_total || 0), 0) / vendas.length : 0,
         atendimentosAbertos: atendimentos.filter((a: any) => a.status === "aberto").length,
         atendimentosPendentes: atendimentos.filter((a: any) => !a.vendedor_id).length,
-        clientesNovos: 0, // Implementar se necessário
+        clientesNovos: 0,
         followUpsPendentes: tarefas.filter((t: any) => t.tipo === "follow_up" && t.status !== "concluida").length,
       });
 
@@ -544,7 +553,7 @@ export function DashboardKanban() {
                 </div>
                 <div className="flex-1">
                   <p className="text-xs text-slate-500">Abertos</p>
-                  <p className="text-sm font-semibold text-slate-700">Aguardando atendimento</p>
+                  <p className="text-sm font-semibold text-slate-700">Mensagens para responder</p>
                 </div>
                 <p className="text-lg font-bold text-slate-800">{stats.atendimentosAbertos}</p>
                 <ArrowRight className="h-4 w-4 text-slate-400" />
@@ -556,7 +565,7 @@ export function DashboardKanban() {
                 </div>
                 <div className="flex-1">
                   <p className="text-xs text-slate-500">Fila</p>
-                  <p className="text-sm font-semibold text-slate-700">Sem vendedor atribuído</p>
+                  <p className="text-sm font-semibold text-slate-700">Clientes em Risco (20+ dias)</p>
                 </div>
                 <p className="text-lg font-bold text-slate-800">{stats.atendimentosPendentes}</p>
                 <ArrowRight className="h-4 w-4 text-slate-400" />
@@ -567,8 +576,8 @@ export function DashboardKanban() {
                   <CheckCircle2 className="h-5 w-5 text-green-600" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-xs text-slate-500">Concluídos</p>
-                  <p className="text-sm font-semibold text-slate-700">Atendimentos resolvidos</p>
+                  <p className="text-xs text-slate-500">Resolvidos</p>
+                  <p className="text-sm font-semibold text-slate-700">Clientes Respondidos</p>
                 </div>
                 <p className="text-lg font-bold text-slate-800">{stats.tarefasConcluidas}</p>
                 <ArrowRight className="h-4 w-4 text-slate-400" />
@@ -579,10 +588,34 @@ export function DashboardKanban() {
                   <Users className="h-5 w-5 text-purple-600" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-xs text-slate-500">Follow-up</p>
-                  <p className="text-sm font-semibold text-slate-700">Acompanhamentos pendentes</p>
+                  <p className="text-xs text-slate-500">Orçamentos</p>
+                  <p className="text-sm font-semibold text-slate-700">Orçamentos em Aberto</p>
                 </div>
                 <p className="text-lg font-bold text-slate-800">{stats.followUpsPendentes}</p>
+                <ArrowRight className="h-4 w-4 text-slate-400" />
+              </div>
+
+              <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
+                <div className="p-2 bg-orange-100 rounded-lg">
+                  <Target className="h-5 w-5 text-orange-600" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs text-slate-500">Kanban</p>
+                  <p className="text-sm font-semibold text-slate-700">Tarefas a fazer</p>
+                </div>
+                <p className="text-lg font-bold text-slate-800">{stats.tarefasPendentes}</p>
+                <ArrowRight className="h-4 w-4 text-slate-400" />
+              </div>
+
+              <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
+                <div className="p-2 bg-red-100 rounded-lg">
+                  <AlertTriangle className="h-5 w-5 text-red-600" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs text-slate-500">Atrasadas</p>
+                  <p className="text-sm font-semibold text-slate-700">Tarefas atrasadas</p>
+                </div>
+                <p className="text-lg font-bold text-red-600">{stats.tarefasAtrasadas}</p>
                 <ArrowRight className="h-4 w-4 text-slate-400" />
               </div>
             </div>
