@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, X, LayoutDashboard, Columns3 } from "lucide-react";
@@ -26,7 +27,17 @@ interface Atendimento {
 }
 
 export default function KanbanPage() {
-  const [view, setView] = useState<"dashboard" | "kanban">("dashboard");
+  return (
+    <Suspense fallback={<div className="p-6 text-slate-500">Carregando...</div>}>
+      <KanbanContent />
+    </Suspense>
+  );
+}
+
+function KanbanContent() {
+  const searchParams = useSearchParams();
+  const initialView = searchParams.get("tab") === "kanban" ? "kanban" : "dashboard";
+  const [view, setView] = useState<"dashboard" | "kanban">(initialView);
   const [atendimentos, setAtendimentos] = useState<Atendimento[]>([]);
   const [loadingAtendimentos, setLoadingAtendimentos] = useState(true);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
