@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Input } from "@/components/ui/input";
-import { PerformanceRealTime } from "@/components/features/atendimento/performance-realtime";
 import { ListaAtendimentosLateral } from "@/components/features/atendimento/lista-atendimentos-lateral";
 import { ChatInline } from "@/components/features/atendimento/chat-inline";
 import { TogglePresenca } from "@/components/features/atendimento/toggle-presenca";
@@ -196,7 +195,6 @@ export default function AtendimentoPage() {
       <div className="shrink-0 flex items-center gap-3 mb-2">
         <TogglePresenca />
         <ToggleAISales />
-        <PerformanceRealTime />
 
         <div className="flex items-center gap-3 ml-auto shrink-0">
           {/* Data */}
