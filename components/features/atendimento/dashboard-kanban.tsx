@@ -553,7 +553,7 @@ export function DashboardKanban() {
                 </div>
                 <div className="flex-1">
                   <p className="text-xs text-slate-500">Abertos</p>
-                  <p className="text-sm font-semibold text-slate-700">Mensagens para responder</p>
+                  <p className="text-sm font-semibold text-slate-700">Leads Novos</p>
                 </div>
                 <p className="text-lg font-bold text-slate-800">{stats.atendimentosAbertos}</p>
                 <ArrowRight className="h-4 w-4 text-slate-400" />
@@ -565,7 +565,7 @@ export function DashboardKanban() {
                 </div>
                 <div className="flex-1">
                   <p className="text-xs text-slate-500">Fila</p>
-                  <p className="text-sm font-semibold text-slate-700">Clientes em Risco (20+ dias)</p>
+                  <p className="text-sm font-semibold text-slate-700">Clientes Resgate</p>
                 </div>
                 <p className="text-lg font-bold text-slate-800">{stats.atendimentosPendentes}</p>
                 <ArrowRight className="h-4 w-4 text-slate-400" />
@@ -577,7 +577,7 @@ export function DashboardKanban() {
                 </div>
                 <div className="flex-1">
                   <p className="text-xs text-slate-500">Resolvidos</p>
-                  <p className="text-sm font-semibold text-slate-700">Clientes Respondidos</p>
+                  <p className="text-sm font-semibold text-slate-700">Clientes em Potenciais</p>
                 </div>
                 <p className="text-lg font-bold text-slate-800">{stats.tarefasConcluidas}</p>
                 <ArrowRight className="h-4 w-4 text-slate-400" />
@@ -589,7 +589,7 @@ export function DashboardKanban() {
                 </div>
                 <div className="flex-1">
                   <p className="text-xs text-slate-500">Orçamentos</p>
-                  <p className="text-sm font-semibold text-slate-700">Orçamentos em Aberto</p>
+                  <p className="text-sm font-semibold text-slate-700">Pós-Venda</p>
                 </div>
                 <p className="text-lg font-bold text-slate-800">{stats.followUpsPendentes}</p>
                 <ArrowRight className="h-4 w-4 text-slate-400" />
