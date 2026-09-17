@@ -84,6 +84,7 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
   const [etiquetasVinculadas, setEtiquetasVinculadas] = useState<string[]>([]);
   const [loadingEtiquetas, setLoadingEtiquetas] = useState(false);
   const [salvando, setSalvando] = useState<string | null>(null);
+  const supabase = useMemo(() => createClient(), []);
 
   // Estado do formulário de criar tarefa
   const hoje = new Date().toISOString().split("T")[0];
@@ -93,9 +94,69 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
   const [tarefaData, setTarefaData] = useState(hoje);
   const [tarefaHora, setTarefaHora] = useState("");
   const [tarefaDescricao, setTarefaDescricao] = useState("");
-  const [salvandoTarefa, setSalvandoTarefa] = useState(false);
   const [tarefaColuna, setTarefaColuna] = useState("a_fazer");
-  const supabase = useMemo(() => createClient(), []);
+  const [tarefaValorVenda, setTarefaValorVenda] = useState("");
+  const [tarefaObservacao, setTarefaObservacao] = useState("");
+  const [salvandoTarefa, setSalvandoTarefa] = useState(false);
+
+  // Tarefas vinculadas ao cliente deste atendimento
+  interface TarefaCliente {
+    id: string;
+    titulo: string;
+    tipo: string;
+    prioridade: string;
+    coluna_kanban: string;
+    data_inicio: string | null;
+    hora_inicio: string | null;
+    valor_venda: number | null;
+    resultado: string | null;
+  }
+  const [tarefasCliente, setTarefasCliente] = useState<TarefaCliente[]>([]);
+  const [loadingTarefas, setLoadingTarefas] = useState(false);
+
+  // Buscar tarefas do cliente
+  const fetchTarefasCliente = useCallback(async () => {
+    if (!atendimento) return;
+    const nomeCliente = atendimento.clientes?.nome_razao_social || atendimento.nome_cliente;
+    if (!nomeCliente) return;
+    setLoadingTarefas(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const res = await fetch(`/api/tarefas?cliente_nome=${encodeURIComponent(nomeCliente)}`, {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setTarefasCliente(data.tarefas || []);
+      }
+    } catch (err) {
+      console.error("Erro ao buscar tarefas:", err);
+    } finally {
+      setLoadingTarefas(false);
+    }
+  }, [atendimento?.id, supabase]);
+
+  // Atualizar tarefa (mudar coluna)
+  const atualizarTarefa = async (tarefaId: string, novaColuna: string, extras?: Record<string, any>) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      await fetch("/api/tarefas", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ id: tarefaId, coluna_kanban: novaColuna, ...extras }),
+      });
+      toast.success("Tarefa atualizada!");
+      fetchTarefasCliente();
+    } catch (err) {
+      console.error("Erro ao atualizar tarefa:", err);
+      toast.error("Erro ao atualizar tarefa");
+    }
+  };
 
   // Buscar etiquetas vinculadas ao atendimento
   const fetchEtiquetas = useCallback(async () => {
@@ -135,8 +196,16 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
       setTarefaColuna("a_fazer");
     } else {
       setEtiquetasVinculadas([]);
+      setTarefasCliente([]);
     }
-  }, [atendimento?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [atendimento, fetchEtiquetas]);
+
+  // Buscar tarefas do cliente quando o atendimento muda
+  useEffect(() => {
+    if (atendimento) {
+      fetchTarefasCliente();
+    }
+  }, [atendimento, fetchTarefasCliente]);
 
   // Vincular etiqueta ao atendimento
   const vincularEtiqueta = async (etiqueta: string) => {
@@ -215,6 +284,9 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
           descricao: tarefaDescricao.trim() || null,
           coluna_kanban: tarefaColuna,
           origem_lead: "whatsapp",
+          valor_venda: tarefaColuna === "concluida" && tarefaValorVenda ? parseFloat(tarefaValorVenda) : null,
+          resultado: tarefaColuna === "concluida" ? "venda_fechada" : null,
+          observacao_resultado: tarefaColuna === "concluida" && tarefaObservacao.trim() ? tarefaObservacao.trim() : null,
         }),
       });
 
@@ -231,6 +303,9 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
         setTarefaHora("");
         setTarefaDescricao("");
         setTarefaColuna("a_fazer");
+        setTarefaValorVenda("");
+        setTarefaObservacao("");
+        fetchTarefasCliente();
       } else {
         const err = await res.json();
         toast.error("Erro ao criar tarefa", { description: err.error || "Tente novamente" });
@@ -390,6 +465,71 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
           </div>
         </Secao>
 
+        {/* Tarefas do Cliente */}
+        <Secao titulo="Tarefas" badge={tarefasCliente.length}>
+          {loadingTarefas ? (
+            <p className="text-xs text-slate-400">Carregando...</p>
+          ) : tarefasCliente.length === 0 ? (
+            <p className="text-xs text-slate-400">Nenhuma tarefa para este cliente</p>
+          ) : (
+            <div className="space-y-2">
+              {tarefasCliente.map((t) => {
+                const iconesTarefa: Record<string, string> = { whatsapp: "💬", ligacao: "📞", email: "📧", visita: "🏢", reuniao: "🤝", follow_up: "🔄", prospeccao: "🔍", outro: "📋" };
+                const coresColuna: Record<string, string> = { a_fazer: "bg-slate-100 text-slate-700", em_andamento: "bg-blue-100 text-blue-700", concluida: "bg-emerald-100 text-emerald-700" };
+                const nomesColuna: Record<string, string> = { a_fazer: "A Fazer", em_andamento: "Andamento", concluida: "Concluído" };
+                return (
+                  <div key={t.id} className="p-2 bg-slate-50 rounded-lg border border-slate-200">
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-xs font-medium text-slate-800 truncate">
+                        {iconesTarefa[t.tipo] || "📋"} {t.titulo}
+                      </p>
+                      <Badge variant="secondary" className={cn("text-[9px] px-1.5 py-0 h-4", coresColuna[t.coluna_kanban])}>
+                        {nomesColuna[t.coluna_kanban] || t.coluna_kanban}
+                      </Badge>
+                    </div>
+                    {t.valor_venda && (
+                      <p className="text-[10px] text-emerald-600 font-medium">R$ {t.valor_venda.toLocaleString("pt-BR")}</p>
+                    )}
+                    {/* Ações rápidas */}
+                    {t.coluna_kanban === "a_fazer" && (
+                      <div className="flex gap-1 mt-1.5">
+                        <button
+                          onClick={() => atualizarTarefa(t.id, "em_andamento")}
+                          className="text-[10px] px-2 py-0.5 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors"
+                        >
+                          ▶ Iniciar
+                        </button>
+                        <button
+                          onClick={() => atualizarTarefa(t.id, "concluida", { resultado: "venda_fechada" })}
+                          className="text-[10px] px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded hover:bg-emerald-200 transition-colors"
+                        >
+                          ✓ Concluir
+                        </button>
+                      </div>
+                    )}
+                    {t.coluna_kanban === "em_andamento" && (
+                      <div className="flex gap-1 mt-1.5">
+                        <button
+                          onClick={() => atualizarTarefa(t.id, "concluida", { resultado: "venda_fechada" })}
+                          className="text-[10px] px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded hover:bg-emerald-200 transition-colors"
+                        >
+                          ✓ Concluir
+                        </button>
+                        <button
+                          onClick={() => atualizarTarefa(t.id, "a_fazer")}
+                          className="text-[10px] px-2 py-0.5 bg-slate-100 text-slate-600 rounded hover:bg-slate-200 transition-colors"
+                        >
+                          ← Voltar
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </Secao>
+
         {/* Criar Tarefa */}
         <Secao titulo="Criar Tarefa">
           <div className="space-y-3">
@@ -417,6 +557,35 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
                 <option value="concluida">✅ Concluído</option>
               </select>
             </div>
+
+            {/* Campos extras ao concluir */}
+            {tarefaColuna === "concluida" && (
+              <div className="space-y-2 p-2 bg-emerald-50 rounded-md border border-emerald-200">
+                <p className="text-[10px] text-emerald-700 font-medium uppercase tracking-wide">Dados da Venda</p>
+                <div>
+                  <label className="text-[10px] text-slate-500 uppercase tracking-wide">Valor da Venda (R$) *</label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="0,00"
+                    value={tarefaValorVenda}
+                    onChange={(e) => setTarefaValorVenda(e.target.value)}
+                    className="h-8 text-xs mt-1"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] text-slate-500 uppercase tracking-wide">Observação</label>
+                  <textarea
+                    placeholder="Detalhes do fechamento..."
+                    value={tarefaObservacao}
+                    onChange={(e) => setTarefaObservacao(e.target.value)}
+                    rows={2}
+                    className="w-full text-xs mt-1 px-2 py-1.5 border border-slate-200 rounded-md bg-white text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
+                  />
+                </div>
+              </div>
+            )}
 
             {/* Tipo + Prioridade */}
             <div className="grid grid-cols-2 gap-2">
@@ -490,7 +659,7 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
             <Button
               size="sm"
               className="w-full h-8 text-xs bg-blue-600 hover:bg-blue-700"
-              disabled={!tarefaTitulo.trim() || salvandoTarefa}
+              disabled={!tarefaTitulo.trim() || salvandoTarefa || (tarefaColuna === "concluida" && !tarefaValorVenda)}
               onClick={criarTarefa}
             >
               {salvandoTarefa ? (

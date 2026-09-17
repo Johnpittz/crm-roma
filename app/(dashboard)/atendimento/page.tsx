@@ -41,7 +41,8 @@ export default function AtendimentoPage() {
   const [painelContatoAberto, setPainelContatoAberto] = useState(true);
   const [etiquetaFiltro, setEtiquetaFiltro] = useState<string | null>(null);
   const [atendimentosComEtiquetas, setAtendimentosComEtiquetas] = useState<Record<string, string[]>>({});
-  const [userCargo, setUserCargo] = useState<string>("");
+  const [tarefasPorAtendimento, setTarefasPorAtendimento] = useState<Record<string, number>>({});
+  const [userCargo, setUserCargo] = useState("");
 
   const atendimentosFiltrados = atendimentos.filter((a) => {
     const termo = busca.toLowerCase().trim();
@@ -115,9 +116,27 @@ export default function AtendimentoPage() {
     }
   }, [supabase]);
 
+  // Buscar tarefas ativas por atendimento (para badge na lista)
+  const fetchTarefasAtendimentos = useCallback(async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const res = await fetch("/api/tarefas/resumo?modo=cliente", {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setTarefasPorAtendimento(data.porCliente || {});
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  }, [supabase]);
+
   useEffect(() => {
     fetchAtendimentos();
     fetchEtiquetasAtendimentos();
+    fetchTarefasAtendimentos();
     // Busca cargo do usuário para mostrar simular WhatsApp
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -130,12 +149,13 @@ export default function AtendimentoPage() {
         if (profile?.cargo) setUserCargo(profile.cargo);
       }
     })();
-  }, [fetchAtendimentos, fetchEtiquetasAtendimentos, supabase]);
+  }, [fetchAtendimentos, fetchEtiquetasAtendimentos, fetchTarefasAtendimentos, supabase]);
 
   // Polling: atualiza lista a cada 15s em background (sem loading visual)
   useEffect(() => {
     const interval = setInterval(() => {
       fetchAtendimentos(true); // silent = true
+      fetchTarefasAtendimentos();
     }, 15000);
     return () => clearInterval(interval);
   }, [fetchAtendimentos]);
@@ -220,6 +240,7 @@ export default function AtendimentoPage() {
               onRefresh={() => fetchAtendimentos(true)}
               onAbrirChat={handleAbrirChat}
               etiquetas={atendimentosComEtiquetas}
+              tarefasMap={tarefasPorAtendimento}
             />
           </div>
         </div>

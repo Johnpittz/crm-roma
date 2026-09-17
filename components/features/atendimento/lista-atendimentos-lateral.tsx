@@ -28,6 +28,7 @@ interface ListaAtendimentosLateralProps {
   onRefresh: () => void;
   onAbrirChat: (a: Atendimento) => void;
   etiquetas?: Record<string, string[]>;
+  tarefasMap?: Record<string, number>;
 }
 
 export function ListaAtendimentosLateral({
@@ -36,6 +37,7 @@ export function ListaAtendimentosLateral({
   onRefresh,
   onAbrirChat,
   etiquetas = {},
+  tarefasMap = {},
 }: ListaAtendimentosLateralProps) {
   const supabase = createClient();
 
@@ -96,6 +98,8 @@ export function ListaAtendimentosLateral({
                   .substring(0, 2)
                   .toUpperCase();
                 const nome = a.clientes?.nome_razao_social || a.nome_cliente || "Cliente";
+                const temTarefa = (tarefasMap[nome] || 0) > 0;
+                const qtdTarefas = tarefasMap[nome] || 0;
 
                 return (
                   <div
@@ -132,6 +136,11 @@ export function ListaAtendimentosLateral({
                           <span className={cn("text-sm font-semibold truncate", isNaoLido ? "text-slate-900" : "text-slate-700")}>
                             {nome}
                           </span>
+                          {temTarefa && (
+                            <Badge variant="secondary" className="text-[8px] px-1 py-0 h-3.5 bg-amber-100 text-amber-700 font-medium shrink-0">
+                              📋 {qtdTarefas}
+                            </Badge>
+                          )}
                           <span className="text-[11px] text-slate-400 whitespace-nowrap shrink-0">
                             {hora}
                           </span>

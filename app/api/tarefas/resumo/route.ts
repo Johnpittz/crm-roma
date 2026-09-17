@@ -29,6 +29,7 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const periodo = searchParams.get("periodo") || "dia"; // dia, mes, ano, personalizado
+    const modo = searchParams.get("modo"); // "cliente" retorna tarefas agrupadas por cliente
     const dataParam = searchParams.get("data") || new Date().toISOString().split("T")[0];
     const inicioParam = searchParams.get("inicio");
     const fimParam = searchParams.get("fim");
@@ -72,7 +73,7 @@ export async function GET(request: NextRequest) {
     // Busca todas as tarefas do período
     let query = supabaseAdmin
       .from("tarefas")
-      .select("id, resultado, valor_venda, coluna_kanban, data_inicio, created_at, vendedor_id")
+      .select("id, resultado, valor_venda, coluna_kanban, data_inicio, created_at, vendedor_id, cliente_nome")
       .gte("created_at", dataInicio)
       .lte("created_at", dataFim)
       .order("created_at", { ascending: true });
@@ -90,6 +91,19 @@ export async function GET(request: NextRequest) {
     }
 
     const todasTarefas = tarefas || [];
+
+    // Modo "cliente" — retorna tarefas ativas agrupadas por cliente
+    if (modo === "cliente") {
+      const tarefasAtivas = todasTarefas.filter((t) => t.coluna_kanban !== "concluida");
+      const porCliente: Record<string, number> = {};
+      tarefasAtivas.forEach((t: any) => {
+        const nome = t.cliente_nome || t.clientes?.nome_razao_social || null;
+        if (nome) {
+          porCliente[nome] = (porCliente[nome] || 0) + 1;
+        }
+      });
+      return NextResponse.json({ porCliente });
+    }
 
     // Calcula métricas
     const tarefasSucesso = todasTarefas.filter((t) => t.resultado === "sucesso");
