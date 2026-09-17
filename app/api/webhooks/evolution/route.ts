@@ -578,32 +578,27 @@ async function buscarClientePorTelefone(telefoneLimpo: string) {
 }
 
 /**
- * Busca atendimento aberto existente para o telefone + instância
- * Both exact and fallback queries filter by instance_name
+ * Busca atendimento aberto existente para o telefone
  */
-async function buscarAtendimentoAberto(telefoneLimpo: string, instanceName: string | null) {
-  // Primeiro: busca exata (rápida) — filtra por telefone E instância
+async function buscarAtendimentoAberto(telefoneLimpo: string, _instanceName: string | null) {
+  // Primeiro: busca exata (rápida)
   const { data: exato } = await getSupabase()
     .from("atendimentos")
     .select("id, nome_cliente, cliente_id, vendedor_id, instance_name")
     .eq("telefone_cliente", telefoneLimpo)
     .eq("status", "aberto")
-    .eq("instance_name", instanceName)
     .limit(1)
     .single();
 
   if (exato) return exato;
 
   // Segundo: busca ampla — compara apenas os últimos 8 dígitos (tolerante a formatos)
-  // Também filtra por instance_name
   const ultimos8 = telefoneLimpo.slice(-8);
   if (ultimos8.length < 8) return null;
-
   const { data: candidatos } = await getSupabase()
     .from("atendimentos")
     .select("id, nome_cliente, cliente_id, vendedor_id, telefone_cliente, instance_name")
     .eq("status", "aberto")
-    .eq("instance_name", instanceName)
     .order("ultima_mensagem_data", { ascending: false })
     .limit(50);
 
@@ -730,7 +725,6 @@ async function chamarAISales(telefone: string, instanceName: string | null) {
       .select("id, nome_cliente")
       .eq("telefone_cliente", telefone)
       .eq("status", "aberto");
-    if (instanceName) query = query.eq("instance_name", instanceName);
 
     const { data: atendimento, error: errAtend } = await query.single();
     console.log(`[AI Sales] Atendimento encontrado:`, atendimento ? `${atendimento.id} (${atendimento.nome_cliente})` : "NENHUM", errAtend ? `erro: ${errAtend.message}` : "");
