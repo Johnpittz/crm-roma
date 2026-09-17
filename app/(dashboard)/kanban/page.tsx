@@ -4,8 +4,9 @@ import { useState, useEffect, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, X, LayoutDashboard, Columns3 } from "lucide-react";
+import { Search, X, LayoutDashboard, Columns3, Target } from "lucide-react";
 import { KanbanTarefas } from "@/components/features/atendimento/kanban-tarefas";
+import { KanbanFunil } from "@/components/features/atendimento/kanban-funil";
 import { DashboardKanban } from "@/components/features/atendimento/dashboard-kanban";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
@@ -36,8 +37,8 @@ export default function KanbanPage() {
 
 function KanbanContent() {
   const searchParams = useSearchParams();
-  const initialView = searchParams.get("tab") === "kanban" ? "kanban" : "dashboard";
-  const [view, setView] = useState<"dashboard" | "kanban">(initialView);
+  const initialView = searchParams.get("tab") === "kanban" ? "kanban" : searchParams.get("tab") === "tarefas" ? "tarefas" : "dashboard";
+  const [view, setView] = useState<"dashboard" | "kanban" | "tarefas">(initialView);
   const [atendimentos, setAtendimentos] = useState<Atendimento[]>([]);
   const [loadingAtendimentos, setLoadingAtendimentos] = useState(true);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -136,6 +137,20 @@ function KanbanContent() {
             <Columns3 className="h-4 w-4" />
             Kanban
           </Button>
+          <Button
+            size="sm"
+            variant={view === "tarefas" ? "default" : "ghost"}
+            className={cn(
+              "h-8 text-xs px-3 gap-1",
+              view === "tarefas"
+                ? "bg-white shadow-sm text-slate-900"
+                : "text-slate-500 hover:text-slate-700"
+            )}
+            onClick={() => setView("tarefas")}
+          >
+            <Target className="h-4 w-4" />
+            Tarefas
+          </Button>
         </div>
 
         {/* FILTROS - só aparece no modo Kanban */}
@@ -190,7 +205,7 @@ function KanbanContent() {
           <div className="h-full overflow-y-auto pr-2">
             <DashboardKanban />
           </div>
-        ) : (
+        ) : view === "kanban" ? (
           <KanbanTarefas
             atendimentos={atendimentosFiltrados}
             onAbrirChat={handleAbrirChat}
@@ -200,6 +215,8 @@ function KanbanContent() {
             dataInicio={dataInicio}
             dataFim={dataFim}
           />
+        ) : (
+          <KanbanFunil />
         )}
       </div>
     </div>
