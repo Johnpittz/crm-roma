@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Pencil, Phone, Mail, Calendar, FileText, Plus, ChevronDown, ChevronRight, Check, X, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -94,7 +94,8 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
   const [tarefaHora, setTarefaHora] = useState("");
   const [tarefaDescricao, setTarefaDescricao] = useState("");
   const [salvandoTarefa, setSalvandoTarefa] = useState(false);
-  const supabase = createClient();
+  const [tarefaColuna, setTarefaColuna] = useState("a_fazer");
+  const supabase = useMemo(() => createClient(), []);
 
   // Buscar etiquetas vinculadas ao atendimento
   const fetchEtiquetas = useCallback(async () => {
@@ -131,6 +132,7 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
       setTarefaData(new Date().toISOString().split("T")[0]);
       setTarefaHora("");
       setTarefaDescricao("");
+      setTarefaColuna("a_fazer");
     } else {
       setEtiquetasVinculadas([]);
     }
@@ -211,14 +213,15 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
           data_inicio: tarefaData || null,
           hora_inicio: tarefaHora || null,
           descricao: tarefaDescricao.trim() || null,
-          coluna_kanban: "a_fazer",
+          coluna_kanban: tarefaColuna,
           origem_lead: "whatsapp",
         }),
       });
 
       if (res.ok) {
+        const colunasMap: Record<string, string> = { a_fazer: "A Fazer", em_andamento: "Andamento", concluida: "Concluído" };
         toast.success("Tarefa criada!", {
-          description: `"${tarefaTitulo.trim()}" foi adicionada ao Kanban em "A Fazer"`,
+          description: `"${tarefaTitulo.trim()}" foi adicionada ao Kanban em "${colunasMap[tarefaColuna] || tarefaColuna}"`,
         });
         // Limpa formulário
         setTarefaTitulo("");
@@ -227,6 +230,7 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
         setTarefaData(hoje);
         setTarefaHora("");
         setTarefaDescricao("");
+        setTarefaColuna("a_fazer");
       } else {
         const err = await res.json();
         toast.error("Erro ao criar tarefa", { description: err.error || "Tente novamente" });
@@ -398,6 +402,20 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
                 onChange={(e) => setTarefaTitulo(e.target.value)}
                 className="h-8 text-xs mt-1"
               />
+            </div>
+
+            {/* Etapa Kanban */}
+            <div>
+              <label className="text-[10px] text-slate-500 uppercase tracking-wide">Etapa no Kanban</label>
+              <select
+                value={tarefaColuna}
+                onChange={(e) => setTarefaColuna(e.target.value)}
+                className="w-full h-8 text-xs mt-1 px-2 border border-slate-200 rounded-md bg-white text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              >
+                <option value="a_fazer">📋 A Fazer</option>
+                <option value="em_andamento">🔄 Andamento</option>
+                <option value="concluida">✅ Concluído</option>
+              </select>
             </div>
 
             {/* Tipo + Prioridade */}
