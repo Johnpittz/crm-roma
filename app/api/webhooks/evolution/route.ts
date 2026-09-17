@@ -705,6 +705,23 @@ async function chamarAISales(telefone: string, instanceName: string | null) {
     return;
   }
 
+  // Verifica se o bot está ligado
+  try {
+    const { data: config } = await getSupabase()
+      .from("ai_sales_config")
+      .select("enabled")
+      .limit(1)
+      .single();
+
+    if (config && !config.enabled) {
+      console.log("[AI Sales] Bot DESLIGADO pelo gestor, pulando");
+      return;
+    }
+  } catch (err) {
+    // Se a tabela não existe, assume ligado
+    console.log("[AI Sales] Config não encontrada, bot assume LIGADO");
+  }
+
   try {
     // 1. Busca atendimento aberto
     console.log(`[AI Sales] Buscando atendimento para ${telefone}`);

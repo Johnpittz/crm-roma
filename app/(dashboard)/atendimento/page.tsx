@@ -10,6 +10,7 @@ import { PainelContato } from "@/components/features/atendimento/painel-contato"
 import { FiltroEtiquetas } from "@/components/features/atendimento/filtro-etiquetas";
 import { Search, Calendar, HelpCircle, Bell } from "lucide-react";
 import { SimularWhatsAppModal } from "@/components/features/atendimento/simular-whatsapp-modal";
+import { ToggleAISales } from "@/components/features/atendimento/toggle-ai-sales";
 import { createClient } from "@/lib/supabase/client";
 
 interface Atendimento {
@@ -193,6 +194,7 @@ export default function AtendimentoPage() {
       {/* HEADER COMPACTO — Toggle + Performance + Data + Busca + Ícones */}
       <div className="shrink-0 flex items-center gap-3 mb-2">
         <TogglePresenca />
+        <ToggleAISales />
         <PerformanceRealTime />
 
         <div className="flex items-center gap-3 ml-auto shrink-0">
