@@ -698,9 +698,9 @@ export function DashboardKanban() {
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-sm font-semibold text-slate-700">Tarefas Recentes</CardTitle>
-              <Button variant="ghost" size="sm" className="text-xs text-blue-600">
+              <a href="/kanban" className="text-xs text-blue-600 hover:text-blue-800">
                 Ver todas →
-              </Button>
+              </a>
             </div>
           </CardHeader>
           <CardContent>
