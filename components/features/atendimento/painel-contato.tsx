@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Pencil, Phone, Mail, Calendar, FileText, Plus, ChevronDown, ChevronRight, Check, X } from "lucide-react";
+import { Pencil, Phone, Mail, Calendar, FileText, Plus, ChevronDown, ChevronRight, Check, X, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import { ETIQUETAS_DISPONIVEIS } from "@/lib/etiquetas";
+import { toast } from "sonner";
 
 interface Atendimento {
   id: string;
@@ -83,6 +84,16 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
   const [etiquetasVinculadas, setEtiquetasVinculadas] = useState<string[]>([]);
   const [loadingEtiquetas, setLoadingEtiquetas] = useState(false);
   const [salvando, setSalvando] = useState<string | null>(null);
+
+  // Estado do formulário de criar tarefa
+  const hoje = new Date().toISOString().split("T")[0];
+  const [tarefaTitulo, setTarefaTitulo] = useState("");
+  const [tarefaTipo, setTarefaTipo] = useState("whatsapp");
+  const [tarefaPrioridade, setTarefaPrioridade] = useState("media");
+  const [tarefaData, setTarefaData] = useState(hoje);
+  const [tarefaHora, setTarefaHora] = useState("");
+  const [tarefaDescricao, setTarefaDescricao] = useState("");
+  const [salvandoTarefa, setSalvandoTarefa] = useState(false);
   const supabase = createClient();
 
   // Buscar etiquetas vinculadas ao atendimento
@@ -113,6 +124,13 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
     if (atendimento) {
       fetchEtiquetas();
       setEtiquetasBusca("");
+      // Reset formulário de tarefa
+      setTarefaTitulo("");
+      setTarefaTipo("whatsapp");
+      setTarefaPrioridade("media");
+      setTarefaData(new Date().toISOString().split("T")[0]);
+      setTarefaHora("");
+      setTarefaDescricao("");
     } else {
       setEtiquetasVinculadas([]);
     }
@@ -167,6 +185,57 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
       console.error("Erro ao remover etiqueta:", err);
     } finally {
       setSalvando(null);
+    }
+  };
+
+  // Criar tarefa no Kanban
+  const criarTarefa = async () => {
+    if (!atendimento || !tarefaTitulo.trim()) return;
+    setSalvandoTarefa(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const res = await fetch("/api/tarefas", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          titulo: tarefaTitulo.trim(),
+          cliente_nome: nome,
+          cliente_id: atendimento.cliente_id || null,
+          tipo: tarefaTipo,
+          prioridade: tarefaPrioridade,
+          data_inicio: tarefaData || null,
+          hora_inicio: tarefaHora || null,
+          descricao: tarefaDescricao.trim() || null,
+          coluna_kanban: "a_fazer",
+          origem_lead: "whatsapp",
+        }),
+      });
+
+      if (res.ok) {
+        toast.success("Tarefa criada!", {
+          description: `"${tarefaTitulo.trim()}" foi adicionada ao Kanban em "A Fazer"`,
+        });
+        // Limpa formulário
+        setTarefaTitulo("");
+        setTarefaTipo("whatsapp");
+        setTarefaPrioridade("media");
+        setTarefaData(hoje);
+        setTarefaHora("");
+        setTarefaDescricao("");
+      } else {
+        const err = await res.json();
+        toast.error("Erro ao criar tarefa", { description: err.error || "Tente novamente" });
+      }
+    } catch (err) {
+      console.error("Erro ao criar tarefa:", err);
+      toast.error("Erro ao criar tarefa");
+    } finally {
+      setSalvandoTarefa(false);
     }
   };
 
@@ -314,6 +383,105 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
                 </p>
               )}
             </div>
+          </div>
+        </Secao>
+
+        {/* Criar Tarefa */}
+        <Secao titulo="Criar Tarefa">
+          <div className="space-y-3">
+            {/* Título */}
+            <div>
+              <label className="text-[10px] text-slate-500 uppercase tracking-wide">Título *</label>
+              <Input
+                placeholder="Ex: Follow up proposta"
+                value={tarefaTitulo}
+                onChange={(e) => setTarefaTitulo(e.target.value)}
+                className="h-8 text-xs mt-1"
+              />
+            </div>
+
+            {/* Tipo + Prioridade */}
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-[10px] text-slate-500 uppercase tracking-wide">Tipo</label>
+                <select
+                  value={tarefaTipo}
+                  onChange={(e) => setTarefaTipo(e.target.value)}
+                  className="w-full h-8 text-xs mt-1 px-2 border border-slate-200 rounded-md bg-white text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                >
+                  <option value="whatsapp">💬 WhatsApp</option>
+                  <option value="ligacao">📞 Ligação</option>
+                  <option value="email">📧 Email</option>
+                  <option value="visita">🏢 Visita</option>
+                  <option value="reuniao">🤝 Reunião</option>
+                  <option value="follow_up">🔄 Follow-up</option>
+                  <option value="prospeccao">🔍 Prospecção</option>
+                  <option value="outro">📋 Outro</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] text-slate-500 uppercase tracking-wide">Prioridade</label>
+                <select
+                  value={tarefaPrioridade}
+                  onChange={(e) => setTarefaPrioridade(e.target.value)}
+                  className="w-full h-8 text-xs mt-1 px-2 border border-slate-200 rounded-md bg-white text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                >
+                  <option value="baixa">Baixa</option>
+                  <option value="media">Média</option>
+                  <option value="alta">Alta</option>
+                  <option value="urgente">Urgente</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Data + Hora */}
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-[10px] text-slate-500 uppercase tracking-wide">Data</label>
+                <Input
+                  type="date"
+                  value={tarefaData}
+                  onChange={(e) => setTarefaData(e.target.value)}
+                  className="h-8 text-xs mt-1"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] text-slate-500 uppercase tracking-wide">Hora</label>
+                <Input
+                  type="time"
+                  value={tarefaHora}
+                  onChange={(e) => setTarefaHora(e.target.value)}
+                  className="h-8 text-xs mt-1"
+                />
+              </div>
+            </div>
+
+            {/* Descrição */}
+            <div>
+              <label className="text-[10px] text-slate-500 uppercase tracking-wide">Descrição</label>
+              <textarea
+                placeholder="Observações..."
+                value={tarefaDescricao}
+                onChange={(e) => setTarefaDescricao(e.target.value)}
+                rows={2}
+                className="w-full text-xs mt-1 px-2 py-1.5 border border-slate-200 rounded-md bg-white text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
+              />
+            </div>
+
+            {/* Botão criar */}
+            <Button
+              size="sm"
+              className="w-full h-8 text-xs bg-blue-600 hover:bg-blue-700"
+              disabled={!tarefaTitulo.trim() || salvandoTarefa}
+              onClick={criarTarefa}
+            >
+              {salvandoTarefa ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+              ) : (
+                <Plus className="h-3.5 w-3.5 mr-1.5" />
+              )}
+              {salvandoTarefa ? "Criando..." : "Criar Tarefa"}
+            </Button>
           </div>
         </Secao>
 
