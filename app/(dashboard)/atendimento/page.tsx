@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback } from "react";
 import { Input } from "@/components/ui/input";
 import { ListaAtendimentosLateral } from "@/components/features/atendimento/lista-atendimentos-lateral";
 import { ChatInline } from "@/components/features/atendimento/chat-inline";
-import { TogglePresenca } from "@/components/features/atendimento/toggle-presenca";
 import { PainelContato } from "@/components/features/atendimento/painel-contato";
 import { FiltroEtiquetas } from "@/components/features/atendimento/filtro-etiquetas";
 import { Search, Calendar, HelpCircle, Bell } from "lucide-react";
@@ -191,9 +190,8 @@ export default function AtendimentoPage() {
   return (
     <div className="h-[calc(100vh-9rem)] flex flex-col overflow-hidden">
       
-      {/* HEADER COMPACTO — Toggle + Performance + Data + Busca + Ícones */}
+      {/* HEADER COMPACTO — IA + Data + Busca + Ícones */}
       <div className="shrink-0 flex items-center gap-3 mb-2">
-        <TogglePresenca />
         <ToggleAISales />
 
         <div className="flex items-center gap-3 ml-auto shrink-0">
