@@ -698,7 +698,7 @@ export function DashboardKanban() {
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-sm font-semibold text-slate-700">Tarefas Recentes</CardTitle>
-              <a href="/kanban?tab=kanban" className="text-xs text-blue-600 hover:text-blue-800">
+              <a href="/kanban?tab=tarefas" className="text-xs text-blue-600 hover:text-blue-800">
                 Ver todas →
               </a>
             </div>
