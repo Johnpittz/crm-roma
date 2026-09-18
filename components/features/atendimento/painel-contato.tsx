@@ -258,7 +258,7 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
           id: tarefaId,
           coluna_kanban: "concluida",
           valor_venda: valor,
-          resultado: "venda_fechada",
+          resultado: "sucesso",
           data_fim: new Date().toISOString().split("T")[0],
           hora_fim: new Date().toTimeString().slice(0, 5),
         }),
