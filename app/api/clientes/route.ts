@@ -1,8 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, createClient as createServiceClient } from "@supabase/supabase-js";
 
 const SUPABASE_URL = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").trim();
 const ANON_KEY = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "").trim();
+const SERVICE_KEY = (process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
+
+export async function GET(request: NextRequest) {
+  try {
+    const authHeader = request.headers.get("authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
+    }
+
+    const supabase = createServiceClient(SUPABASE_URL, SERVICE_KEY);
+    const { data: clientes, error } = await supabase
+      .from("clientes")
+      .select("id", { count: "exact", head: true });
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ clientes: [], total: clientes?.length || 0 });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message || "Erro interno" }, { status: 500 });
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {

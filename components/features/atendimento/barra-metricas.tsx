@@ -39,7 +39,7 @@ export function BarraMetricasAtendimento() {
           headers: { Authorization: `Bearer ${session.access_token}` },
         });
         const clientesData = await clientesRes.json();
-        const totalClientes = (clientesData.clientes || []).length;
+        const totalClientes = clientesData.total || (clientesData.clientes || []).length;
 
         const agora = new Date();
         const inicioMes = new Date(agora.getFullYear(), agora.getMonth(), 1).toISOString();
