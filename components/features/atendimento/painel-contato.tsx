@@ -99,6 +99,9 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
   const [tarefaObservacao, setTarefaObservacao] = useState("");
   const [salvandoTarefa, setSalvandoTarefa] = useState(false);
 
+  // Modo concluir — pré-preenche o formulário para concluir uma tarefa existente
+  const [concluindoTarefaId, setConcluindoTarefaId] = useState<string | null>(null);
+
   // Tarefas vinculadas ao cliente deste atendimento
   interface TarefaCliente {
     id: string;
@@ -176,23 +179,30 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
       setLoadingEtiquetas(false);
     }
   }, [atendimento?.id, supabase]);
+
+  // Buscar etiquetas quando troca de conversa
   useEffect(() => {
     if (atendimento) {
       fetchEtiquetas();
       setEtiquetasBusca("");
-      // Reset formulário de tarefa APENAS quando troca de conversa (id diferente)
-      setTarefaTitulo("");
-      setTarefaTipo("whatsapp");
-      setTarefaPrioridade("media");
-      setTarefaData(new Date().toISOString().split("T")[0]);
-      setTarefaHora("");
-      setTarefaDescricao("");
-      setTarefaColuna("a_fazer");
     } else {
       setEtiquetasVinculadas([]);
       setTarefasCliente([]);
     }
-  }, [atendimento?.id, fetchEtiquetas]);
+  }, [atendimento?.id]);
+
+  // Reset formulário APENAS quando troca de conversa
+  useEffect(() => {
+    setTarefaTitulo("");
+    setTarefaTipo("whatsapp");
+    setTarefaPrioridade("media");
+    setTarefaData(new Date().toISOString().split("T")[0]);
+    setTarefaHora("");
+    setTarefaDescricao("");
+    setTarefaColuna("a_fazer");
+    setTarefaValorVenda("");
+    setTarefaObservacao("");
+  }, [atendimento?.id]);
 
   // Buscar tarefas do cliente quando o atendimento muda
   useEffect(() => {
@@ -253,21 +263,34 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
     }
   };
 
-  // Criar tarefa no Kanban
+  // Criar tarefa no Kanban ou concluir existente
   const criarTarefa = async () => {
     if (!atendimento || !tarefaTitulo.trim()) return;
+    // Se está concluindo, valor é obrigatório
+    if (concluindoTarefaId && !tarefaValorVenda) {
+      toast.error("Valor da venda é obrigatório para concluir");
+      return;
+    }
     setSalvandoTarefa(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
+      const isConcluindo = !!concluindoTarefaId;
+
       const res = await fetch("/api/tarefas", {
-        method: "POST",
+        method: isConcluindo ? "PATCH" : "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({
+        body: JSON.stringify(isConcluindo ? {
+          id: concluindoTarefaId,
+          coluna_kanban: "concluida",
+          valor_venda: parseFloat(tarefaValorVenda) || null,
+          resultado: "venda_fechada",
+          observacao_resultado: tarefaObservacao.trim() || null,
+        } : {
           titulo: tarefaTitulo.trim(),
           cliente_nome: nome,
           cliente_id: atendimento.cliente_id || null,
@@ -286,9 +309,15 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
 
       if (res.ok) {
         const colunasMap: Record<string, string> = { a_fazer: "A Fazer", em_andamento: "Andamento", concluida: "Concluído" };
-        toast.success("Tarefa criada!", {
-          description: `"${tarefaTitulo.trim()}" foi adicionada ao Kanban em "${colunasMap[tarefaColuna] || tarefaColuna}"`,
-        });
+        if (isConcluindo) {
+          toast.success("Tarefa concluída!", {
+            description: `"${tarefaTitulo}" foi movida para "Concluído"`,
+          });
+        } else {
+          toast.success("Tarefa criada!", {
+            description: `"${tarefaTitulo.trim()}" foi adicionada ao Kanban em "${colunasMap[tarefaColuna] || tarefaColuna}"`,
+          });
+        }
         // Limpa formulário
         setTarefaTitulo("");
         setTarefaTipo("whatsapp");
@@ -299,14 +328,15 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
         setTarefaColuna("a_fazer");
         setTarefaValorVenda("");
         setTarefaObservacao("");
+        setConcluindoTarefaId(null);
         fetchTarefasCliente();
       } else {
         const err = await res.json();
-        toast.error("Erro ao criar tarefa", { description: err.error || "Tente novamente" });
+        toast.error("Erro ao salvar tarefa", { description: err.error || "Tente novamente" });
       }
     } catch (err) {
-      console.error("Erro ao criar tarefa:", err);
-      toast.error("Erro ao criar tarefa");
+      console.error("Erro ao salvar tarefa:", err);
+      toast.error("Erro ao salvar tarefa");
     } finally {
       setSalvandoTarefa(false);
     }
@@ -489,32 +519,40 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
                     )}
                     {/* Ações rápidas */}
                     {t.coluna_kanban === "a_fazer" && (
-                      <div className="flex gap-2 mt-2">
+                      <div className="flex gap-1 mt-1.5">
                         <button
                           onClick={() => atualizarTarefa(t.id, "em_andamento")}
-                          className="text-xs px-3 py-1.5 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors font-medium"
+                          className="text-[10px] px-2 py-0.5 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors"
                         >
                           ▶ Iniciar
                         </button>
                         <button
-                          onClick={() => atualizarTarefa(t.id, "concluida", { resultado: "venda_fechada" })}
-                          className="text-xs px-3 py-1.5 bg-emerald-100 text-emerald-700 rounded-md hover:bg-emerald-200 transition-colors font-medium"
+                          onClick={() => {
+                            setConcluindoTarefaId(t.id);
+                            setTarefaTitulo(t.titulo);
+                            setTarefaColuna("concluida");
+                          }}
+                          className="text-[10px] px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded hover:bg-emerald-200 transition-colors"
                         >
                           ✓ Concluir
                         </button>
                       </div>
                     )}
                     {t.coluna_kanban === "em_andamento" && (
-                      <div className="flex gap-2 mt-2">
+                      <div className="flex gap-1 mt-1.5">
                         <button
-                          onClick={() => atualizarTarefa(t.id, "concluida", { resultado: "venda_fechada" })}
-                          className="text-xs px-3 py-1.5 bg-emerald-100 text-emerald-700 rounded-md hover:bg-emerald-200 transition-colors font-medium"
+                          onClick={() => {
+                            setConcluindoTarefaId(t.id);
+                            setTarefaTitulo(t.titulo);
+                            setTarefaColuna("concluida");
+                          }}
+                          className="text-[10px] px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded hover:bg-emerald-200 transition-colors"
                         >
                           ✓ Concluir
                         </button>
                         <button
                           onClick={() => atualizarTarefa(t.id, "a_fazer")}
-                          className="text-xs px-3 py-1.5 bg-slate-100 text-slate-600 rounded-md hover:bg-slate-200 transition-colors font-medium"
+                          className="text-[10px] px-2 py-0.5 bg-slate-100 text-slate-600 rounded hover:bg-slate-200 transition-colors"
                         >
                           ← Voltar
                         </button>
@@ -527,8 +565,8 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
           )}
         </Secao>
 
-        {/* Criar Tarefa */}
-        <Secao titulo="Criar Tarefa">
+        {/* Criar Tarefa / Concluir Tarefa */}
+        <Secao titulo={concluindoTarefaId ? "Concluir Tarefa" : "Criar Tarefa"}>
           <div className="space-y-3">
             {/* Título */}
             <div>
@@ -542,21 +580,23 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
             </div>
 
             {/* Etapa Kanban */}
-            <div>
-              <label className="text-[10px] text-slate-500 uppercase tracking-wide">Etapa no Kanban</label>
-              <select
-                value={tarefaColuna}
-                onChange={(e) => setTarefaColuna(e.target.value)}
-                className="w-full h-8 text-xs mt-1 px-2 border border-slate-200 rounded-md bg-white text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              >
-                <option value="a_fazer">📋 A Fazer</option>
-                <option value="em_andamento">🔄 Andamento</option>
-                <option value="concluida">✅ Concluído</option>
-              </select>
-            </div>
+            {!concluindoTarefaId && (
+              <div>
+                <label className="text-[10px] text-slate-500 uppercase tracking-wide">Etapa no Kanban</label>
+                <select
+                  value={tarefaColuna}
+                  onChange={(e) => setTarefaColuna(e.target.value)}
+                  className="w-full h-8 text-xs mt-1 px-2 border border-slate-200 rounded-md bg-white text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                >
+                  <option value="a_fazer">📋 A Fazer</option>
+                  <option value="em_andamento">🔄 Andamento</option>
+                  <option value="concluida">✅ Concluído</option>
+                </select>
+              </div>
+            )}
 
-            {/* Campos extras ao concluir */}
-            {tarefaColuna === "concluida" && (
+            {/* Campos de venda — sempre visível no modo concluir */}
+            {(tarefaColuna === "concluida" || concluindoTarefaId) && (
               <div className="space-y-2 p-2 bg-emerald-50 rounded-md border border-emerald-200">
                 <p className="text-[10px] text-emerald-700 font-medium uppercase tracking-wide">Dados da Venda</p>
                 <div>
@@ -652,11 +692,14 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
               />
             </div>
 
-            {/* Botão criar */}
+            {/* Botão criar/concluir */}
             <Button
               size="sm"
-              className="w-full h-8 text-xs bg-blue-600 hover:bg-blue-700"
-              disabled={!tarefaTitulo.trim() || salvandoTarefa || (tarefaColuna === "concluida" && !tarefaValorVenda)}
+              className={cn(
+                "w-full h-8 text-xs",
+                concluindoTarefaId ? "bg-emerald-600 hover:bg-emerald-700" : "bg-blue-600 hover:bg-blue-700"
+              )}
+              disabled={!tarefaTitulo.trim() || salvandoTarefa || (!tarefaValorVenda && !!concluindoTarefaId)}
               onClick={criarTarefa}
             >
               {salvandoTarefa ? (
@@ -664,8 +707,22 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
               ) : (
                 <Plus className="h-3.5 w-3.5 mr-1.5" />
               )}
-              {salvandoTarefa ? "Criando..." : "Criar Tarefa"}
+              {salvandoTarefa ? "Salvando..." : concluindoTarefaId ? "✓ Concluir Tarefa" : "Criar Tarefa"}
             </Button>
+            {concluindoTarefaId && (
+              <button
+                onClick={() => {
+                  setConcluindoTarefaId(null);
+                  setTarefaTitulo("");
+                  setTarefaColuna("a_fazer");
+                  setTarefaValorVenda("");
+                  setTarefaObservacao("");
+                }}
+                className="w-full text-[10px] text-slate-400 hover:text-slate-600 py-1"
+              >
+                Cancelar
+              </button>
+            )}
           </div>
         </Secao>
 
