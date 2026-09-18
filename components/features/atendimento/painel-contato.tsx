@@ -51,12 +51,8 @@ function Secao({ titulo, children, badge }: SecaoProps) {
         <span>{titulo}</span>
         <div className="flex items-center gap-2">
           {badge !== undefined && <span className="text-xs text-slate-400">{badge}</span>}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-6 w-6 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-            onClick={(e) => { e.stopPropagation(); setAberta(!aberta); }}
-          >
+          <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+            onClick={(e) => { e.stopPropagation(); setAberta(!aberta); }}>
             <Plus className="h-4 w-4" />
           </Button>
           {aberta ? <ChevronDown className="h-3.5 w-3.5 text-slate-400" /> : <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
@@ -67,47 +63,40 @@ function Secao({ titulo, children, badge }: SecaoProps) {
   );
 }
 
-interface TarefaCliente {
-  id: string;
-  titulo: string;
-  tipo: string;
-  prioridade: string;
-  coluna_kanban: string;
-  data_inicio: string | null;
-  hora_inicio: string | null;
-  valor_venda: number | null;
-  resultado: string | null;
-}
-
 export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiquetaChange }: PainelContatoProps) {
   const supabase = useMemo(() => createClient(), []);
 
-  // Estado etiquetas
+  // ── Etiquetas ──
   const [etiquetasBusca, setEtiquetasBusca] = useState("");
   const [etiquetasVinculadas, setEtiquetasVinculadas] = useState<string[]>([]);
   const [loadingEtiquetas, setLoadingEtiquetas] = useState(false);
   const [salvando, setSalvando] = useState<string | null>(null);
 
-  // Estado formulário criar tarefa
+  // ── Formulário Criar Tarefa ──
   const hoje = new Date().toISOString().split("T")[0];
   const [tarefaTitulo, setTarefaTitulo] = useState("");
   const [tarefaTipo, setTarefaTipo] = useState("whatsapp");
   const [tarefaPrioridade, setTarefaPrioridade] = useState("media");
   const [tarefaData, setTarefaData] = useState(hoje);
   const [tarefaHora, setTarefaHora] = useState("");
-  const [tarefaDescricao, setTarefaDescricao] = useState("");
   const [tarefaColuna, setTarefaColuna] = useState("a_fazer");
-  const [tarefaValorVenda, setTarefaValorVenda] = useState("");
-  const [tarefaObservacao, setTarefaObservacao] = useState("");
   const [salvandoTarefa, setSalvandoTarefa] = useState(false);
 
-  // Modo concluir
-  const [concluindoTarefaId, setConcluindoTarefaId] = useState<string | null>(null);
-
-  // Tarefas do cliente
+  // ── Tarefas do cliente ──
+  interface TarefaCliente {
+    id: string;
+    titulo: string;
+    tipo: string;
+    prioridade: string;
+    coluna_kanban: string;
+    data_inicio: string | null;
+    hora_inicio: string | null;
+    valor_venda: number | null;
+    resultado: string | null;
+  }
   const [tarefasCliente, setTarefasCliente] = useState<TarefaCliente[]>([]);
-  const [loadingTarefas, setLoadingTarefas] = useState(false);
 
+  // ── Dados do atendimento ──
   const nome = atendimento?.clientes?.nome_razao_social || atendimento?.nome_cliente || "Cliente";
   const telefone = atendimento?.clientes?.telefone || atendimento?.clientes?.celular || atendimento?.telefone_cliente || "";
   const email = (atendimento?.clientes as any)?.email || "";
@@ -115,7 +104,7 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
   const iniciais = nome.substring(0, 2).toUpperCase();
   const statusAberto = atendimento?.status === "aberto";
 
-  // Buscar etiquetas
+  // ── Fetch etiquetas ──
   const fetchEtiquetas = useCallback(async () => {
     if (!atendimento) return;
     setLoadingEtiquetas(true);
@@ -136,12 +125,11 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
     }
   }, [atendimento?.id, supabase]);
 
-  // Buscar tarefas do cliente
+  // ── Fetch tarefas do cliente ──
   const fetchTarefasCliente = useCallback(async () => {
     if (!atendimento) return;
     const nomeCliente = atendimento.clientes?.nome_razao_social || atendimento.nome_cliente;
     if (!nomeCliente) return;
-    setLoadingTarefas(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
@@ -154,12 +142,10 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
       }
     } catch (err) {
       console.error("Erro ao buscar tarefas:", err);
-    } finally {
-      setLoadingTarefas(false);
     }
   }, [atendimento?.id, supabase]);
 
-  // Reset tudo quando troca de conversa
+  // ── Reset ao trocar de conversa ──
   useEffect(() => {
     if (atendimento) {
       fetchEtiquetas();
@@ -170,18 +156,14 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
       setTarefaPrioridade("media");
       setTarefaData(new Date().toISOString().split("T")[0]);
       setTarefaHora("");
-      setTarefaDescricao("");
       setTarefaColuna("a_fazer");
-      setTarefaValorVenda("");
-      setTarefaObservacao("");
-      setConcluindoTarefaId(null);
     } else {
       setEtiquetasVinculadas([]);
       setTarefasCliente([]);
     }
-  }, [atendimento?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [atendimento?.id, fetchEtiquetas, fetchTarefasCliente]);
 
-  // Vincular etiqueta
+  // ── Vincular / remover etiqueta ──
   const vincularEtiqueta = async (etiqueta: string) => {
     if (!atendimento) return;
     setSalvando(etiqueta);
@@ -193,18 +175,10 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
         body: JSON.stringify({ atendimento_id: atendimento.id, etiqueta }),
       });
-      if (res.ok) {
-        setEtiquetasVinculadas((prev) => [...prev, etiqueta]);
-        onEtiquetaChange?.();
-      }
-    } catch (err) {
-      console.error("Erro ao vincular etiqueta:", err);
-    } finally {
-      setSalvando(null);
-    }
+      if (res.ok) { setEtiquetasVinculadas((p) => [...p, etiqueta]); onEtiquetaChange?.(); }
+    } catch (err) { console.error(err); } finally { setSalvando(null); }
   };
 
-  // Remover etiqueta
   const removerEtiqueta = async (etiqueta: string) => {
     if (!atendimento) return;
     setSalvando(etiqueta);
@@ -215,19 +189,85 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
         method: "DELETE",
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
-      if (res.ok) {
-        setEtiquetasVinculadas((prev) => prev.filter((e) => e !== etiqueta));
-        onEtiquetaChange?.();
-      }
-    } catch (err) {
-      console.error("Erro ao remover etiqueta:", err);
-    } finally {
-      setSalvando(null);
-    }
+      if (res.ok) { setEtiquetasVinculadas((p) => p.filter((e) => e !== etiqueta)); onEtiquetaChange?.(); }
+    } catch (err) { console.error(err); } finally { setSalvando(null); }
   };
 
-  // Atualizar tarefa (mudar coluna)
-  const atualizarTarefa = async (tarefaId: string, novaColuna: string) => {
+  // ── Criar tarefa ──
+  const criarTarefa = async () => {
+    if (!atendimento || !tarefaTitulo.trim()) return;
+    setSalvandoTarefa(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const res = await fetch("/api/tarefas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({
+          titulo: tarefaTitulo.trim(),
+          cliente_nome: nome,
+          cliente_id: atendimento.cliente_id || null,
+          tipo: tarefaTipo,
+          prioridade: tarefaPrioridade,
+          data_inicio: tarefaData || null,
+          hora_inicio: tarefaHora || null,
+          coluna_kanban: tarefaColuna,
+          origem_lead: "whatsapp",
+        }),
+      });
+      if (res.ok) {
+        const colunasMap: Record<string, string> = { a_fazer: "A Fazer", em_andamento: "Andamento" };
+        toast.success("Tarefa criada!", { description: `"${tarefaTitulo.trim()}" → "${colunasMap[tarefaColuna] || tarefaColuna}"` });
+        setTarefaTitulo("");
+        setTarefaTipo("whatsapp");
+        setTarefaPrioridade("media");
+        setTarefaData(hoje);
+        setTarefaHora("");
+        setTarefaColuna("a_fazer");
+        fetchTarefasCliente();
+      } else {
+        const err = await res.json();
+        toast.error("Erro ao criar tarefa", { description: err.error || "Tente novamente" });
+      }
+    } catch (err) { toast.error("Erro ao criar tarefa"); } finally { setSalvandoTarefa(false); }
+  };
+
+  // ── Concluir tarefa (prompt simples) ──
+  const concluirTarefa = async (tarefaId: string, titulo: string) => {
+    const valorStr = window.prompt(`Valor da venda para "${titulo}":`, "0");
+    if (valorStr === null) return; // cancelou
+    const valor = parseFloat(valorStr.replace(",", "."));
+    if (isNaN(valor) || valor < 0) {
+      toast.error("Valor inválido");
+      return;
+    }
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const res = await fetch("/api/tarefas", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({
+          id: tarefaId,
+          coluna_kanban: "concluida",
+          valor_venda: valor,
+          resultado: "venda_fechada",
+          data_fim: new Date().toISOString().split("T")[0],
+          hora_fim: new Date().toTimeString().slice(0, 5),
+        }),
+      });
+      if (res.ok) {
+        toast.success("Tarefa concluída!", { description: `"${titulo}" → Concluído (R$ ${valor.toLocaleString("pt-BR")})` });
+        fetchTarefasCliente();
+      } else {
+        const err = await res.json();
+        toast.error("Erro ao concluir", { description: err.error || "Tente novamente" });
+      }
+    } catch (err) { toast.error("Erro ao concluir tarefa"); }
+  };
+
+  // ── Atualizar tarefa (mudar coluna) ──
+  const moverTarefa = async (tarefaId: string, novaColuna: string) => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
@@ -238,80 +278,10 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
       });
       toast.success("Tarefa atualizada!");
       fetchTarefasCliente();
-    } catch (err) {
-      console.error("Erro ao atualizar tarefa:", err);
-      toast.error("Erro ao atualizar tarefa");
-    }
+    } catch (err) { toast.error("Erro ao atualizar tarefa"); }
   };
 
-  // Criar ou concluir tarefa
-  const criarTarefa = async () => {
-    if (!atendimento || !tarefaTitulo.trim()) return;
-    if (concluindoTarefaId && !tarefaValorVenda) {
-      toast.error("Valor da venda é obrigatório para concluir");
-      return;
-    }
-    setSalvandoTarefa(true);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-      const isConcluindo = !!concluindoTarefaId;
-      const res = await fetch("/api/tarefas", {
-        method: isConcluindo ? "PATCH" : "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
-        body: JSON.stringify(isConcluindo ? {
-          id: concluindoTarefaId,
-          coluna_kanban: "concluida",
-          valor_venda: parseFloat(tarefaValorVenda) || null,
-          resultado: "venda_fechada",
-          observacao_resultado: tarefaObservacao.trim() || null,
-        } : {
-          titulo: tarefaTitulo.trim(),
-          cliente_nome: nome,
-          cliente_id: atendimento.cliente_id || null,
-          tipo: tarefaTipo,
-          prioridade: tarefaPrioridade,
-          data_inicio: tarefaData || null,
-          hora_inicio: tarefaHora || null,
-          descricao: tarefaDescricao.trim() || null,
-          coluna_kanban: tarefaColuna,
-          origem_lead: "whatsapp",
-          valor_venda: tarefaColuna === "concluida" && tarefaValorVenda ? parseFloat(tarefaValorVenda) : null,
-          resultado: tarefaColuna === "concluida" ? "venda_fechada" : null,
-          observacao_resultado: tarefaColuna === "concluida" && tarefaObservacao.trim() ? tarefaObservacao.trim() : null,
-        }),
-      });
-      if (res.ok) {
-        if (isConcluindo) {
-          toast.success("Tarefa concluída!", { description: `"${tarefaTitulo}" foi movida para "Concluído"` });
-        } else {
-          const colunasMap: Record<string, string> = { a_fazer: "A Fazer", em_andamento: "Andamento", concluida: "Concluído" };
-          toast.success("Tarefa criada!", { description: `"${tarefaTitulo.trim()}" → "${colunasMap[tarefaColuna]}"` });
-        }
-        setTarefaTitulo("");
-        setTarefaTipo("whatsapp");
-        setTarefaPrioridade("media");
-        setTarefaData(hoje);
-        setTarefaHora("");
-        setTarefaDescricao("");
-        setTarefaColuna("a_fazer");
-        setTarefaValorVenda("");
-        setTarefaObservacao("");
-        setConcluindoTarefaId(null);
-        fetchTarefasCliente();
-      } else {
-        const err = await res.json();
-        toast.error("Erro ao salvar", { description: err.error || "Tente novamente" });
-      }
-    } catch (err) {
-      console.error("Erro ao salvar tarefa:", err);
-      toast.error("Erro ao salvar tarefa");
-    } finally {
-      setSalvandoTarefa(false);
-    }
-  };
-
-  // Se nenhum atendimento selecionado
+  // ── Se nenhum atendimento selecionado ──
   if (!atendimento) {
     return (
       <div className="h-full flex flex-col items-center justify-center text-slate-400 gap-3 bg-white border-l border-slate-200">
@@ -324,7 +294,6 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
   const etiquetasFiltradas = ETIQUETAS_DISPONIVEIS.filter(
     (e) => e.toLowerCase().includes(etiquetasBusca.toLowerCase()) && !etiquetasVinculadas.includes(e)
   );
-
   const iconesTarefa: Record<string, string> = { whatsapp: "💬", ligacao: "📞", email: "📧", visita: "🏢", reuniao: "🤝", follow_up: "🔄", prospeccao: "🔍", outro: "📋" };
   const coresColuna: Record<string, string> = { a_fazer: "bg-slate-100 text-slate-700", em_andamento: "bg-blue-100 text-blue-700", concluida: "bg-emerald-100 text-emerald-700" };
   const nomesColuna: Record<string, string> = { a_fazer: "A Fazer", em_andamento: "Andamento", concluida: "Concluído" };
@@ -335,27 +304,21 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
       <div className="shrink-0 px-4 pt-4 pb-2">
         <div className="flex items-center justify-between mb-1">
           <h3 className="text-base font-bold text-slate-900 truncate">{nome}</h3>
-          <Button variant="ghost" size="sm" className="h-7 w-7 p-0 shrink-0">
-            <Pencil className="h-3.5 w-3.5 text-slate-500" />
-          </Button>
+          <Button variant="ghost" size="sm" className="h-7 w-7 p-0 shrink-0"><Pencil className="h-3.5 w-3.5 text-slate-500" /></Button>
         </div>
         <p className="text-xs text-slate-500">{telefone}</p>
       </div>
 
       {/* Avatar */}
       <div className="flex justify-center py-3">
-        <div className="h-[72px] w-[72px] rounded-full bg-slate-200 flex items-center justify-center text-2xl font-bold text-slate-500">
-          {iniciais}
-        </div>
+        <div className="h-[72px] w-[72px] rounded-full bg-slate-200 flex items-center justify-center text-2xl font-bold text-slate-500">{iniciais}</div>
       </div>
 
       {/* Status */}
       <div className="px-4 pb-3 flex items-center gap-3">
         <span className="text-sm text-slate-600">
           Atendimento está{" "}
-          <span className={cn("font-semibold", statusAberto ? "text-green-600" : "text-slate-500")}>
-            {statusAberto ? "Aberto" : "Concluído"}
-          </span>
+          <span className={cn("font-semibold", statusAberto ? "text-green-600" : "text-slate-500")}>{statusAberto ? "Aberto" : "Concluído"}</span>
         </span>
         {statusAberto && onMarcarConcluido && (
           <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 text-green-700 hover:bg-green-50 hover:text-green-800 px-2"
@@ -371,9 +334,7 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
         <div className="flex items-center gap-3 text-sm"><Mail className="h-4 w-4 text-slate-400 shrink-0" /><span className={cn(email ? "text-slate-700" : "text-slate-400")}>{email || "E-mail"}</span></div>
         <div className="flex items-center gap-3 text-sm">
           <Calendar className="h-4 w-4 text-slate-400 shrink-0" />
-          <span className="text-slate-700">
-            {atendimento.created_at ? new Date(atendimento.created_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "Data de inscrição"}
-          </span>
+          <span className="text-slate-700">{atendimento.created_at ? new Date(atendimento.created_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "Data de inscrição"}</span>
         </div>
         <div className="flex items-center gap-3 text-sm"><FileText className="h-4 w-4 text-slate-400 shrink-0" /><span className={cn(cpf ? "text-slate-700" : "text-slate-400")}>{cpf || "CPF"}</span></div>
       </div>
@@ -408,9 +369,7 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
 
         {/* Tarefas do Cliente */}
         <Secao titulo="Tarefas" badge={tarefasCliente.length}>
-          {loadingTarefas ? (
-            <p className="text-xs text-slate-400">Carregando...</p>
-          ) : tarefasCliente.length === 0 ? (
+          {tarefasCliente.length === 0 ? (
             <p className="text-xs text-slate-400">Nenhuma tarefa para este cliente</p>
           ) : (
             <div className="space-y-2">
@@ -418,19 +377,28 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
                 <div key={t.id} className="p-2 bg-slate-50 rounded-lg border border-slate-200">
                   <div className="flex items-center justify-between mb-1">
                     <p className="text-xs font-medium text-slate-800 truncate">{iconesTarefa[t.tipo] || "📋"} {t.titulo}</p>
-                    <Badge variant="secondary" className={cn("text-[9px] px-1.5 py-0 h-4", coresColuna[t.coluna_kanban])}>{nomesColuna[t.coluna_kanban]}</Badge>
+                    <Badge variant="secondary" className={cn("text-[9px] px-1.5 py-0 h-4", coresColuna[t.coluna_kanban])}>
+                      {nomesColuna[t.coluna_kanban] || t.coluna_kanban}
+                    </Badge>
                   </div>
-                  {t.valor_venda && <p className="text-[10px] text-emerald-600 font-medium">R$ {t.valor_venda.toLocaleString("pt-BR")}</p>}
+                  {t.valor_venda != null && t.valor_venda > 0 && (
+                    <p className="text-[10px] text-emerald-600 font-medium">R$ {t.valor_venda.toLocaleString("pt-BR")}</p>
+                  )}
+                  {/* Ações rápidas */}
                   {t.coluna_kanban === "a_fazer" && (
                     <div className="flex gap-1 mt-1.5">
-                      <button onClick={() => atualizarTarefa(t.id, "em_andamento")} className="text-[10px] px-2 py-0.5 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors">▶ Iniciar</button>
-                      <button onClick={() => { setConcluindoTarefaId(t.id); setTarefaTitulo(t.titulo); setTarefaColuna("concluida"); }} className="text-[10px] px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded hover:bg-emerald-200 transition-colors">✓ Concluir</button>
+                      <button onClick={() => moverTarefa(t.id, "em_andamento")}
+                        className="text-[10px] px-2 py-0.5 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors">▶ Iniciar</button>
+                      <button onClick={() => concluirTarefa(t.id, t.titulo)}
+                        className="text-[10px] px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded hover:bg-emerald-200 transition-colors">✓ Concluir</button>
                     </div>
                   )}
                   {t.coluna_kanban === "em_andamento" && (
                     <div className="flex gap-1 mt-1.5">
-                      <button onClick={() => { setConcluindoTarefaId(t.id); setTarefaTitulo(t.titulo); setTarefaColuna("concluida"); }} className="text-[10px] px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded hover:bg-emerald-200 transition-colors">✓ Concluir</button>
-                      <button onClick={() => atualizarTarefa(t.id, "a_fazer")} className="text-[10px] px-2 py-0.5 bg-slate-100 text-slate-600 rounded hover:bg-slate-200 transition-colors">← Voltar</button>
+                      <button onClick={() => concluirTarefa(t.id, t.titulo)}
+                        className="text-[10px] px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded hover:bg-emerald-200 transition-colors">✓ Concluir</button>
+                      <button onClick={() => moverTarefa(t.id, "a_fazer")}
+                        className="text-[10px] px-2 py-0.5 bg-slate-100 text-slate-600 rounded hover:bg-slate-200 transition-colors">← Voltar</button>
                     </div>
                   )}
                 </div>
@@ -439,119 +407,64 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
           )}
         </Secao>
 
-        {/* Criar / Concluir Tarefa (inline) */}
-        {concluindoTarefaId ? (
-          <div className="p-4 bg-emerald-50 border-b border-emerald-100">
-            <div className="flex items-center justify-between mb-3">
-              <h4 className="text-xs font-semibold text-emerald-700">✓ Concluir tarefa</h4>
-              <button onClick={() => { setConcluindoTarefaId(null); setTarefaTitulo(""); setTarefaValorVenda(""); setTarefaObservacao(""); }}
-                className="text-[10px] text-slate-400 hover:text-slate-600">Cancelar</button>
+        {/* Criar Tarefa */}
+        <Secao titulo="Criar Tarefa">
+          <div className="space-y-3">
+            <div>
+              <label className="text-[10px] text-slate-500 uppercase tracking-wide">Título *</label>
+              <Input placeholder="Ex: Follow up proposta" value={tarefaTitulo} onChange={(e) => setTarefaTitulo(e.target.value)} className="h-8 text-xs mt-1" />
             </div>
-            <div className="space-y-2">
-              <div>
-                <label className="text-[10px] text-slate-500 uppercase tracking-wide">Título</label>
-                <Input value={tarefaTitulo} readOnly className="h-8 text-xs mt-1 bg-slate-100" />
-              </div>
-              <div>
-                <label className="text-[10px] text-slate-500 uppercase tracking-wide">Valor da Venda (R$) *</label>
-                <Input type="number" step="0.01" min="0" placeholder="0,00" value={tarefaValorVenda}
-                  onChange={(e) => setTarefaValorVenda(e.target.value)} className="h-8 text-xs mt-1" />
-              </div>
-              <div>
-                <label className="text-[10px] text-slate-500 uppercase tracking-wide">Observação</label>
-                <textarea placeholder="Detalhes do fechamento..." value={tarefaObservacao}
-                  onChange={(e) => setTarefaObservacao(e.target.value)} rows={2}
-                  className="w-full text-xs mt-1 px-2 py-1.5 border border-slate-200 rounded-md bg-white text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none" />
-              </div>
-              <Button size="sm" className="w-full h-8 text-xs bg-emerald-600 hover:bg-emerald-700"
-                disabled={!tarefaValorVenda || salvandoTarefa} onClick={criarTarefa}>
-                {salvandoTarefa ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Check className="h-3.5 w-3.5 mr-1.5" />}
-                {salvandoTarefa ? "Salvando..." : "✓ Concluir"}
-              </Button>
+            <div>
+              <label className="text-[10px] text-slate-500 uppercase tracking-wide">Etapa no Kanban</label>
+              <select value={tarefaColuna} onChange={(e) => setTarefaColuna(e.target.value)}
+                className="w-full h-8 text-xs mt-1 px-2 border border-slate-200 rounded-md bg-white text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                <option value="a_fazer">📋 A Fazer</option>
+                <option value="em_andamento">🔄 Andamento</option>
+              </select>
             </div>
-          </div>
-        ) : (
-          <Secao titulo="Criar Tarefa">
-            <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="text-[10px] text-slate-500 uppercase tracking-wide">Título *</label>
-                <Input placeholder="Ex: Follow up proposta" value={tarefaTitulo} onChange={(e) => setTarefaTitulo(e.target.value)} className="h-8 text-xs mt-1" />
-              </div>
-              <div>
-                <label className="text-[10px] text-slate-500 uppercase tracking-wide">Etapa no Kanban</label>
-                <select value={tarefaColuna} onChange={(e) => setTarefaColuna(e.target.value)}
+                <label className="text-[10px] text-slate-500 uppercase tracking-wide">Tipo</label>
+                <select value={tarefaTipo} onChange={(e) => setTarefaTipo(e.target.value)}
                   className="w-full h-8 text-xs mt-1 px-2 border border-slate-200 rounded-md bg-white text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500">
-                  <option value="a_fazer">📋 A Fazer</option>
-                  <option value="em_andamento">🔄 Andamento</option>
-                  <option value="concluida">✅ Concluído</option>
+                  <option value="whatsapp">💬 WhatsApp</option>
+                  <option value="ligacao">📞 Ligação</option>
+                  <option value="email">📧 Email</option>
+                  <option value="visita">🏢 Visita</option>
+                  <option value="reuniao">🤝 Reunião</option>
+                  <option value="follow_up">🔄 Follow-up</option>
+                  <option value="prospeccao">🔍 Prospecção</option>
+                  <option value="outro">📋 Outro</option>
                 </select>
               </div>
-              {tarefaColuna === "concluida" && (
-                <div className="space-y-2 p-2 bg-emerald-50 rounded-md border border-emerald-200">
-                  <p className="text-[10px] text-emerald-700 font-medium uppercase tracking-wide">Dados da Venda</p>
-                  <div>
-                    <label className="text-[10px] text-slate-500 uppercase tracking-wide">Valor da Venda (R$) *</label>
-                    <Input type="number" step="0.01" min="0" placeholder="0,00" value={tarefaValorVenda}
-                      onChange={(e) => setTarefaValorVenda(e.target.value)} className="h-8 text-xs mt-1" />
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-slate-500 uppercase tracking-wide">Observação</label>
-                    <textarea placeholder="Detalhes do fechamento..." value={tarefaObservacao}
-                      onChange={(e) => setTarefaObservacao(e.target.value)} rows={2}
-                      className="w-full text-xs mt-1 px-2 py-1.5 border border-slate-200 rounded-md bg-white text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none" />
-                  </div>
-                </div>
-              )}
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-[10px] text-slate-500 uppercase tracking-wide">Tipo</label>
-                  <select value={tarefaTipo} onChange={(e) => setTarefaTipo(e.target.value)}
-                    className="w-full h-8 text-xs mt-1 px-2 border border-slate-200 rounded-md bg-white text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500">
-                    <option value="whatsapp">💬 WhatsApp</option>
-                    <option value="ligacao">📞 Ligação</option>
-                    <option value="email">📧 Email</option>
-                    <option value="visita">🏢 Visita</option>
-                    <option value="reuniao">🤝 Reunião</option>
-                    <option value="follow_up">🔄 Follow-up</option>
-                    <option value="prospeccao">🔍 Prospecção</option>
-                    <option value="outro">📋 Outro</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="text-[10px] text-slate-500 uppercase tracking-wide">Prioridade</label>
-                  <select value={tarefaPrioridade} onChange={(e) => setTarefaPrioridade(e.target.value)}
-                    className="w-full h-8 text-xs mt-1 px-2 border border-slate-200 rounded-md bg-white text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500">
-                    <option value="baixa">Baixa</option>
-                    <option value="media">Média</option>
-                    <option value="alta">Alta</option>
-                    <option value="urgente">Urgente</option>
-                  </select>
-                </div>
+              <div>
+                <label className="text-[10px] text-slate-500 uppercase tracking-wide">Prioridade</label>
+                <select value={tarefaPrioridade} onChange={(e) => setTarefaPrioridade(e.target.value)}
+                  className="w-full h-8 text-xs mt-1 px-2 border border-slate-200 rounded-md bg-white text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                  <option value="baixa">Baixa</option>
+                  <option value="media">Média</option>
+                  <option value="alta">Alta</option>
+                  <option value="urgente">Urgente</option>
+                </select>
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-[10px] text-slate-500 uppercase tracking-wide">Data</label>
-                  <Input type="date" value={tarefaData} onChange={(e) => setTarefaData(e.target.value)} className="h-8 text-xs mt-1" />
-                </div>
-                <div>
-                  <label className="text-[10px] text-slate-500 uppercase tracking-wide">Hora</label>
-                  <Input type="time" value={tarefaHora} onChange={(e) => setTarefaHora(e.target.value)} className="h-8 text-xs mt-1" />
-                </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-[10px] text-slate-500 uppercase tracking-wide">Data</label>
+                <Input type="date" value={tarefaData} onChange={(e) => setTarefaData(e.target.value)} className="h-8 text-xs mt-1" />
               </div>
               <div>
-                <label className="text-[10px] text-slate-500 uppercase tracking-wide">Descrição</label>
-                <textarea placeholder="Observações..." value={tarefaDescricao} onChange={(e) => setTarefaDescricao(e.target.value)} rows={2}
-                  className="w-full text-xs mt-1 px-2 py-1.5 border border-slate-200 rounded-md bg-white text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none" />
+                <label className="text-[10px] text-slate-500 uppercase tracking-wide">Hora</label>
+                <Input type="time" value={tarefaHora} onChange={(e) => setTarefaHora(e.target.value)} className="h-8 text-xs mt-1" />
               </div>
-              <Button size="sm" className="w-full h-8 text-xs bg-blue-600 hover:bg-blue-700"
-                disabled={!tarefaTitulo.trim() || salvandoTarefa || (tarefaColuna === "concluida" && !tarefaValorVenda)}
-                onClick={criarTarefa}>
-                {salvandoTarefa ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Plus className="h-3.5 w-3.5 mr-1.5" />}
-                {salvandoTarefa ? "Criando..." : "Criar Tarefa"}
-              </Button>
             </div>
-          </Secao>
-        )}
+            <Button size="sm" className="w-full h-8 text-xs bg-blue-600 hover:bg-blue-700"
+              disabled={!tarefaTitulo.trim() || salvandoTarefa} onClick={criarTarefa}>
+              {salvandoTarefa ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Plus className="h-3.5 w-3.5 mr-1.5" />}
+              {salvandoTarefa ? "Criando..." : "Criar Tarefa"}
+            </Button>
+          </div>
+        </Secao>
       </div>
     </div>
   );
