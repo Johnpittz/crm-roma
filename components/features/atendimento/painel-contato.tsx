@@ -112,14 +112,12 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
     resultado: string | null;
   }
   const [tarefasCliente, setTarefasCliente] = useState<TarefaCliente[]>([]);
-  const [loadingTarefas, setLoadingTarefas] = useState(false);
 
-  // Buscar tarefas do cliente
+  // Buscar tarefas do cliente (silencioso — sem loading)
   const fetchTarefasCliente = useCallback(async () => {
     if (!atendimento) return;
     const nomeCliente = atendimento.clientes?.nome_razao_social || atendimento.nome_cliente;
     if (!nomeCliente) return;
-    setLoadingTarefas(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
@@ -132,8 +130,6 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
       }
     } catch (err) {
       console.error("Erro ao buscar tarefas:", err);
-    } finally {
-      setLoadingTarefas(false);
     }
   }, [atendimento?.id, supabase]);
 
@@ -198,14 +194,14 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
       setEtiquetasVinculadas([]);
       setTarefasCliente([]);
     }
-  }, [atendimento, fetchEtiquetas]);
+  }, [atendimento?.id, fetchEtiquetas]);
 
   // Buscar tarefas do cliente quando o atendimento muda
   useEffect(() => {
     if (atendimento) {
       fetchTarefasCliente();
     }
-  }, [atendimento, fetchTarefasCliente]);
+  }, [atendimento?.id, fetchTarefasCliente]);
 
   // Vincular etiqueta ao atendimento
   const vincularEtiqueta = async (etiqueta: string) => {
@@ -467,9 +463,7 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
 
         {/* Tarefas do Cliente */}
         <Secao titulo="Tarefas" badge={tarefasCliente.length}>
-          {loadingTarefas ? (
-            <p className="text-xs text-slate-400">Carregando...</p>
-          ) : tarefasCliente.length === 0 ? (
+          {tarefasCliente.length === 0 ? (
             <p className="text-xs text-slate-400">Nenhuma tarefa para este cliente</p>
           ) : (
             <div className="space-y-2.5">
