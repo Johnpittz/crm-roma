@@ -258,7 +258,7 @@ export default function AtendimentoPage() {
 
         {/* PAINEL DIREITO: Info do contato — só aparece quando conversa selecionada */}
         {painelContatoAberto && atendimentoChat && (
-          <div className="w-[320px] min-w-[280px]">
+          <div className="w-[400px] min-w-[350px]">
             <PainelContato
               atendimento={atendimentoChat}
               onFechar={() => setAtendimentoChat(null)}
