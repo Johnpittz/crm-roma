@@ -14,6 +14,7 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const data = searchParams.get("data");
   const coluna = searchParams.get("coluna");
+  const clienteNome = searchParams.get("cliente_nome");
 
   let query = supabase
     .from("tarefas")
@@ -29,6 +30,10 @@ export async function GET(request: NextRequest) {
 
   if (coluna) {
     query = query.eq("coluna_kanban", coluna);
+  }
+
+  if (clienteNome) {
+    query = query.eq("cliente_nome", clienteNome);
   }
 
   const { data: tarefas, error } = await query;

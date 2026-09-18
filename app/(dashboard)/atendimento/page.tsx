@@ -241,6 +241,7 @@ export default function AtendimentoPage() {
               onAbrirChat={handleAbrirChat}
               etiquetas={atendimentosComEtiquetas}
               tarefasMap={tarefasPorAtendimento}
+              atendimentoSelecionadoId={atendimentoChat?.id || null}
             />
           </div>
         </div>

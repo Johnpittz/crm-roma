@@ -29,6 +29,7 @@ interface ListaAtendimentosLateralProps {
   onAbrirChat: (a: Atendimento) => void;
   etiquetas?: Record<string, string[]>;
   tarefasMap?: Record<string, number>;
+  atendimentoSelecionadoId?: string | null;
 }
 
 export function ListaAtendimentosLateral({
@@ -38,6 +39,7 @@ export function ListaAtendimentosLateral({
   onAbrirChat,
   etiquetas = {},
   tarefasMap = {},
+  atendimentoSelecionadoId = null,
 }: ListaAtendimentosLateralProps) {
   const supabase = createClient();
 
@@ -105,10 +107,12 @@ export function ListaAtendimentosLateral({
                   <div
                     key={a.id}
                     className={cn(
-                      "overflow-hidden rounded-lg cursor-pointer transition-all border border-transparent",
-                      isNaoLido
-                        ? "bg-green-50 hover:bg-green-100/80 border-green-100"
-                        : "bg-white hover:bg-slate-50 border-slate-100"
+                      "overflow-hidden rounded-lg cursor-pointer transition-all border",
+                      a.id === atendimentoSelecionadoId
+                        ? "bg-blue-50 border-blue-300 ring-1 ring-blue-200"
+                        : isNaoLido
+                          ? "bg-green-50 hover:bg-green-100/80 border-green-100"
+                          : "bg-white hover:bg-slate-50 border-slate-100"
                     )}
                     onClick={() => onAbrirChat(a)}
                   >
