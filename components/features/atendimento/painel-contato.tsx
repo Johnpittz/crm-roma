@@ -565,8 +565,8 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
           )}
         </Secao>
 
-        {/* Criar Tarefa / Concluir Tarefa */}
-        <Secao titulo={concluindoTarefaId ? "Concluir Tarefa" : "Criar Tarefa"}>
+        {/* Criar Tarefa */}
+        <Secao titulo="Criar Tarefa">
           <div className="space-y-3">
             {/* Título */}
             <div>
@@ -692,13 +692,10 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
               />
             </div>
 
-            {/* Botão criar/concluir */}
+            {/* Botão criar */}
             <Button
               size="sm"
-              className={cn(
-                "w-full h-8 text-xs",
-                concluindoTarefaId ? "bg-emerald-600 hover:bg-emerald-700" : "bg-blue-600 hover:bg-blue-700"
-              )}
+              className="w-full h-8 text-xs bg-blue-600 hover:bg-blue-700"
               disabled={!tarefaTitulo.trim() || salvandoTarefa || (!tarefaValorVenda && !!concluindoTarefaId)}
               onClick={criarTarefa}
             >
@@ -707,7 +704,7 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
               ) : (
                 <Plus className="h-3.5 w-3.5 mr-1.5" />
               )}
-              {salvandoTarefa ? "Salvando..." : concluindoTarefaId ? "✓ Concluir Tarefa" : "Criar Tarefa"}
+              {salvandoTarefa ? "Salvando..." : "Criar Tarefa"}
             </Button>
             {concluindoTarefaId && (
               <button
@@ -720,7 +717,7 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
                 }}
                 className="w-full text-[10px] text-slate-400 hover:text-slate-600 py-1"
               >
-                Cancelar
+                Cancelar conclusão
               </button>
             )}
           </div>
