@@ -203,12 +203,12 @@ export async function PATCH(request: NextRequest) {
     .from("tarefas")
     .update(updateData)
     .eq("id", id)
-    .select("*, clientes(id, nome_razao_social)")
+    .select()
     .single();
 
   if (error || !tarefa) {
-    console.error("[API PATCH tarefas] Error:", JSON.stringify(error), "ID:", id);
-    return NextResponse.json({ error: "Tarefa não encontrada ou sem permissão", details: error?.message }, { status: 404 });
+    console.error("[API PATCH tarefas] Error:", JSON.stringify(error), "ID:", id, "Data:", JSON.stringify(updateData));
+    return NextResponse.json({ error: "Tarefa não encontrada", details: error?.message }, { status: 404 });
   }
 
   return NextResponse.json({ success: true, tarefa });
