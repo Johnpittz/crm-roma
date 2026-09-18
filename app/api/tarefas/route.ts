@@ -67,6 +67,10 @@ export async function POST(request: NextRequest) {
     data_fim,
     hora_fim,
     vendedor_id,
+    valor_venda,
+    resultado,
+    observacao_resultado,
+    origem_lead,
   } = body;
 
   if (!titulo || !tipo) {
@@ -119,13 +123,17 @@ export async function POST(request: NextRequest) {
       descricao: descricao || null,
       tipo,
       prioridade,
-      status: "pendente",
+      status: coluna_kanban === "concluida" ? "concluida" : "pendente",
       coluna_kanban,
       ordem: novaOrdem,
       data_inicio: data_inicio || null,
       hora_inicio: hora_inicio || null,
       data_fim: data_fim || null,
       hora_fim: hora_fim || null,
+      valor_venda: valor_venda || null,
+      resultado: resultado || null,
+      observacao_resultado: observacao_resultado || null,
+      origem_lead: origem_lead || null,
     })
     .select("*, clientes(id, nome_razao_social)")
     .single();
@@ -146,7 +154,7 @@ export async function PATCH(request: NextRequest) {
   }
 
   const body = await request.json();
-  const { id, titulo, descricao, prioridade, coluna_kanban, ordem, status, resultado, observacao_resultado, valor_venda, cliente_nome } = body;
+  const { id, titulo, descricao, prioridade, coluna_kanban, ordem, status, resultado, observacao_resultado, valor_venda, cliente_nome, data_fim, hora_fim } = body;
 
   if (!id) {
     return NextResponse.json({ error: "ID da tarefa é obrigatório" }, { status: 400 });
@@ -171,9 +179,13 @@ export async function PATCH(request: NextRequest) {
   if (resultado !== undefined) updateData.resultado = resultado;
   if (observacao_resultado !== undefined) updateData.observacao_resultado = observacao_resultado;
   if (valor_venda !== undefined) updateData.valor_venda = valor_venda;
+  if (data_fim !== undefined) updateData.data_fim = data_fim;
+  if (hora_fim !== undefined) updateData.hora_fim = hora_fim;
 
   if (coluna_kanban === "concluida") {
     updateData.status = "concluida";
+    if (!updateData.data_fim) updateData.data_fim = new Date().toISOString().split("T")[0];
+    if (!updateData.hora_fim) updateData.hora_fim = new Date().toTimeString().slice(0, 5);
   } else if (coluna_kanban === "em_andamento") {
     updateData.status = "em_andamento";
   } else if (coluna_kanban === "a_fazer") {

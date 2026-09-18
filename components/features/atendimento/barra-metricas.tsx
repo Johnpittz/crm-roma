@@ -43,19 +43,31 @@ export function BarraMetricasAtendimento() {
 
         const agora = new Date();
         const inicioMes = new Date(agora.getFullYear(), agora.getMonth(), 1).toISOString();
+
+        // Busca vendas da tabela vendas
         const vendasRes = await fetch(`/api/vendas?data_inicio=${inicioMes}`, {
           headers: { Authorization: `Bearer ${session.access_token}` },
         });
         const vendasData = await vendasRes.json();
         const vendas = vendasData.vendas || [];
 
-        const vendasNoMes = vendas.length;
-        const vendasGanhas = vendas.filter((v: any) => v.status === "ganha" || v.status === "aprovada").length;
+        // Busca tarefas concluídas com valor (resumo do mês)
+        const tarefasRes = await fetch(`/api/tarefas/resumo?periodo=mes`, {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        });
+        const tarefasData = await tarefasRes.json();
+
+        // Combina vendas da tabela + tarefas concluídas
+        const realizadoVendas = vendas.reduce((acc: number, v: any) => acc + (v.valor_total || 0), 0);
+        const realizadoTarefas = tarefasData.total_vendas || 0;
+        const realizadoMes = realizadoVendas + realizadoTarefas;
+
+        const vendasNoMes = vendas.length + (tarefasData.quantidade_vendas || 0);
+        const vendasGanhas = vendas.filter((v: any) => v.status === "ganha" || v.status === "aprovada").length + (tarefasData.quantidade_vendas || 0);
         const vendasPerdidas = vendas.filter((v: any) => v.status === "perdida" || v.status === "cancelada").length;
-        const realizadoMes = vendas.reduce((acc: number, v: any) => acc + (v.valor_total || 0), 0);
 
         const positivacao = totalClientes > 0 ? (vendasNoMes / totalClientes) * 100 : 0;
-        const metaMensal = 20000;
+        const metaMensal = tarefasData.meta || 20000;
         const margemLiquida = realizadoMes * 0.3;
 
         setMetricas({

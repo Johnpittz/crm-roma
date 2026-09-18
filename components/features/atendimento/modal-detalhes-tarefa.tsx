@@ -395,7 +395,7 @@ export function ModalDetalhesTarefa({
               {tarefa.observacao_resultado && (
                 <p className="text-sm text-slate-700 whitespace-pre-wrap">{tarefa.observacao_resultado}</p>
               )}
-              {tarefa.resultado === "sucesso" && tarefa.valor_venda && (
+              {tarefa.valor_venda && (
                 <div className="mt-2 pt-2 border-t border-slate-200">
                   <span className="text-xs text-slate-500">Valor da Venda:</span>
                   <span className="ml-2 text-sm font-bold text-emerald-700">
