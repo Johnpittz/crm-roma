@@ -512,6 +512,7 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
                         </button>
                         <button
                           onClick={() => {
+                            setConcluindoTarefaId(t.id);
                             setTarefaTitulo(t.titulo);
                             setTarefaColuna("concluida");
                           }}
@@ -525,6 +526,7 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
                       <div className="flex gap-1 mt-1.5">
                         <button
                           onClick={() => {
+                            setConcluindoTarefaId(t.id);
                             setTarefaTitulo(t.titulo);
                             setTarefaColuna("concluida");
                           }}
