@@ -266,7 +266,7 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
   // Criar ou concluir tarefa
   const criarTarefa = async () => {
     if (!atendimento || !tarefaTitulo.trim()) return;
-    const isConcluindo = tarefaColuna === "concluida";
+    const isConcluindo = !!concluindoTarefaId;
     if (isConcluindo && !tarefaValorVenda) {
       toast.error("Valor da venda é obrigatório para concluir");
       return;
@@ -277,12 +277,20 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
       if (!session) return;
 
       const res = await fetch("/api/tarefas", {
-        method: "POST",
+        method: isConcluindo ? "PATCH" : "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({
+        body: JSON.stringify(isConcluindo ? {
+          id: concluindoTarefaId,
+          coluna_kanban: "concluida",
+          valor_venda: parseFloat(tarefaValorVenda) || null,
+          resultado: "venda_fechada",
+          observacao_resultado: tarefaObservacao.trim() || null,
+          data_fim: new Date().toISOString().split("T")[0],
+          hora_fim: new Date().toTimeString().slice(0, 5),
+        } : {
           titulo: tarefaTitulo.trim(),
           cliente_nome: nome,
           cliente_id: atendimento.cliente_id || null,
@@ -293,17 +301,20 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
           descricao: tarefaDescricao.trim() || null,
           coluna_kanban: tarefaColuna,
           origem_lead: "whatsapp",
-          valor_venda: isConcluindo && tarefaValorVenda ? parseFloat(tarefaValorVenda) : null,
-          resultado: isConcluindo ? "venda_fechada" : null,
-          observacao_resultado: isConcluindo && tarefaObservacao.trim() ? tarefaObservacao.trim() : null,
         }),
       });
 
       if (res.ok) {
-        const colunasMap: Record<string, string> = { a_fazer: "A Fazer", em_andamento: "Andamento", concluida: "Concluído" };
-        toast.success("Tarefa criada!", {
-          description: `"${tarefaTitulo.trim()}" foi adicionada ao Kanban em "${colunasMap[tarefaColuna] || tarefaColuna}"`,
-        });
+        if (isConcluindo) {
+          toast.success("Tarefa concluída!", {
+            description: `"${tarefaTitulo}" foi movida para "Concluído"`,
+          });
+        } else {
+          const colunasMap: Record<string, string> = { a_fazer: "A Fazer", em_andamento: "Andamento", concluida: "Concluído" };
+          toast.success("Tarefa criada!", {
+            description: `"${tarefaTitulo.trim()}" foi adicionada ao Kanban em "${colunasMap[tarefaColuna] || tarefaColuna}"`,
+          });
+        }
         setTarefaTitulo("");
         setTarefaTipo("whatsapp");
         setTarefaPrioridade("media");
@@ -313,14 +324,15 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
         setTarefaColuna("a_fazer");
         setTarefaValorVenda("");
         setTarefaObservacao("");
+        setConcluindoTarefaId(null);
         fetchTarefasCliente();
       } else {
         const err = await res.json();
-        toast.error("Erro ao criar tarefa", { description: err.error || "Tente novamente" });
+        toast.error("Erro ao salvar tarefa", { description: err.error || "Tente novamente" });
       }
     } catch (err) {
-      console.error("Erro ao criar tarefa:", err);
-      toast.error("Erro ao criar tarefa");
+      console.error("Erro ao salvar tarefa:", err);
+      toast.error("Erro ao salvar tarefa");
     } finally {
       setSalvandoTarefa(false);
     }
