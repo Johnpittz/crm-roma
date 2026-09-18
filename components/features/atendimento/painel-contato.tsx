@@ -99,6 +99,9 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
   const [tarefaObservacao, setTarefaObservacao] = useState("");
   const [salvandoTarefa, setSalvandoTarefa] = useState(false);
 
+  // Modo concluir — pré-preenche o formulário para concluir uma tarefa existente
+  const [concluindoTarefaId, setConcluindoTarefaId] = useState<string | null>(null);
+
   // Tarefas vinculadas ao cliente deste atendimento
   interface TarefaCliente {
     id: string;
@@ -544,148 +547,211 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
           )}
         </Secao>
 
-        {/* Criar Tarefa */}
-        <Secao titulo="Criar Tarefa">
-          <div className="space-y-3">
-            {/* Título */}
+        {/* Formulário de tarefa — aparece direto ao clicar Concluir, ou dentro do Secao ao criar */}
+        {concluindoTarefaId ? (
+          <div className="border border-emerald-200 rounded-lg bg-emerald-50 p-3 space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold text-emerald-700">✓ Concluir tarefa</p>
+              <button
+                onClick={() => {
+                  setConcluindoTarefaId(null);
+                  setTarefaTitulo("");
+                  setTarefaColuna("a_fazer");
+                  setTarefaValorVenda("");
+                  setTarefaObservacao("");
+                }}
+                className="text-[10px] text-slate-400 hover:text-slate-600"
+              >
+                Cancelar
+              </button>
+            </div>
             <div>
-              <label className="text-[10px] text-slate-500 uppercase tracking-wide">Título *</label>
+              <label className="text-[10px] text-slate-500 uppercase tracking-wide">Título</label>
               <Input
-                placeholder="Ex: Follow up proposta"
                 value={tarefaTitulo}
                 onChange={(e) => setTarefaTitulo(e.target.value)}
                 className="h-8 text-xs mt-1"
+                readOnly
               />
             </div>
-
-            {/* Etapa Kanban */}
             <div>
-              <label className="text-[10px] text-slate-500 uppercase tracking-wide">Etapa no Kanban</label>
-              <select
-                value={tarefaColuna}
-                onChange={(e) => setTarefaColuna(e.target.value)}
-                className="w-full h-8 text-xs mt-1 px-2 border border-slate-200 rounded-md bg-white text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              >
-                <option value="a_fazer">📋 A Fazer</option>
-                <option value="em_andamento">🔄 Andamento</option>
-                <option value="concluida">✅ Concluído</option>
-              </select>
+              <label className="text-[10px] text-slate-500 uppercase tracking-wide">Valor da Venda (R$) *</label>
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="0,00"
+                value={tarefaValorVenda}
+                onChange={(e) => setTarefaValorVenda(e.target.value)}
+                className="h-8 text-xs mt-1"
+              />
             </div>
-
-            {/* Campos de venda — aparece quando etapa = Concluído */}
-            {tarefaColuna === "concluida" && (
-              <div className="space-y-2 p-2 bg-emerald-50 rounded-md border border-emerald-200">
-                <p className="text-[10px] text-emerald-700 font-medium uppercase tracking-wide">Dados da Venda</p>
-                <div>
-                  <label className="text-[10px] text-slate-500 uppercase tracking-wide">Valor da Venda (R$) *</label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    placeholder="0,00"
-                    value={tarefaValorVenda}
-                    onChange={(e) => setTarefaValorVenda(e.target.value)}
-                    className="h-8 text-xs mt-1"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] text-slate-500 uppercase tracking-wide">Observação</label>
-                  <textarea
-                    placeholder="Detalhes do fechamento..."
-                    value={tarefaObservacao}
-                    onChange={(e) => setTarefaObservacao(e.target.value)}
-                    rows={2}
-                    className="w-full text-xs mt-1 px-2 py-1.5 border border-slate-200 rounded-md bg-white text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* Tipo + Prioridade */}
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="text-[10px] text-slate-500 uppercase tracking-wide">Tipo</label>
-                <select
-                  value={tarefaTipo}
-                  onChange={(e) => setTarefaTipo(e.target.value)}
-                  className="w-full h-8 text-xs mt-1 px-2 border border-slate-200 rounded-md bg-white text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                >
-                  <option value="whatsapp">💬 WhatsApp</option>
-                  <option value="ligacao">📞 Ligação</option>
-                  <option value="email">📧 Email</option>
-                  <option value="visita">🏢 Visita</option>
-                  <option value="reuniao">🤝 Reunião</option>
-                  <option value="follow_up">🔄 Follow-up</option>
-                  <option value="prospeccao">🔍 Prospecção</option>
-                  <option value="outro">📋 Outro</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-[10px] text-slate-500 uppercase tracking-wide">Prioridade</label>
-                <select
-                  value={tarefaPrioridade}
-                  onChange={(e) => setTarefaPrioridade(e.target.value)}
-                  className="w-full h-8 text-xs mt-1 px-2 border border-slate-200 rounded-md bg-white text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                >
-                  <option value="baixa">Baixa</option>
-                  <option value="media">Média</option>
-                  <option value="alta">Alta</option>
-                  <option value="urgente">Urgente</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Data + Hora */}
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="text-[10px] text-slate-500 uppercase tracking-wide">Data</label>
-                <Input
-                  type="date"
-                  value={tarefaData}
-                  onChange={(e) => setTarefaData(e.target.value)}
-                  className="h-8 text-xs mt-1"
-                />
-              </div>
-              <div>
-                <label className="text-[10px] text-slate-500 uppercase tracking-wide">Hora</label>
-                <Input
-                  type="time"
-                  value={tarefaHora}
-                  onChange={(e) => setTarefaHora(e.target.value)}
-                  className="h-8 text-xs mt-1"
-                />
-              </div>
-            </div>
-
-            {/* Descrição */}
             <div>
-              <label className="text-[10px] text-slate-500 uppercase tracking-wide">Descrição</label>
+              <label className="text-[10px] text-slate-500 uppercase tracking-wide">Observação</label>
               <textarea
-                placeholder="Observações..."
-                value={tarefaDescricao}
-                onChange={(e) => setTarefaDescricao(e.target.value)}
+                placeholder="Detalhes do fechamento..."
+                value={tarefaObservacao}
+                onChange={(e) => setTarefaObservacao(e.target.value)}
                 rows={2}
                 className="w-full text-xs mt-1 px-2 py-1.5 border border-slate-200 rounded-md bg-white text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
               />
             </div>
-
-            {/* Botão criar */}
             <Button
               size="sm"
-              className="w-full h-8 text-xs bg-blue-600 hover:bg-blue-700"
-              disabled={!tarefaTitulo.trim() || salvandoTarefa || (tarefaColuna === "concluida" && !tarefaValorVenda)}
+              className="w-full h-8 text-xs bg-emerald-600 hover:bg-emerald-700"
+              disabled={!tarefaValorVenda || salvandoTarefa}
               onClick={criarTarefa}
             >
               {salvandoTarefa ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
               ) : (
-                <Plus className="h-3.5 w-3.5 mr-1.5" />
+                <Check className="h-3.5 w-3.5 mr-1.5" />
               )}
-              {salvandoTarefa ? "Salvando..." : "Criar Tarefa"}
+              {salvandoTarefa ? "Salvando..." : "✓ Concluir"}
             </Button>
-
           </div>
-        </Secao>
+        ) : (
+          <Secao titulo="Criar Tarefa">
+            <div className="space-y-3">
+              {/* Título */}
+              <div>
+                <label className="text-[10px] text-slate-500 uppercase tracking-wide">Título *</label>
+                <Input
+                  placeholder="Ex: Follow up proposta"
+                  value={tarefaTitulo}
+                  onChange={(e) => setTarefaTitulo(e.target.value)}
+                  className="h-8 text-xs mt-1"
+                />
+              </div>
+
+              {/* Etapa Kanban */}
+              <div>
+                <label className="text-[10px] text-slate-500 uppercase tracking-wide">Etapa no Kanban</label>
+                <select
+                  value={tarefaColuna}
+                  onChange={(e) => setTarefaColuna(e.target.value)}
+                  className="w-full h-8 text-xs mt-1 px-2 border border-slate-200 rounded-md bg-white text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                >
+                  <option value="a_fazer">📋 A Fazer</option>
+                  <option value="em_andamento">🔄 Andamento</option>
+                  <option value="concluida">✅ Concluído</option>
+                </select>
+              </div>
+
+              {/* Campos de venda — aparece quando etapa = Concluído */}
+              {tarefaColuna === "concluida" && (
+                <div className="space-y-2 p-2 bg-emerald-50 rounded-md border border-emerald-200">
+                  <p className="text-[10px] text-emerald-700 font-medium uppercase tracking-wide">Dados da Venda</p>
+                  <div>
+                    <label className="text-[10px] text-slate-500 uppercase tracking-wide">Valor da Venda (R$) *</label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="0,00"
+                      value={tarefaValorVenda}
+                      onChange={(e) => setTarefaValorVenda(e.target.value)}
+                      className="h-8 text-xs mt-1"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-slate-500 uppercase tracking-wide">Observação</label>
+                    <textarea
+                      placeholder="Detalhes do fechamento..."
+                      value={tarefaObservacao}
+                      onChange={(e) => setTarefaObservacao(e.target.value)}
+                      rows={2}
+                      className="w-full text-xs mt-1 px-2 py-1.5 border border-slate-200 rounded-md bg-white text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Tipo + Prioridade */}
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[10px] text-slate-500 uppercase tracking-wide">Tipo</label>
+                  <select
+                    value={tarefaTipo}
+                    onChange={(e) => setTarefaTipo(e.target.value)}
+                    className="w-full h-8 text-xs mt-1 px-2 border border-slate-200 rounded-md bg-white text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  >
+                    <option value="whatsapp">💬 WhatsApp</option>
+                    <option value="ligacao">📞 Ligação</option>
+                    <option value="email">📧 Email</option>
+                    <option value="visita">🏢 Visita</option>
+                    <option value="reuniao">🤝 Reunião</option>
+                    <option value="follow_up">🔄 Follow-up</option>
+                    <option value="prospeccao">🔍 Prospecção</option>
+                    <option value="outro">📋 Outro</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[10px] text-slate-500 uppercase tracking-wide">Prioridade</label>
+                  <select
+                    value={tarefaPrioridade}
+                    onChange={(e) => setTarefaPrioridade(e.target.value)}
+                    className="w-full h-8 text-xs mt-1 px-2 border border-slate-200 rounded-md bg-white text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  >
+                    <option value="baixa">Baixa</option>
+                    <option value="media">Média</option>
+                    <option value="alta">Alta</option>
+                    <option value="urgente">Urgente</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Data + Hora */}
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[10px] text-slate-500 uppercase tracking-wide">Data</label>
+                  <Input
+                    type="date"
+                    value={tarefaData}
+                    onChange={(e) => setTarefaData(e.target.value)}
+                    className="h-8 text-xs mt-1"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] text-slate-500 uppercase tracking-wide">Hora</label>
+                  <Input
+                    type="time"
+                    value={tarefaHora}
+                    onChange={(e) => setTarefaHora(e.target.value)}
+                    className="h-8 text-xs mt-1"
+                  />
+                </div>
+              </div>
+
+              {/* Descrição */}
+              <div>
+                <label className="text-[10px] text-slate-500 uppercase tracking-wide">Descrição</label>
+                <textarea
+                  placeholder="Observações..."
+                  value={tarefaDescricao}
+                  onChange={(e) => setTarefaDescricao(e.target.value)}
+                  rows={2}
+                  className="w-full text-xs mt-1 px-2 py-1.5 border border-slate-200 rounded-md bg-white text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
+                />
+              </div>
+
+              {/* Botão criar */}
+              <Button
+                size="sm"
+                className="w-full h-8 text-xs bg-blue-600 hover:bg-blue-700"
+                disabled={!tarefaTitulo.trim() || salvandoTarefa}
+                onClick={criarTarefa}
+              >
+                {salvandoTarefa ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+                ) : (
+                  <Plus className="h-3.5 w-3.5 mr-1.5" />
+                )}
+                {salvandoTarefa ? "Criando..." : "Criar Tarefa"}
+              </Button>
+            </div>
+          </Secao>
+        )}
 
       </div>
     </div>
