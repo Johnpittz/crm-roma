@@ -472,52 +472,57 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
           ) : tarefasCliente.length === 0 ? (
             <p className="text-xs text-slate-400">Nenhuma tarefa para este cliente</p>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-2.5">
               {tarefasCliente.map((t) => {
                 const iconesTarefa: Record<string, string> = { whatsapp: "💬", ligacao: "📞", email: "📧", visita: "🏢", reuniao: "🤝", follow_up: "🔄", prospeccao: "🔍", outro: "📋" };
                 const coresColuna: Record<string, string> = { a_fazer: "bg-slate-100 text-slate-700", em_andamento: "bg-blue-100 text-blue-700", concluida: "bg-emerald-100 text-emerald-700" };
                 const nomesColuna: Record<string, string> = { a_fazer: "A Fazer", em_andamento: "Andamento", concluida: "Concluído" };
                 return (
-                  <div key={t.id} className="p-2 bg-slate-50 rounded-lg border border-slate-200">
-                    <div className="flex items-center justify-between mb-1">
-                      <p className="text-xs font-medium text-slate-800 truncate">
+                  <div key={t.id} className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-sm font-semibold text-slate-800 truncate">
                         {iconesTarefa[t.tipo] || "📋"} {t.titulo}
                       </p>
-                      <Badge variant="secondary" className={cn("text-[9px] px-1.5 py-0 h-4", coresColuna[t.coluna_kanban])}>
+                      <Badge variant="secondary" className={cn("text-[10px] px-2 py-0.5 h-5 shrink-0 ml-2", coresColuna[t.coluna_kanban])}>
                         {nomesColuna[t.coluna_kanban] || t.coluna_kanban}
                       </Badge>
                     </div>
+                    {t.data_inicio && (
+                      <p className="text-[11px] text-slate-400 mb-2">
+                        📅 {new Date(t.data_inicio + "T00:00:00").toLocaleDateString("pt-BR")}{t.hora_inicio ? ` às ${t.hora_inicio.substring(0, 5)}` : ""}
+                      </p>
+                    )}
                     {t.valor_venda && (
-                      <p className="text-[10px] text-emerald-600 font-medium">R$ {t.valor_venda.toLocaleString("pt-BR")}</p>
+                      <p className="text-sm text-emerald-600 font-bold mb-2">R$ {t.valor_venda.toLocaleString("pt-BR")}</p>
                     )}
                     {/* Ações rápidas */}
                     {t.coluna_kanban === "a_fazer" && (
-                      <div className="flex gap-1 mt-1.5">
+                      <div className="flex gap-2 mt-2">
                         <button
                           onClick={() => atualizarTarefa(t.id, "em_andamento")}
-                          className="text-[10px] px-2 py-0.5 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors"
+                          className="text-xs px-3 py-1.5 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors font-medium"
                         >
                           ▶ Iniciar
                         </button>
                         <button
                           onClick={() => atualizarTarefa(t.id, "concluida", { resultado: "venda_fechada" })}
-                          className="text-[10px] px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded hover:bg-emerald-200 transition-colors"
+                          className="text-xs px-3 py-1.5 bg-emerald-100 text-emerald-700 rounded-md hover:bg-emerald-200 transition-colors font-medium"
                         >
                           ✓ Concluir
                         </button>
                       </div>
                     )}
                     {t.coluna_kanban === "em_andamento" && (
-                      <div className="flex gap-1 mt-1.5">
+                      <div className="flex gap-2 mt-2">
                         <button
                           onClick={() => atualizarTarefa(t.id, "concluida", { resultado: "venda_fechada" })}
-                          className="text-[10px] px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded hover:bg-emerald-200 transition-colors"
+                          className="text-xs px-3 py-1.5 bg-emerald-100 text-emerald-700 rounded-md hover:bg-emerald-200 transition-colors font-medium"
                         >
                           ✓ Concluir
                         </button>
                         <button
                           onClick={() => atualizarTarefa(t.id, "a_fazer")}
-                          className="text-[10px] px-2 py-0.5 bg-slate-100 text-slate-600 rounded hover:bg-slate-200 transition-colors"
+                          className="text-xs px-3 py-1.5 bg-slate-100 text-slate-600 rounded-md hover:bg-slate-200 transition-colors font-medium"
                         >
                           ← Voltar
                         </button>
