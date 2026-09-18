@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import { ETIQUETAS_DISPONIVEIS } from "@/lib/etiquetas";
 import { toast } from "sonner";
+import { ModalConcluirTarefa } from "./modal-concluir-tarefa";
 
 interface Atendimento {
   id: string;
@@ -81,6 +82,12 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
   const [tarefaHora, setTarefaHora] = useState("");
   const [tarefaColuna, setTarefaColuna] = useState("a_fazer");
   const [salvandoTarefa, setSalvandoTarefa] = useState(false);
+
+  // ── Modal concluir tarefa ──
+  const [modalConcluir, setModalConcluir] = useState<{ aberto: boolean; tarefaId: string; titulo: string }>({
+    aberto: false, tarefaId: "", titulo: "",
+  });
+  const [salvandoConclusao, setSalvandoConclusao] = useState(false);
 
   // ── Tarefas do cliente ──
   interface TarefaCliente {
@@ -232,15 +239,15 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
     } catch (err) { toast.error("Erro ao criar tarefa"); } finally { setSalvandoTarefa(false); }
   };
 
-  // ── Concluir tarefa (prompt simples) ──
-  const concluirTarefa = async (tarefaId: string, titulo: string) => {
-    const valorStr = window.prompt(`Valor da venda para "${titulo}":`, "0");
-    if (valorStr === null) return; // cancelou
-    const valor = parseFloat(valorStr.replace(",", "."));
-    if (isNaN(valor) || valor < 0) {
-      toast.error("Valor inválido");
-      return;
-    }
+  // ── Concluir tarefa (abre modal) ──
+  const concluirTarefa = (tarefaId: string, titulo: string) => {
+    setModalConcluir({ aberto: true, tarefaId, titulo });
+  };
+
+  // ── Handler de confirmação do modal ──
+  const handleConcluirConfirmar = async (valor: number, observacao: string) => {
+    const { tarefaId, titulo } = modalConcluir;
+    setSalvandoConclusao(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
@@ -257,13 +264,17 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
         }),
       });
       if (res.ok) {
-        toast.success("Tarefa concluída!", { description: `"${titulo}" → Concluído (R$ ${valor.toLocaleString("pt-BR")})` });
+        toast.success("Venda registrada!", {
+          description: `"${titulo}" concluída — R$ ${valor.toLocaleString("pt-BR")}`,
+        });
+        setModalConcluir({ aberto: false, tarefaId: "", titulo: "" });
         fetchTarefasCliente();
       } else {
         const err = await res.json();
         toast.error("Erro ao concluir", { description: err.error || "Tente novamente" });
       }
     } catch (err) { toast.error("Erro ao concluir tarefa"); }
+    finally { setSalvandoConclusao(false); }
   };
 
   // ── Atualizar tarefa (mudar coluna) ──
@@ -466,6 +477,14 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
           </div>
         </Secao>
       </div>
+
+      <ModalConcluirTarefa
+        aberto={modalConcluir.aberto}
+        titulo={modalConcluir.titulo}
+        onConfirmar={handleConcluirConfirmar}
+        onCancelar={() => setModalConcluir({ aberto: false, tarefaId: "", titulo: "" })}
+        salvando={salvandoConclusao}
+      />
     </div>
   );
 }

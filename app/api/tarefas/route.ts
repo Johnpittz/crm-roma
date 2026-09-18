@@ -207,7 +207,7 @@ export async function PATCH(request: NextRequest) {
     .single();
 
   if (error || !tarefa) {
-    console.error("[API PATCH tarefas] Error:", error);
+    console.error("[API PATCH tarefas] Error:", JSON.stringify(error), "ID:", id);
     return NextResponse.json({ error: "Tarefa não encontrada ou sem permissão", details: error?.message }, { status: 404 });
   }
 
