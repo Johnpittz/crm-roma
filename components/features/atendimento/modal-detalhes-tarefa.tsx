@@ -174,7 +174,7 @@ export function ModalDetalhesTarefa({
         prioridade: form.prioridade,
       };
 
-      if (tarefa.resultado === "sucesso" && form.valorVenda) {
+      if (tarefa.resultado && form.valorVenda) {
         body.valor_venda = parseFloat(form.valorVenda.replace(/\./g, "").replace(",", "."));
       }
 
@@ -259,7 +259,7 @@ export function ModalDetalhesTarefa({
         observacao_resultado: resultadoForm.observacao,
       };
 
-      if (resultadoForm.resultado === "sucesso" && resultadoForm.valorVenda) {
+      if (resultadoForm.resultado && resultadoForm.valorVenda) {
         body.valor_venda = parseFloat(resultadoForm.valorVenda.replace(/\./g, "").replace(",", "."));
       }
 

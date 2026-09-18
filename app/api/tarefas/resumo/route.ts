@@ -106,7 +106,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Calcula métricas
-    const tarefasSucesso = todasTarefas.filter((t) => t.resultado === "sucesso");
+    const tarefasSucesso = todasTarefas.filter((t) => t.resultado === "sucesso" || t.resultado === "venda_fechada");
     const totalVendas = tarefasSucesso.reduce((sum, t) => sum + (t.valor_venda || 0), 0);
     const quantidadeVendas = tarefasSucesso.length;
     const ticketMedio = quantidadeVendas > 0 ? totalVendas / quantidadeVendas : 0;
