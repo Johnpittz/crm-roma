@@ -175,9 +175,7 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
     } finally {
       setLoadingEtiquetas(false);
     }
-  }, [atendimento, supabase]);
-
-  // Carregar etiquetas quando o atendimento muda (usa id para evitar reset por polling)
+  }, [atendimento?.id, supabase]);
   useEffect(() => {
     if (atendimento) {
       fetchEtiquetas();
