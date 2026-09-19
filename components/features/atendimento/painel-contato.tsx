@@ -39,14 +39,15 @@ interface SecaoProps {
   titulo: string;
   children: React.ReactNode;
   badge?: number;
+  sempreAberta?: boolean;
 }
 
-function Secao({ titulo, children, badge }: SecaoProps) {
-  const [aberta, setAberta] = useState(false);
+function Secao({ titulo, children, badge, sempreAberta }: SecaoProps) {
+  const [aberta, setAberta] = useState(!!sempreAberta);
   return (
     <div className="border-b border-slate-100 last:border-b-0">
       <button
-        className="w-full flex items-center justify-between px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+        className="w-full flex items-center justify-between px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
         onClick={() => setAberta(!aberta)}
       >
         <span>{titulo}</span>
@@ -59,7 +60,7 @@ function Secao({ titulo, children, badge }: SecaoProps) {
           {aberta ? <ChevronDown className="h-3.5 w-3.5 text-slate-400" /> : <ChevronRight className="h-3.5 w-3.5 text-slate-400" />}
         </div>
       </button>
-      {aberta && <div className="px-4 pb-3">{children}</div>}
+      {aberta && <div className="px-3 pb-2">{children}</div>}
     </div>
   );
 }
@@ -312,7 +313,7 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
   return (
     <div className="h-full flex flex-col bg-white border-l border-slate-200 overflow-y-auto">
       {/* Header */}
-      <div className="shrink-0 px-4 pt-4 pb-2">
+      <div className="shrink-0 px-3 pt-3 pb-1.5">
         <div className="flex items-center justify-between mb-1">
           <h3 className="text-base font-bold text-slate-900 truncate">{nome}</h3>
           <Button variant="ghost" size="sm" className="h-7 w-7 p-0 shrink-0"><Pencil className="h-3.5 w-3.5 text-slate-500" /></Button>
@@ -321,12 +322,12 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
       </div>
 
       {/* Avatar */}
-      <div className="flex justify-center py-3">
-        <div className="h-[72px] w-[72px] rounded-full bg-slate-200 flex items-center justify-center text-2xl font-bold text-slate-500">{iniciais}</div>
+      <div className="flex justify-center py-2">
+        <div className="h-12 w-12 rounded-full bg-slate-200 flex items-center justify-center text-lg font-bold text-slate-500">{iniciais}</div>
       </div>
 
       {/* Status */}
-      <div className="px-4 pb-3 flex items-center gap-3">
+      <div className="px-3 pb-2 flex items-center gap-2">
         <span className="text-sm text-slate-600">
           Atendimento está{" "}
           <span className={cn("font-semibold", statusAberto ? "text-green-600" : "text-slate-500")}>{statusAberto ? "Aberto" : "Concluído"}</span>
@@ -340,19 +341,19 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
       </div>
 
       {/* Dados do contato */}
-      <div className="px-4 pb-3 space-y-2">
-        <div className="flex items-center gap-3 text-sm"><Phone className="h-4 w-4 text-slate-400 shrink-0" /><span className="text-slate-700">{telefone}</span></div>
-        <div className="flex items-center gap-3 text-sm"><Mail className="h-4 w-4 text-slate-400 shrink-0" /><span className={cn(email ? "text-slate-700" : "text-slate-400")}>{email || "E-mail"}</span></div>
-        <div className="flex items-center gap-3 text-sm">
-          <Calendar className="h-4 w-4 text-slate-400 shrink-0" />
+      <div className="px-3 pb-2 space-y-1">
+        <div className="flex items-center gap-2 text-xs"><Phone className="h-3.5 w-3.5 text-slate-400 shrink-0" /><span className="text-slate-700">{telefone}</span></div>
+        <div className="flex items-center gap-2 text-xs"><Mail className="h-3.5 w-3.5 text-slate-400 shrink-0" /><span className={cn(email ? "text-slate-700" : "text-slate-400")}>{email || "E-mail"}</span></div>
+        <div className="flex items-center gap-2 text-xs">
+          <Calendar className="h-3.5 w-3.5 text-slate-400 shrink-0" />
           <span className="text-slate-700">{atendimento.created_at ? new Date(atendimento.created_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "Data de inscrição"}</span>
         </div>
-        <div className="flex items-center gap-3 text-sm"><FileText className="h-4 w-4 text-slate-400 shrink-0" /><span className={cn(cpf ? "text-slate-700" : "text-slate-400")}>{cpf || "CPF"}</span></div>
+        <div className="flex items-center gap-2 text-xs"><FileText className="h-3.5 w-3.5 text-slate-400 shrink-0" /><span className={cn(cpf ? "text-slate-700" : "text-slate-400")}>{cpf || "CPF"}</span></div>
       </div>
 
       <div className="border-t border-slate-200 mt-1">
         {/* Etiquetas */}
-        <Secao titulo="Etiquetas" badge={etiquetasVinculadas.length}>
+        <Secao titulo="Etiquetas" badge={etiquetasVinculadas.length} sempreAberta={false}>
           <div className="space-y-2">
             <Input placeholder="Busca" value={etiquetasBusca} onChange={(e) => setEtiquetasBusca(e.target.value)} className="h-8 text-xs" />
             {etiquetasVinculadas.length > 0 && (
@@ -379,11 +380,11 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
         </Secao>
 
         {/* Tarefas do Cliente */}
-        <Secao titulo="Tarefas" badge={tarefasCliente.length}>
+        <Secao titulo="Tarefas" badge={tarefasCliente.length} sempreAberta={true}>
           {tarefasCliente.length === 0 ? (
             <p className="text-xs text-slate-400">Nenhuma tarefa para este cliente</p>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-2 max-h-40 overflow-y-auto">
               {tarefasCliente.map((t) => (
                 <div key={t.id} className="p-2 bg-slate-50 rounded-lg border border-slate-200">
                   <div className="flex items-center justify-between mb-1">
@@ -420,7 +421,7 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
 
         {/* Criar Tarefa */}
         <Secao titulo="Criar Tarefa">
-          <div className="space-y-3">
+          <div className="space-y-2">
             <div>
               <label className="text-[10px] text-slate-500 uppercase tracking-wide">Título *</label>
               <Input placeholder="Ex: Follow up proposta" value={tarefaTitulo} onChange={(e) => setTarefaTitulo(e.target.value)} className="h-8 text-xs mt-1" />
