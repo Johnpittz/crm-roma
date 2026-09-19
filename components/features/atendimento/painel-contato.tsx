@@ -384,33 +384,36 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
           {tarefasCliente.length === 0 ? (
             <p className="text-xs text-slate-400">Nenhuma tarefa para este cliente</p>
           ) : (
-            <div className="space-y-2 max-h-40 overflow-y-auto">
+            <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
               {tarefasCliente.map((t) => (
-                <div key={t.id} className="p-2 bg-slate-50 rounded-lg border border-slate-200">
-                  <div className="flex items-center justify-between mb-1">
-                    <p className="text-xs font-medium text-slate-800 truncate">{iconesTarefa[t.tipo] || "📋"} {t.titulo}</p>
-                    <Badge variant="secondary" className={cn("text-[9px] px-1.5 py-0 h-4", coresColuna[t.coluna_kanban])}>
+                <div key={t.id} className="p-3 bg-slate-50 rounded-xl border border-slate-200 hover:border-blue-300 hover:bg-blue-50/30 transition-all">
+                  <div className="flex items-start justify-between gap-2 mb-1.5">
+                    <p className="text-sm font-semibold text-slate-800 leading-snug">{iconesTarefa[t.tipo] || "📋"} {t.titulo}</p>
+                    <Badge variant="secondary" className={cn("text-[10px] px-2 py-0.5 shrink-0", coresColuna[t.coluna_kanban])}>
                       {nomesColuna[t.coluna_kanban] || t.coluna_kanban}
                     </Badge>
                   </div>
+                  {t.data_inicio && (
+                    <p className="text-xs text-slate-500 mb-1.5">📅 {new Date(t.data_inicio + "T00:00:00").toLocaleDateString("pt-BR")}{t.hora_inicio ? ` às ${t.hora_inicio.slice(0,5)}` : ""}</p>
+                  )}
                   {t.valor_venda != null && t.valor_venda > 0 && (
-                    <p className="text-[10px] text-emerald-600 font-medium">R$ {t.valor_venda.toLocaleString("pt-BR")}</p>
+                    <p className="text-xs text-emerald-600 font-semibold mb-1.5">💰 R$ {t.valor_venda.toLocaleString("pt-BR")}</p>
                   )}
                   {/* Ações rápidas */}
                   {t.coluna_kanban === "a_fazer" && (
-                    <div className="flex gap-1 mt-1.5">
+                    <div className="flex gap-2 mt-2">
                       <button onClick={() => moverTarefa(t.id, "em_andamento")}
-                        className="text-[10px] px-2 py-0.5 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors">▶ Iniciar</button>
+                        className="text-xs px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 font-medium transition-colors">▶ Iniciar</button>
                       <button onClick={() => concluirTarefa(t.id, t.titulo)}
-                        className="text-[10px] px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded hover:bg-emerald-200 transition-colors">✓ Concluir</button>
+                        className="text-xs px-3 py-1.5 bg-emerald-100 text-emerald-700 rounded-lg hover:bg-emerald-200 font-medium transition-colors">✓ Concluir</button>
                     </div>
                   )}
                   {t.coluna_kanban === "em_andamento" && (
-                    <div className="flex gap-1 mt-1.5">
+                    <div className="flex gap-2 mt-2">
                       <button onClick={() => concluirTarefa(t.id, t.titulo)}
-                        className="text-[10px] px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded hover:bg-emerald-200 transition-colors">✓ Concluir</button>
+                        className="text-xs px-3 py-1.5 bg-emerald-100 text-emerald-700 rounded-lg hover:bg-emerald-200 font-medium transition-colors">✓ Concluir</button>
                       <button onClick={() => moverTarefa(t.id, "a_fazer")}
-                        className="text-[10px] px-2 py-0.5 bg-slate-100 text-slate-600 rounded hover:bg-slate-200 transition-colors">← Voltar</button>
+                        className="text-xs px-3 py-1.5 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 font-medium transition-colors">← Voltar</button>
                     </div>
                   )}
                 </div>
