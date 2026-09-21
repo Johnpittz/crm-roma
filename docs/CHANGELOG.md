@@ -18,6 +18,7 @@ Implementada funcionalidade de busca de contatos WhatsApp via Evolution API, per
 - Criado endpoint `POST /api/whatsapp/check-number` — verifica existência de números (`checkWhatsAppNumbers`)
 - Funções `findContacts` e `checkWhatsAppNumbers` adicionadas ao `lib/evolution-api.ts`
 - Seleção de contato cria automaticamente um atendimento e abre o chat
+- **Fix:** Contatos `@lid` (ID interno WhatsApp) são filtrados automaticamente — não têm número de telefone acionável
 
 **Arquivos:**
 - `lib/evolution-api.ts` — novas funções `findContacts` e `checkWhatsAppNumbers`
