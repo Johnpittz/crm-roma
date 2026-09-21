@@ -86,6 +86,13 @@ export function BuscarContatosWhatsApp({
     return jid.replace("@s.whatsapp.net", "").replace("@lid", "");
   };
 
+  // Verifica se o JID é @lid (ID interno WhatsApp, não é número de telefone)
+  const isLid = (jid: string) => jid.includes("@lid");
+
+  // Filtrar contatos: apenas @s.whatsapp.net (números reais)
+  const callableContacts = contacts.filter((c) => !isLid(c.remoteJid));
+  const lidCount = contacts.filter((c) => isLid(c.remoteJid)).length;
+
   const handleSelect = (contact: WhatsAppContact) => {
     onSelect(contact);
     onClose();
@@ -142,7 +149,7 @@ export function BuscarContatosWhatsApp({
             </div>
           )}
 
-          {!loading && !error && contacts.length === 0 && (
+          {!loading && !error && callableContacts.length === 0 && (
             <div className="h-32 flex items-center justify-center">
               <p className="text-sm text-white/40">
                 {search
@@ -152,9 +159,9 @@ export function BuscarContatosWhatsApp({
             </div>
           )}
 
-          {!loading && !error && contacts.length > 0 && (
+          {!loading && !error && callableContacts.length > 0 && (
             <div className="space-y-0.5">
-              {contacts.map((contact) => (
+              {callableContacts.map((contact) => (
                 <button
                   key={contact.id}
                   onClick={() => handleSelect(contact)}
@@ -212,7 +219,10 @@ export function BuscarContatosWhatsApp({
         {/* Footer */}
         <div className="px-4 py-2 border-t border-white/10">
           <p className="text-xs text-white/30">
-            {contacts.length} contato(s) encontrado(s)
+            {callableContacts.length} contato(s) com telefone
+            {lidCount > 0 && (
+              <span className="text-white/20"> · {lidCount} sem número (ignorados)</span>
+            )}
           </p>
         </div>
       </div>
