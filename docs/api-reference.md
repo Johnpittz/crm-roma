@@ -34,6 +34,8 @@
 24. [Configuração AI Sales](#24-configuração-ai-sales)
 25. [Teste AI Sales](#25-teste-ai-sales)
 26. [Webhooks](#26-webhooks)
+27. [Contatos WhatsApp](#27-contatos-whatsapp)
+28. [Verificação de Números WhatsApp](#28-verificação-de-números-whatsapp)
 
 ---
 
@@ -1429,6 +1431,94 @@ Webhook para receber eventos do **Millennium** (ERP integrado).
 **Erros:**
 - `401` — Não autorizado (secret inválido)
 - `500` — Webhook secret não configurado
+
+---
+
+## 27. Contatos WhatsApp
+
+### GET `/api/whatsapp/contacts`
+
+Lista contatos da instância WhatsApp via Evolution API. Busca contatos na agenda e contatos de grupos conectados à instância.
+
+**Query Params:**
+| Parâmetro | Tipo | Obrigatório | Descrição |
+|---|---|---|---|
+| `search` | string | ❌ | Busca por nome (pushName) ou número (remoteJid) |
+| `limit` | number | ❌ | Limite de resultados (padrão: 100, máx: 500) |
+| `instance` | string | ❌ | Nome da instância WhatsApp (padrão: `ROMA_1`) |
+
+**Exemplo de requisição:**
+```
+GET /api/whatsapp/contacts?search=João&limit=20
+```
+
+**Resposta (200):**
+```json
+{
+  "success": true,
+  "contacts": [
+    {
+      "id": "3EB0A1B2C3D4E5F6",
+      "remoteJid": "5562999999999@s.whatsapp.net",
+      "pushName": "João Silva",
+      "profilePicUrl": "https://pps.whatsapp.net/...",
+      "isSaved": true,
+      "isGroup": false,
+      "type": "contact"
+    }
+  ],
+  "total": 5
+}
+```
+
+**Erros:**
+- `400` — Limite excedido (máx. 500)
+- `500` — Erro ao buscar contatos ou API Key não configurada
+
+---
+
+## 28. Verificação de Números WhatsApp
+
+### POST `/api/whatsapp/check-number`
+
+Verifica se uma lista de números de telefone existem no WhatsApp. Útil para validar contatos antes de iniciar uma conversa.
+
+**Body (JSON):**
+| Campo | Tipo | Obrigatório | Descrição |
+|---|---|---|---|
+| `numbers` | string[] | ✅ | Lista de números de telefone (máx. 20) |
+| `instance` | string | ❌ | Nome da instância WhatsApp (padrão: `ROMA_1`) |
+
+**Exemplo de requisição:**
+```json
+{
+  "numbers": ["5562999999999", "5562888888888"],
+  "instance": "ROMA_1"
+}
+```
+
+**Resposta (200):**
+```json
+{
+  "success": true,
+  "results": [
+    {
+      "number": "5562999999999",
+      "exists": true,
+      "jid": "5562999999999@s.whatsapp.net"
+    },
+    {
+      "number": "5562888888888",
+      "exists": false,
+      "jid": null
+    }
+  ]
+}
+```
+
+**Erros:**
+- `400` — Campo `numbers` ausente ou não é array; mais de 20 números
+- `500` — Erro ao verificar números ou API Key não configurada
 
 ---
 

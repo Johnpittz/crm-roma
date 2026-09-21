@@ -63,6 +63,11 @@ O CRM ROMA foi projetado para equipes comerciais de distribuidoras, oferecendo:
 - Simulação de WhatsApp (para demonstração)
 - Sincronização automática via polling (a cada 15s)
 - Gestão de etiquetas e tarefas vinculadas a conversas
+- **Busca de Contatos WhatsApp** — Modal para busca de contatos via Evolution API, com verificação de números e criação automática de atendimento
+  - Componente `buscar-contatos-whatsapp.tsx` (modal de busca)
+  - Endpoint `GET /api/whatsapp/contacts` — Lista contatos da instância WhatsApp
+  - Endpoint `POST /api/whatsapp/check-number` — Verifica se números existem no WhatsApp
+  - Integração com Evolution API (`findContacts` e `checkWhatsAppNumbers`)
 
 ### 📋 Kanban
 - **Visão Principal** (Dashboard): painel gerencial com métricas consolidadas
@@ -120,6 +125,9 @@ crm-roma/
 │   │   │   ├── mensagens/route.ts
 │   │   │   ├── etiquetas/route.ts
 │   │   │   └── sync/route.ts
+│   │   ├── whatsapp/
+│   │   │   ├── contacts/route.ts  # Busca de contatos WhatsApp
+│   │   │   └── check-number/route.ts # Verificação de números WhatsApp
 │   │   ├── tarefas/               # CRUD de tarefas
 │   │   ├── clientes/              # API de clientes
 │   │   ├── leads/                 # API de leads
@@ -157,7 +165,8 @@ crm-roma/
 │   │   │   ├── painel-incentivos.tsx # Painel de incentivos
 │   │   │   ├── nova-tarefa-modal.tsx # Modal de nova tarefa
 │   │   │   ├── toggle-ai-sales.tsx # Toggle da IA
-│   │   │   └── toggle-presenca.tsx # Toggle de presença
+│   │   │   ├── toggle-presenca.tsx # Toggle de presença
+│   │   │   └── buscar-contatos-whatsapp.tsx # Modal de busca de contatos WhatsApp
 │   │   ├── clientes/              # Componentes de clientes
 │   │   ├── campanhas/             # Componentes de campanhas
 │   │   ├── configuracoes/         # Componentes de configurações
@@ -285,6 +294,10 @@ npm run start
 
 ### Autenticação
 - `POST /api/auth/cadastro` — Cadastro de novos usuários
+
+### WhatsApp
+- `GET /api/whatsapp/contacts` — Lista contatos da instância WhatsApp via Evolution API
+- `POST /api/whatsapp/check-number` — Verifica se números existem no WhatsApp
 
 ### Atendimentos
 - `GET /api/atendimentos` — Lista atendimentos

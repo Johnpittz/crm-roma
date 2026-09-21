@@ -4,6 +4,30 @@ Todas as features documentadas, ordenadas por data (mais recente primeiro).
 
 ---
 
+## 2026-09-21 — Busca de Contatos WhatsApp
+
+**Status:** ✅ Concluído
+
+**O que foi feito:**
+Implementada funcionalidade de busca de contatos WhatsApp via Evolution API, permitindo aos vendedores buscar contatos na agenda da instância WhatsApp, verificar números e iniciar atendimentos diretamente pela tela de atendimento.
+
+**Mudanças:**
+- Novo modal `buscar-contatos-whatsapp.tsx` com campo de busca, lista de resultados e verificação de números
+- Botão "Buscar Contatos WhatsApp" adicionado à página de atendimento
+- Criado endpoint `GET /api/whatsapp/contacts` — lista contatos via Evolution API (`findContacts`)
+- Criado endpoint `POST /api/whatsapp/check-number` — verifica existência de números (`checkWhatsAppNumbers`)
+- Funções `findContacts` e `checkWhatsAppNumbers` adicionadas ao `lib/evolution-api.ts`
+- Seleção de contato cria automaticamente um atendimento e abre o chat
+
+**Arquivos:**
+- `lib/evolution-api.ts` — novas funções `findContacts` e `checkWhatsAppNumbers`
+- `app/api/whatsapp/contacts/route.ts` — endpoint GET para busca de contatos
+- `app/api/whatsapp/check-number/route.ts` — endpoint POST para verificação de números
+- `components/features/atendimento/buscar-contatos-whatsapp.tsx` — modal de busca
+- `app/(dashboard)/atendimento/page.tsx` — integração do modal e handler
+
+---
+
 ## 2026-09-19 — Cards de Tarefas Maiores no Painel de Contato
 
 **Status:** ✅ Concluído
