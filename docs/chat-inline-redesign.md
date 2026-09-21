@@ -83,6 +83,14 @@ Tipos suportados: `image`, `audio`, `video`, `document`, `sticker`
 8. **Áudio player genérico** → Player estilo WhatsApp com play/pause + progresso
 9. **Imagens sem caption** → Caption sobreposta com gradiente
 10. **Documento genérico** → Card com ícone azul + nome do arquivo
+11. **PDF não aparecia no CRM** → Webhook agora salva `file_name` ao receber documentos
+
+## Changelog
+
+### v2 — 21/09/2026
+- Fix: webhook `file_name` não era salvo ao receber documentos do WhatsApp
+- Adicionado `fileName` ao extrator de dados da Evolution API
+- Adicionado `file_name` nos dois INSERT do webhook (atendimento existente + novo)
 
 ## Notas para Próximas Tasks
 - Hover actions (emoji picker e reply) são visuais por enquanto — precisam de implementação futura
