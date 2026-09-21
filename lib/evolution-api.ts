@@ -297,3 +297,151 @@ export async function listarInstancias(): Promise<Array<{
     return [];
   }
 }
+
+// ============================================================
+// BUSCA DE CONTATOS E VERIFICAÇÃO DE NÚMEROS
+// ============================================================
+
+/**
+ * Verifica se números existem no WhatsApp
+ * POST /chat/whatsappNumbers/{instance}
+ */
+export async function checkWhatsAppNumbers(params: {
+  numbers: string[];
+  instance?: string;
+}): Promise<{
+  success: boolean;
+  results: Array<{ number: string; exists: boolean; jid: string | null }>;
+  error?: string;
+}> {
+  const { numbers, instance } = params;
+  // HARDCODE: instância correta do projeto (não usar EVOLUTION_INSTANCE que pode estar errado)
+  const instanceName = instance || 'ROMA_1';
+
+  if (!EVOLUTION_API_KEY) {
+    return { success: false, results: [], error: 'API Key não configurada' };
+  }
+
+  if (!numbers || numbers.length === 0) {
+    return { success: false, results: [], error: 'Nenhum número informado' };
+  }
+
+  const numerosFormatados = numbers.map(n => formatarTelefone(n));
+
+  try {
+    const response = await fetch(
+      `${EVOLUTION_API_URL}/chat/whatsappNumbers/${instanceName}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': EVOLUTION_API_KEY,
+        },
+        body: JSON.stringify({ numbers: numerosFormatados }),
+      }
+    );
+
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      console.error('[Evolution API] Erro check numbers:', response.status, data);
+      return { 
+        success: false, 
+        results: [], 
+        error: data?.message || data?.error || `HTTP ${response.status}` 
+      };
+    }
+
+    const results = Array.isArray(data) ? data.map((item: any) => ({
+      number: item.number || '',
+      exists: item.exists || false,
+      jid: item.jid || null,
+    })) : [];
+
+    return { success: true, results };
+  } catch (err: any) {
+    console.error('[Evolution API] Erro check numbers:', err.message);
+    return { success: false, results: [], error: err.message };
+  }
+}
+
+/**
+ * Lista contatos do WhatsApp (agenda + contatos de grupos)
+ * POST /chat/findContacts/{instance}
+ */
+export async function findContacts(params: {
+  search?: string;
+  limit?: number;
+  instance?: string;
+}): Promise<{
+  success: boolean;
+  contacts: Array<{
+    id: string;
+    remoteJid: string;
+    pushName: string | null;
+    profilePicUrl: string | null;
+    isSaved: boolean;
+    isGroup: boolean;
+    type: string;
+  }>;
+  total: number;
+  error?: string;
+}> {
+  const { search, limit = 100, instance } = params;
+  // HARDCODE: instância correta do projeto (não usar EVOLUTION_INSTANCE que pode estar errado)
+  const instanceName = instance || 'ROMA_1';
+
+  if (!EVOLUTION_API_KEY) {
+    return { success: false, contacts: [], total: 0, error: 'API Key não configurada' };
+  }
+
+  try {
+    const response = await fetch(
+      `${EVOLUTION_API_URL}/chat/findContacts/${instanceName}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': EVOLUTION_API_KEY,
+        },
+        body: JSON.stringify({ where: {}, limit }),
+      }
+    );
+
+    const data = await response.json().catch(() => []);
+
+    if (!response.ok) {
+      console.error('[Evolution API] Erro findContacts:', response.status, data);
+      return { 
+        success: false, 
+        contacts: [], 
+        total: 0,
+        error: data?.message || data?.error || `HTTP ${response.status}` 
+      };
+    }
+
+    let contacts = Array.isArray(data) ? data.map((item: any) => ({
+      id: item.id || '',
+      remoteJid: item.remoteJid || '',
+      pushName: item.pushName || null,
+      profilePicUrl: item.profilePicUrl || null,
+      isSaved: item.isSaved || false,
+      isGroup: item.isGroup || false,
+      type: item.type || 'contact',
+    })) : [];
+
+    // Filtrar por busca (client-side)
+    if (search) {
+      const searchLower = search.toLowerCase();
+      contacts = contacts.filter((c: any) => 
+        c.pushName?.toLowerCase().includes(searchLower) ||
+        c.remoteJid?.includes(search)
+      );
+    }
+
+    return { success: true, contacts, total: contacts.length };
+  } catch (err: any) {
+    console.error('[Evolution API] Erro findContacts:', err.message);
+    return { success: false, contacts: [], total: 0, error: err.message };
+  }
+}

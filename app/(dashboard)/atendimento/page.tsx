@@ -6,7 +6,8 @@ import { ListaAtendimentosLateral } from "@/components/features/atendimento/list
 import { ChatInline } from "@/components/features/atendimento/chat-inline";
 import { PainelContato } from "@/components/features/atendimento/painel-contato";
 import { FiltroEtiquetas } from "@/components/features/atendimento/filtro-etiquetas";
-import { Search } from "lucide-react";
+import { Search, UserPlus } from "lucide-react";
+import { BuscarContatosWhatsApp, type WhatsAppContact } from "@/components/features/atendimento/buscar-contatos-whatsapp";
 import { BarraMetricasAtendimento } from "@/components/features/atendimento/barra-metricas";
 import { createClient } from "@/lib/supabase/client";
 
@@ -43,6 +44,7 @@ export default function AtendimentoPage() {
   const [atendimentosComEtiquetas, setAtendimentosComEtiquetas] = useState<Record<string, string[]>>({});
   const [tarefasPorAtendimento, setTarefasPorAtendimento] = useState<Record<string, number>>({});
   const [userCargo, setUserCargo] = useState("");
+  const [buscarContatosAberto, setBuscarContatosAberto] = useState(false);
 
   const atendimentosFiltrados = atendimentos.filter((a) => {
     const termo = busca.toLowerCase().trim();
@@ -197,6 +199,54 @@ export default function AtendimentoPage() {
     }
   };
 
+  const handleContatoSelecionado = useCallback(async (contact: WhatsAppContact) => {
+    const telefone = contact.remoteJid
+      .replace("@s.whatsapp.net", "")
+      .replace("@lid", "");
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const res = await fetch("/api/atendimentos", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          telefone_cliente: telefone,
+          nome_cliente: contact.pushName || "Cliente",
+        }),
+      });
+
+      if (res.ok) {
+        const novoAtendimento = await res.json();
+        await fetchAtendimentos(true);
+        if (novoAtendimento?.atendimento_id) {
+          // Buscar o atendimento completo para abrir no chat
+          const { data: { session: sess } } = await supabase.auth.getSession();
+          if (sess) {
+            const listRes = await fetch("/api/atendimentos", {
+              headers: { Authorization: `Bearer ${sess.access_token}` },
+            });
+            if (listRes.ok) {
+              const listData = await listRes.json();
+              const atendimento = listData.atendimentos?.find(
+                (a: any) => a.id === novoAtendimento.atendimento_id
+              );
+              if (atendimento) {
+                setAtendimentoChat(atendimento);
+              }
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Erro ao criar atendimento:", err);
+    }
+  }, [supabase, fetchAtendimentos]);
+
   // Data de hoje formatada
   const hoje = new Date().toLocaleDateString("pt-BR", {
     weekday: "long",
@@ -231,6 +281,14 @@ export default function AtendimentoPage() {
               etiquetaSelecionada={etiquetaFiltro}
               onSelecionar={setEtiquetaFiltro}
             />
+            <button
+              onClick={() => setBuscarContatosAberto(true)}
+              className="h-8 px-3 rounded-lg border bg-[#3B64CF]/20 border-[#3B64CF]/30 text-[#3B64CF] hover:bg-[#3B64CF]/30 transition-colors flex items-center gap-1.5 text-xs font-medium"
+              title="Buscar contatos WhatsApp"
+            >
+              <UserPlus className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Novo Contato</span>
+            </button>
           </div>
           {/* Lista */}
           <div className="flex-1 min-h-0 overflow-hidden">
@@ -268,6 +326,13 @@ export default function AtendimentoPage() {
           </div>
         )}
       </div>
+
+      {/* MODAL: Buscar Contatos WhatsApp */}
+      <BuscarContatosWhatsApp
+        open={buscarContatosAberto}
+        onClose={() => setBuscarContatosAberto(false)}
+        onSelect={handleContatoSelecionado}
+      />
     </div>
   );
 }
