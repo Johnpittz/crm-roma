@@ -207,6 +207,7 @@ export async function POST(request: NextRequest) {
         enviada_por: null,
         tipo_midia: mapearTipoMidia(dados.mediaType),
         url_midia: urlFinalMidia,
+        file_name: dados.fileName || null,
         whatsapp_message_id: dados.messageId || null,
         created_at: createdAtWhatsApp,
       });
@@ -267,6 +268,7 @@ export async function POST(request: NextRequest) {
       enviada_por: null,
       tipo_midia: mapearTipoMidia(dados.mediaType),
       url_midia: urlFinalMidia,
+      file_name: dados.fileName || null,
       whatsapp_message_id: dados.messageId || null,
       created_at: createdAtWhatsApp,
     });
@@ -421,6 +423,7 @@ function extrairDadosEvolutionAPI(payload: any) {
     let mediaType = null;
     let mediaUrl = null;
     let mediaBase64 = null;
+    let fileName = null;
     
     if (msg.message) {
       // DEBUG: log message keys to understand payload structure
@@ -467,6 +470,7 @@ function extrairDadosEvolutionAPI(payload: any) {
         mediaType = "document";
         mediaBase64 = extractMediaBase64(msg.message.documentMessage);
         mediaUrl = msg.message.documentMessage.url || null;
+        fileName = msg.message.documentMessage.fileName || null;
         mensagem = msg.message.documentMessage.fileName || "[Documento]";
       }
 
@@ -499,6 +503,7 @@ function extrairDadosEvolutionAPI(payload: any) {
               mensagem = "[Sticker]";
             } else if (typeLabel === "document") {
               mensagem = found.fileName || "[Documento]";
+              fileName = found.fileName || null;
             }
             break;
           }
@@ -525,6 +530,7 @@ function extrairDadosEvolutionAPI(payload: any) {
       mediaType,
       mediaUrl,
       mediaBase64,
+      fileName,
       messageId,
       instance,
       fromMe,
@@ -535,12 +541,12 @@ function extrairDadosEvolutionAPI(payload: any) {
   // Evento de conexão (ignorar)
   if (payload.event === "connection.update") {
     console.log("[Webhook Evolution] Evento de conexão ignorado");
-    return { remoteJid: null, telefone: null, nome: null, mensagem: null, mediaType: null, mediaUrl: null, mediaBase64: null, messageId: null, instance, fromMe: false, messageTimestamp: null };
+    return { remoteJid: null, telefone: null, nome: null, mensagem: null, mediaType: null, mediaUrl: null, mediaBase64: null, fileName: null, messageId: null, instance, fromMe: false, messageTimestamp: null };
   }
 
   // Evento desconhecido
   console.log("[Webhook Evolution] Evento desconhecido:", payload.event);
-  return { remoteJid: null, telefone: null, nome: null, mensagem: null, mediaType: null, mediaUrl: null, mediaBase64: null, messageId: null, instance, fromMe: false, messageTimestamp: null };
+  return { remoteJid: null, telefone: null, nome: null, mensagem: null, mediaType: null, mediaUrl: null, mediaBase64: null, fileName: null, messageId: null, instance, fromMe: false, messageTimestamp: null };
 }
 
 /**
