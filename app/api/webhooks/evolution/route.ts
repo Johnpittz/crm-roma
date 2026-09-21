@@ -164,12 +164,18 @@ export async function POST(request: NextRequest) {
 
     if (dados.mediaBase64 && dados.mediaType) {
       const extensao = obterExtensao(dados.mediaType);
-      const fileName = `${telefoneLimpo}_${Date.now()}${extensao}`;
+      const uploadFileName = `${telefoneLimpo}_${Date.now()}${extensao}`;
       const mimeType = obterMimeType(dados.mediaType);
-      const uploadedUrl = await uploadMediaToStorage(dados.mediaBase64, mimeType, fileName);
+      console.log(`[Webhook Evolution] Uploading ${dados.mediaType}: base64=${dados.mediaBase64.length}chars, mime=${mimeType}, file=${uploadFileName}`);
+      const uploadedUrl = await uploadMediaToStorage(dados.mediaBase64, mimeType, uploadFileName);
       if (uploadedUrl) {
         urlFinalMidia = uploadedUrl;
+        console.log(`[Webhook Evolution] Upload OK: ${uploadedUrl.substring(0, 80)}`);
+      } else {
+        console.log(`[Webhook Evolution] Upload FAILED - urlFinalMidia keeps: ${urlFinalMidia ? urlFinalMidia.substring(0, 80) : 'null'}`);
       }
+    } else if (dados.mediaType) {
+      console.log(`[Webhook Evolution] ${dados.mediaType} sem base64, usando URL: ${urlFinalMidia ? urlFinalMidia.substring(0, 80) : 'null'}`);
     }
 
     // ==================== BUSCA CLIENTE ====================
@@ -200,7 +206,7 @@ export async function POST(request: NextRequest) {
         .eq("id", atendimentoExistente.id);
 
       // Insere mensagem no chat
-      await getSupabase().from("atendimento_mensagens").insert({
+      const insertResult = await getSupabase().from("atendimento_mensagens").insert({
         atendimento_id: atendimentoExistente.id,
         remetente: remetente,
         conteudo: conteudoMensagem,
@@ -212,7 +218,11 @@ export async function POST(request: NextRequest) {
         created_at: createdAtWhatsApp,
       });
 
-      console.log(`[Webhook Evolution] Mensagem adicionada ao atendimento ${atendimentoExistente.id}`);
+      if (insertResult.error) {
+        console.error(`[Webhook Evolution] ERRO AO INSERIR MENSAGEM:`, insertResult.error);
+      } else {
+        console.log(`[Webhook Evolution] Mensagem inserida OK: tipo=${dados.mediaType}, file=${dados.fileName}, atendimento=${atendimentoExistente.id}`);
+      }
 
       // Chama AI Sales pra responder (só pra mensagens de texto do cliente)
       if (remetente === "cliente" && !dados.mediaType && conteudoMensagem) {
@@ -472,6 +482,15 @@ function extrairDadosEvolutionAPI(payload: any) {
         mediaUrl = msg.message.documentMessage.url || null;
         fileName = msg.message.documentMessage.fileName || null;
         mensagem = msg.message.documentMessage.fileName || "[Documento]";
+        console.log("[Webhook Evolution] DOCUMENTO DETECTADO:", {
+          fileName,
+          hasBase64: !!mediaBase64,
+          base64Length: mediaBase64 ? mediaBase64.length : 0,
+          mediaUrl: mediaUrl ? mediaUrl.substring(0, 80) : null,
+          mimetype: msg.message.documentMessage.mimetype,
+          fileLength: msg.message.documentMessage.fileLength,
+          keys: Object.keys(msg.message.documentMessage),
+        });
       }
 
       // --- PHASE 2: Wrapped message type detection ---
