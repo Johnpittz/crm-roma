@@ -1,0 +1,122 @@
+{
+  "message_text": {
+    "event": "message",
+    "session": "ROMA_1",
+    "payload": {
+      "id": "false_5562999990000@c.us_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      "timestamp": 1667561485,
+      "from": "5562999990000@c.us",
+      "fromMe": false,
+      "to": "556234165014@c.us",
+      "body": "Olá, tudo bem?",
+      "hasMedia": false,
+      "ack": 0,
+      "vCards": [],
+      "_data": {}
+    }
+  },
+  "message_media": {
+    "event": "message",
+    "session": "ROMA_1",
+    "payload": {
+      "id": "false_5562999990000@c.us_BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+      "timestamp": 1667561490,
+      "from": "5562999990000@c.us",
+      "fromMe": false,
+      "body": "Check this out (caption for the media)!",
+      "hasMedia": true,
+      "media": {
+        "mimetype": "image/jpeg",
+        "filename": null,
+        "url": "http://localhost:3000/api/files/false_5562999990000@c.us_BBBB.jpg",
+        "error": null
+      },
+      "_data": {}
+    }
+  },
+  "message_media_not_downloaded": {
+    "event": "message",
+    "session": "ROMA_1",
+    "payload": {
+      "id": "false_5562999990000@c.us_CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC",
+      "timestamp": 1667561495,
+      "from": "5562999990000@c.us",
+      "fromMe": false,
+      "body": "",
+      "hasMedia": true,
+      "media": {
+        "mimetype": "audio/ogg; codecs=opus",
+        "filename": "audio-0000.opus",
+        "url": null,
+        "error": "download error"
+      },
+      "_data": {}
+    }
+  },
+  "message_with_reply": {
+    "event": "message",
+    "session": "ROMA_1",
+    "payload": {
+      "id": "true_11111111111@c.us_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      "timestamp": 1667561500,
+      "from": "5562999990000@c.us",
+      "fromMe": true,
+      "to": "5562999990000@c.us",
+      "body": "Yes!",
+      "hasMedia": false,
+      "replyTo": {
+        "id": "false_5562999990000@c.us_AAAAAAAAAAAAAAAAAAA",
+        "participant": "5562999990000@c.us",
+        "body": "Check this out!",
+        "hasMedia": true,
+        "media": {
+          "url": "http://localhost:3000/api/files/false_5562999990000@c.us_AAAA.jpg",
+          "mimetype": "image/jpeg",
+          "filename": null,
+          "error": null
+        },
+        "_data": {}
+      }
+    }
+  },
+  "message_ack_read": {
+    "event": "message.ack",
+    "session": "ROMA_1",
+    "engine": "GOWS",
+    "payload": {
+      "id": "true_11111111111@c.us_4CC5EDD64BC22EBA6D639F2AF571346C",
+      "from": "5562999990000@c.us",
+      "participant": null,
+      "fromMe": true,
+      "ack": 3,
+      "ackName": "READ"
+    }
+  },
+  "message_ack_server": {
+    "event": "message.ack",
+    "session": "ROMA_1",
+    "engine": "GOWS",
+    "payload": {
+      "id": "true_11111111111@c.us_4CC5EDD64BC22EBA6D639F2AF571346C",
+      "from": "5562999990000@c.us",
+      "participant": null,
+      "fromMe": true,
+      "ack": 1,
+      "ackName": "SERVER"
+    }
+  },
+  "session_status_working": {
+    "event": "session.status",
+    "session": "ROMA_1",
+    "payload": {
+      "status": "WORKING"
+    }
+  },
+  "session_status_scan_qr": {
+    "event": "session.status",
+    "session": "ROMA_1",
+    "payload": {
+      "status": "SCAN_QR_CODE"
+    }
+  }
+}

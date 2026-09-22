@@ -24,11 +24,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ logs, error: "GEMINI_API_KEY não configurada" }, { status: 500 });
   }
 
-  // Step 2: Check Evolution API config
-  const evoUrl = process.env.EVOLUTION_API_URL;
-  const evoKey = process.env.EVOLUTION_API_KEY;
-  logs.push(`2. EVOLUTION_API_URL: ${evoUrl || "AUSENTE ❌"}`);
-  logs.push(`3. EVOLUTION_API_KEY: ${evoKey ? `PRESENTE (${evoKey.substring(0, 10)}...)` : "AUSENTE ❌"}`);
+  // Step 2: Check WAHA config
+  const wahaUrl = process.env.WAHA_API_URL;
+  const wahaKey = process.env.WAHA_API_KEY;
+  const wahaSession = process.env.WAHA_SESSION;
+  logs.push(`2. WAHA_API_URL: ${wahaUrl || "AUSENTE ❌"}`);
+  logs.push(`3. WAHA_API_KEY: ${wahaKey ? `PRESENTE (${wahaKey.substring(0, 10)}...)` : "AUSENTE ❌"}`);
+  logs.push(`   WAHA_SESSION: ${wahaSession || "ROMA_1 (padrão)"}`);
 
   // Step 3: Test Gemini API directly
   try {
@@ -51,27 +53,27 @@ export async function GET(request: NextRequest) {
     logs.push(`4. Gemini API test: FALHOU - ${err.message}`);
   }
 
-  // Step 4: Test Evolution API send (dry run - just check connectivity)
-  if (evoUrl && evoKey) {
+  // Step 4: Test WAHA connectivity (sessions + status)
+  if (wahaUrl && wahaKey) {
     try {
-      const resp = await fetch(`${evoUrl}/instance/fetchInstances`, {
-        headers: { "apikey": evoKey },
+      const resp = await fetch(`${wahaUrl}/api/sessions`, {
+        headers: { "X-Api-Key": wahaKey },
       });
-      logs.push(`5. Evolution API connectivity: ${resp.status}`);
+      logs.push(`5. WAHA connectivity: ${resp.status}`);
       if (resp.ok) {
-        const instances = await resp.json();
-        const roma = instances.find((i: any) => i.name?.includes("ROMA"));
-        if (roma) {
-          logs.push(`   ROMA_1 instance: status=${roma.status}`);
-          const wh = roma.webhook || {};
-          logs.push(`   Webhook URL: ${wh.url || "NOT SET"}`);
-          logs.push(`   Webhook events: ${JSON.stringify(wh.events || [])}`);
-        } else {
-          logs.push(`   ROMA instance NOT FOUND`);
+        const sessions = await resp.json();
+        for (const s of sessions) {
+          logs.push(`   Sessão ${s.name}: status=${s.status}`);
         }
+        const alvo = sessions.find((s: any) => s.name === (wahaSession || "ROMA_1"));
+        logs.push(
+          alvo
+            ? `   ${alvo.name} encontrada: ${alvo.status}`
+            : `   ${wahaSession || "ROMA_1"} NOT FOUND`
+        );
       }
     } catch (err: any) {
-      logs.push(`5. Evolution API: FALHOU - ${err.message}`);
+      logs.push(`5. WAHA: FALHOU - ${err.message}`);
     }
   }
 

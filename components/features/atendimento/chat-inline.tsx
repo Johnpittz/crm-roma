@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
+import { mapearCheckmark } from "@/lib/waha-webhook";
 
 // ─── Types ───────────────────────────────────────────────────────
 interface Mensagem {
@@ -27,6 +28,7 @@ interface Mensagem {
   media_type?: string | null;
   file_name?: string | null;
   whatsapp_message_id?: string | null;
+  ack_status?: string | null;
 }
 
 interface Atendimento {
@@ -63,6 +65,20 @@ interface Vendedor {
 const formatarHora = (data: string) => {
   const d = new Date(data);
   return d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+};
+
+/** Checkmark conforme ack_status real do WhatsApp (WAHA message.ack) */
+const renderCheckmark = (ack?: string | null) => {
+  switch (mapearCheckmark(ack)) {
+    case "lido":
+      return <CheckCheck className="h-[14px] w-[14px] text-[#53bdeb] shrink-0" />;
+    case "entregue":
+      return <CheckCheck className="h-[14px] w-[14px] text-[#667781] shrink-0" />;
+    case "erro":
+      return <Check className="h-[14px] w-[14px] text-[#ea0038] shrink-0" />;
+    default: // enviando
+      return <Check className="h-[14px] w-[14px] text-[#667781] shrink-0" />;
+  }
 };
 
 /** Formata timer de gravação: "1:05" */
@@ -242,6 +258,18 @@ export function ChatInline({ atendimento, onMarcarResolvido, onMensagemEnviada, 
   useEffect(() => {
     setModoTransferencia(false);
   }, [atendimento?.id]);
+
+  // Enviar "visto" ao WhatsApp ao abrir a conversa (WAHA sendSeen)
+  useEffect(() => {
+    if (!atendimento?.telefone_cliente) return;
+    fetch("/api/whatsapp/send-seen", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ telefone: atendimento.telefone_cliente }),
+    }).catch(() => {
+      // best-effort: não bloqueia a abertura do chat
+    });
+  }, [atendimento?.id, atendimento?.telefone_cliente]);
 
   // Carregar mensagens ao mudar de atendimento
   useEffect(() => {
@@ -743,9 +771,7 @@ export function ChatInline({ atendimento, onMarcarResolvido, onMensagemEnviada, 
                             <span className="text-[11px] text-[#667781] select-none">
                               {formatarHora(msg.created_at)}
                             </span>
-                            {!isCliente && (
-                              <CheckCheck className="h-[14px] w-[14px] text-[#53bdeb] shrink-0" />
-                            )}
+                            {!isCliente && renderCheckmark(msg.ack_status)}
                           </div>
 
                           {/* Hover Actions (reply + reaction) */}

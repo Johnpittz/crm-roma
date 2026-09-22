@@ -1,6 +1,9 @@
 /**
  * Webhook para receber mensagens do WhatsApp via Evolution API
- * 
+ *
+ * @deprecated LEGADO (migração WAHA). Webhook ativo: POST /api/webhooks/waha.
+ * Mantido apenas como rollback (docs/plano-implementacao-waha.md Fase 8).
+ *
  * Endpoint: POST /api/webhooks/evolution
  * 
  * Quando um cliente envia mensagem no WhatsApp, a Evolution API envia

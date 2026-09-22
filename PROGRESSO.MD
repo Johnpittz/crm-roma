@@ -1,10 +1,10 @@
 # CRM ROMA - Progresso do Projeto
 
 > **Arquivo de contexto para agentes IA**
-> **Última atualização:** 09/09/2026 (atualizado com WhatsApp conectado)
+> **Última atualização:** 22/09/2026 (migração WhatsApp para WAHA — Fase 8)
 > **Deploy atual:** https://crm-roma-romadistribuicao.vercel.app
 > **Conta Vercel:** roma-6489 (romadistribuicao) — plano Hobby/Free
-> **Conversa atual:** Integração WhatsApp Evolution API + Kanban + Banner Editável + Clientes Otimizados
+> **Conversa atual:** Migração WhatsApp Evolution API → WAHA — módulo ATENDIMENTOS (`docs/plano-implementacao-waha.md`)
 
 ---
 
@@ -548,6 +548,15 @@ EVOLUTION_API_KEY=e3186c32139f79c7566a1d6a3f5bc702fae199c725a313ce9b7f8ff035123b
 ---
 
 ## 14. Histórico de Commits Importantes
+
+### 22/09/2026
+- [x] Migração WhatsApp Evolution → WAHA (módulo ATENDIMENTOS): `docs/plano-implementacao-waha.md` (9 fases) + `docs/pesquisa-waha-atendimento.md` (13 fontes)
+- [x] Fase 1: fundação de testes (vitest — **34 testes**), `lib/telefone.ts` (fonte única de formatação, débito §8.5 quitado)
+- [x] Fase 2: WAHA (engine GOWS) instalado na VPS, sessão `ROMA_1` conectada; runbook `docs/runbook-waha-numeros.md` + skill `waha-conectar-numero`
+- [x] Fases 3–7 (TDD): `lib/waha.ts` + `lib/waha-webhook.ts`, webhook `/api/webhooks/waha` (mídia pronta via `media.url`, sem decrypt), envio/contatos migrados, `@lid` resolvido (débito §8.2), checkmarks reais (`ack_status` + `sendSeen` ao abrir conversa)
+- [x] Migration `067_ack_status_mensagens.sql` aplicada no Supabase
+- [ ] Fase 8 — cutover: env vars no Vercel → push/deploy → webhook `ROMA_1` → produção → E2E
+- ⚠️ `lib/evolution-api.ts` + `app/api/webhooks/evolution` marcados `@deprecated` (rollback; remover após estabilização)
 
 ### 09/09/2026
 - [x] **Evolution API:** Integração completa (substitui BotConversa)

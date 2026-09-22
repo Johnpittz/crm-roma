@@ -9,7 +9,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { enviarMidiaWhatsApp, enviarAudioWhatsApp } from "@/lib/evolution-api";
+import { enviarMidia, enviarAudio } from "@/lib/waha";
 import { uploadMediaToStorage } from "@/lib/media-storage";
 
 export const dynamic = "force-dynamic";
@@ -49,10 +49,10 @@ export async function POST(request: NextRequest) {
 
     // Se for áudio, usar endpoint especial de áudio (ptt)
     if (mediatype === 'audio') {
-      const result = await enviarAudioWhatsApp({
+      const result = await enviarAudio({
         telefone: number,
         audio: media,
-        instance,
+        session: instance,
       });
 
       if (!result.success) {
@@ -69,13 +69,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Para outros tipos de mídia
-    const result = await enviarMidiaWhatsApp({
+    const result = await enviarMidia({
       telefone: number,
       mediatype: mediatype || 'image',
       mimetype: mimetype || 'image/jpeg',
       media,
       fileName,
-      instance,
+      session: instance,
     });
 
     if (!result.success) {

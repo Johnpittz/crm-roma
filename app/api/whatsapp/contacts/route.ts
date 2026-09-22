@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { findContacts } from "@/lib/evolution-api";
+import { findContacts } from "@/lib/waha";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const result = await findContacts({ search, limit, instance });
+    const result = await findContacts({ search, limit, session: instance });
 
     if (!result.success) {
       return NextResponse.json(

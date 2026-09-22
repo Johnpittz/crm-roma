@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { checkWhatsAppNumbers } from "@/lib/evolution-api";
+import { checkNumbers } from "@/lib/waha";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const result = await checkWhatsAppNumbers({ numbers, instance });
+    const result = await checkNumbers({ numbers, session: instance });
 
     if (!result.success) {
       return NextResponse.json({ error: result.error }, { status: 500 });

@@ -1187,6 +1187,8 @@ Importa empresas selecionadas para o CRM como leads.
 
 ## 21. Envio de Mídia
 
+> **Atualizado (migração WAHA):** o envio interno usa agora `lib/waha.ts` (`enviarMidia`/`enviarAudio` — WAHA `sendImage/sendFile/sendVideo/sendVoice/sendSticker`), incluindo `sticker`. Contrato da rota inalterado. Ver `docs/plano-implementacao-waha.md`.
+
 ### POST `/api/send/media`
 
 Envia mídia (imagem, áudio, vídeo, sticker, documento) via WhatsApp.
@@ -1332,7 +1334,13 @@ Teste manual que verifica cada etapa do pipeline AI Sales.
 
 ## 26. Webhooks
 
+### POST `/api/webhooks/waha`
+
+Webhook **ativo** para receber mensagens do WhatsApp via **WAHA** (migração — `docs/plano-implementacao-waha.md`). Eventos: `message`, `message.ack` (→ `ack_status` dos checkmarks), `session.status`. Token opcional: header `X-Webhook-Token` = env `WAHA_WEBHOOK_TOKEN`. Ignora grupos; mídia chega pronta via `media.url` (sem decrypt).
+
 ### POST `/api/webhooks/evolution`
+
+> **@deprecated (legado):** mantido apenas como rollback da migração WAHA.
 
 Webhook para receber mensagens do WhatsApp via **Evolution API**.
 

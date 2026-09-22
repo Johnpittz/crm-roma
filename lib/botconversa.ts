@@ -115,16 +115,9 @@ export async function enviarMensagemWhatsApp(params: EnviarMensagemParams): Prom
   }
 }
 
-export function formatarTelefone(telefone: string): string {
-  let nums = telefone.replace(/\D/g, "");
-  if (!nums.startsWith("55")) nums = "55" + nums;
-  // NÃO adiciona 9 automaticamente — números antigos (3416-5014) não têm 9
-  return nums;
-}
-
-export function telefoneParaDigitos(telefone: string): string {
-  return telefone.replace(/\D/g, "");
-}
+// Fonte única de formatação de telefone (docs/busca-contatos-whatsapp.md §8.5)
+import { formatarTelefone, telefoneParaDigitos } from "./telefone";
+export { formatarTelefone, telefoneParaDigitos };
 
 /**
  * Busca mensagens de um subscriber (para sincronizar mensagens enviadas pelo celular)

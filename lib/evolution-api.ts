@@ -1,8 +1,9 @@
 /**
  * Helper para integração com Evolution API
  * 
- * Base URL: http://localhost:8082 (interno) ou http://2.25.192.248:8080 (externo)
- * API Key: configurada em .env
+ * @deprecated LEGADO (migração WAHA — docs/plano-implementacao-waha.md).
+ * Mantido apenas como rollback na Fase 8; será removido após estabilização.
+ * Substituto: lib/waha.ts (env vars WAHA_API_URL / WAHA_API_KEY / WAHA_SESSION).
  */
 
 const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL || 'http://localhost:8082';
@@ -209,21 +210,10 @@ export async function verificarStatusInstancia(): Promise<{ connected: boolean; 
 /**
  * Formata telefone para padrão Evolution API
  * Remove caracteres não numéricos e adiciona código do país
+ * (implementação única em lib/telefone.ts — reexportado por compatibilidade)
  */
-export function formatarTelefone(telefone: string): string {
-  let nums = telefone.replace(/\D/g, '');
-  if (!nums.startsWith('55')) {
-    nums = '55' + nums;
-  }
-  return nums;
-}
-
-/**
- * Remove formatação do telefone
- */
-export function telefoneParaDigitos(telefone: string): string {
-  return telefone.replace(/\D/g, '');
-}
+import { formatarTelefone, telefoneParaDigitos } from './telefone';
+export { formatarTelefone, telefoneParaDigitos };
 
 /**
  * Lista instâncias disponíveis no Evolution API

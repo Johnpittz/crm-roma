@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
-import { enviarMensagemWhatsApp } from "@/lib/evolution-api";
+import { enviarTexto } from "@/lib/waha";
 
 export const dynamic = "force-dynamic";
 
@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
 
   // Send via WhatsApp if vendor is replying (skip if media already sent)
   const isMediaPlaceholder = conteudo.match(/^\[(Áudio|audio|Imagem|image|Vídeo|video|Sticker|sticker|Documento|document)\]$/i);
-  if (remetente === "vendedor" && process.env.EVOLUTION_API_KEY && !isMediaPlaceholder) {
+  if (remetente === "vendedor" && process.env.WAHA_API_KEY && !isMediaPlaceholder) {
     try {
       // Get atendimento info (phone + instance)
       const { data: atendimento } = await supabase
@@ -109,12 +109,12 @@ export async function POST(request: NextRequest) {
         .single();
 
       if (atendimento?.telefone_cliente) {
-        const instanceName = instance || atendimento.instance_name || "ROMA_1";
+        const sessionName = instance || atendimento.instance_name || undefined;
 
-        const resultado = await enviarMensagemWhatsApp({
+        const resultado = await enviarTexto({
           telefone: atendimento.telefone_cliente,
           mensagem: conteudo,
-          instance: instanceName,
+          session: sessionName,
         });
 
         if (resultado.success && resultado.message_id) {
@@ -123,11 +123,11 @@ export async function POST(request: NextRequest) {
             .update({ whatsapp_message_id: resultado.message_id })
             .eq("id", mensagem.id);
         } else if (!resultado.success) {
-          console.error("[Mensagens] Erro ao enviar via Evolution API:", resultado.error);
+          console.error("[Mensagens] Erro ao enviar via WAHA:", resultado.error);
         }
       }
     } catch (err) {
-      console.error("[Mensagens] Erro ao enviar via Evolution API:", err);
+      console.error("[Mensagens] Erro ao enviar via WAHA:", err);
     }
   }
 

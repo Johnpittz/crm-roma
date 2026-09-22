@@ -17,9 +17,11 @@ function getSupabase() {
   return supabaseInstance;
 }
 
-// Evolution API config
+// Evolution API config — LEGADO: decrypt de mídias antigas (mmg.whatsapp.net).
+// Mídias novas chegam prontas via WAHA (media.url) e são salvas no Supabase Storage
+// pelo webhook (docs/plano-implementacao-waha.md Fase 5).
 const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL || "http://localhost:8082";
-const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY || "e3186c32139f79c7566a1d6a3f5bc702fae199c725a313ce9b7f8ff035123b01";
+const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY || "";
 
 // Simple in-memory cache for decoded media (TTL: 1 hour)
 const mediaCache = new Map<string, { data: ArrayBuffer; contentType: string; timestamp: number }>();
