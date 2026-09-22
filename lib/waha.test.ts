@@ -106,6 +106,29 @@ describe('enviarMidia', () => {
   })
 })
 
+describe('enviarMidia (mediaUrl — arquivos grandes)', () => {
+  it('com mediaUrl envia file:{url} e não manda base64', async () => {
+    const { impl, calls } = fakeFetch(200, { id: 'x' })
+
+    const resultado = await enviarMidia(
+      {
+        telefone: '5562999990000',
+        mediatype: 'document',
+        mimetype: 'application/pdf',
+        mediaUrl: 'https://storage.example.com/enviados/proposta.pdf',
+        fileName: 'proposta.pdf',
+      },
+      { fetchImpl: impl, config: CONFIG }
+    )
+
+    expect(resultado.success).toBe(true)
+    expect(JSON.parse(String(calls[0].init.body)).file).toEqual({
+      url: 'https://storage.example.com/enviados/proposta.pdf',
+      filename: 'proposta.pdf',
+    })
+  })
+})
+
 describe('enviarAudio', () => {
   it('envia nota de voz por POST /api/sendVoice', async () => {
     const { impl, calls } = fakeFetch(200, { id: 'aud-1' })

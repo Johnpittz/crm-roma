@@ -17,34 +17,37 @@ export const dynamic = "force-dynamic";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { number, mediatype, mimetype, media, fileName, instance } = body;
+    const { number, mediatype, mimetype, media, media_url, fileName, instance } = body;
 
-    if (!number || !media) {
+    if (!number || (!media && !media_url)) {
       return NextResponse.json(
-        { error: "number e media são obrigatórios" },
+        { error: "number e media (ou media_url) são obrigatórios" },
         { status: 400 }
       );
     }
 
     console.log(`[Send Media] Enviando ${mediatype || 'image'} para ${number} via ${instance || 'padrão'}`);
 
-    // Upload da mídia para Supabase Storage ANTES de enviar
-    let mediaUrl: string | null = null;
-    try {
-      const prefix = mediatype === "audio" ? "audio"
-        : mediatype === "video" ? "video"
-        : mediatype === "sticker" ? "sticker"
-        : "image";
-      
-      const mime = mimetype || (mediatype === "audio" ? "audio/ogg; codecs=opus" : "image/jpeg");
-      mediaUrl = await uploadMediaToStorage(media, mime, prefix);
-      
-      if (mediaUrl) {
-        console.log(`[Send Media] Mídia salva no Storage: ${mediaUrl}`);
+    // Upload da mídia para Supabase Storage ANTES de enviar (apenas caminho base64;
+    // no caminho media_url o arquivo já está no Storage e o WAHA baixa por URL)
+    let mediaUrl: string | null = media_url || null;
+    if (!mediaUrl) {
+      try {
+        const prefix = mediatype === "audio" ? "audio"
+          : mediatype === "video" ? "video"
+          : mediatype === "sticker" ? "sticker"
+          : "image";
+
+        const mime = mimetype || (mediatype === "audio" ? "audio/ogg; codecs=opus" : "image/jpeg");
+        mediaUrl = await uploadMediaToStorage(media, mime, prefix);
+
+        if (mediaUrl) {
+          console.log(`[Send Media] Mídia salva no Storage: ${mediaUrl}`);
+        }
+      } catch (err: any) {
+        console.error("[Send Media] Erro ao salvar no Storage:", err.message);
+        // Continua mesmo sem Storage - envio via WhatsApp é prioridade
       }
-    } catch (err: any) {
-      console.error("[Send Media] Erro ao salvar no Storage:", err.message);
-      // Continua mesmo sem Storage - envio via WhatsApp é prioridade
     }
 
     // Se for áudio, usar endpoint especial de áudio (ptt)
@@ -74,6 +77,7 @@ export async function POST(request: NextRequest) {
       mediatype: mediatype || 'image',
       mimetype: mimetype || 'image/jpeg',
       media,
+      mediaUrl: media_url || undefined,
       fileName,
       session: instance,
     });

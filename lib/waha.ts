@@ -119,7 +119,10 @@ export interface EnviarMidiaParams {
   telefone: string
   mediatype: Mediatype
   mimetype: string
-  media: string // base64
+  /** base64 do arquivo (caminho legado / arquivos pequenos) */
+  media?: string
+  /** URL pública do arquivo no Storage — o WAHA baixa sozinho (arquivos grandes) */
+  mediaUrl?: string
   fileName?: string
   session?: string
 }
@@ -177,16 +180,21 @@ export async function enviarMidia(
   options: WahaOptions = {}
 ): Promise<EnviarMensagemResponse> {
   const config = options.config || getWahaConfig()
+  // mediaUrl: o WAHA baixa o arquivo direto do Storage — caminho para arquivos
+  // grandes (contorna o limite de 4,5 MB de corpo da Vercel; Fase 8 E2E)
+  const file = params.mediaUrl
+    ? { url: params.mediaUrl, ...(params.fileName ? { filename: params.fileName } : {}) }
+    : {
+        mimetype: params.mimetype,
+        filename: params.fileName,
+        data: params.media,
+      }
   return postWaha(
     ENDPOINT_MIDIA[params.mediatype],
     {
       session: params.session || config.session,
       chatId: formatarChatId(params.telefone),
-      file: {
-        mimetype: params.mimetype,
-        filename: params.fileName,
-        data: params.media,
-      },
+      file,
     },
     options
   )

@@ -336,17 +336,69 @@ export function ChatInline({ atendimento, onMarcarResolvido, onMensagemEnviada, 
 
     setEnviando(true);
     try {
-      const reader = new FileReader();
-      reader.onload = async () => {
-        const base64 = (reader.result as string).split(",")[1];
-        const isImage = file.type.startsWith("image/");
-        const isAudio = file.type.startsWith("audio/");
-        const isVideo = file.type.startsWith("video/");
+      const isImage = file.type.startsWith("image/");
+      const isAudio = file.type.startsWith("audio/");
+      const isVideo = file.type.startsWith("video/");
 
-        let mediatype = "document";
-        if (isImage) mediatype = "image";
-        else if (isAudio) mediatype = "audio";
-        else if (isVideo) mediatype = "video";
+      let mediatype = "document";
+      if (isImage) mediatype = "image";
+      else if (isAudio) mediatype = "audio";
+      else if (isVideo) mediatype = "video";
+
+      const mimetype = file.type || "application/octet-stream";
+      let mediaUrlArq: string | null = null;
+      let enviado = false;
+
+      // Caminho rápido: upload direto ao Storage + envio por URL
+      // (contorna o limite de 4,5 MB do corpo da Vercel — arquivos grandes)
+      try {
+        const { data: { session: sessao } } = await supabase.auth.getSession();
+        if (sessao) {
+          const up = await fetch("/api/upload-url", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: sessao.token_type + " " + sessao.access_token,
+            },
+            body: JSON.stringify({ fileName: file.name }),
+          });
+          if (up.ok) {
+            const { path, token } = await up.json();
+            const { error: upErr } = await supabase.storage
+              .from("chat-media")
+              .uploadToSignedUrl(path, token, file);
+            if (!upErr) {
+              mediaUrlArq = supabase.storage
+                .from("chat-media")
+                .getPublicUrl(path).data.publicUrl;
+              const res = await fetch("/api/send/media", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  number: atendimento.telefone_cliente,
+                  mediatype,
+                  mimetype,
+                  media_url: mediaUrlArq,
+                  fileName: file.name,
+                  instance: atendimento.instance_name,
+                }),
+              });
+              enviado = res.ok;
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("Upload direto falhou, tentando base64:", err);
+      }
+
+      // Caminho legado: base64 (arquivos pequenos / fallback)
+      if (!enviado) {
+        const base64: string = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve((reader.result as string).split(",")[1]);
+          reader.onerror = () => reject(new Error("Falha ao ler o arquivo"));
+          reader.readAsDataURL(file);
+        });
 
         const res = await fetch("/api/send/media", {
           method: "POST",
@@ -354,7 +406,7 @@ export function ChatInline({ atendimento, onMarcarResolvido, onMensagemEnviada, 
           body: JSON.stringify({
             number: atendimento.telefone_cliente,
             mediatype,
-            mimetype: file.type,
+            mimetype,
             media: base64,
             fileName: file.name,
             instance: atendimento.instance_name,
@@ -363,38 +415,42 @@ export function ChatInline({ atendimento, onMarcarResolvido, onMensagemEnviada, 
 
         if (res.ok) {
           const resDataArq = await res.json().catch(() => ({}));
-          const mediaUrlArq = resDataArq.media_url || null;
-
-          // Salvar no banco
-          const { data: { session } } = await supabase.auth.getSession();
-          if (session) {
-            await fetch("/api/atendimentos/mensagens", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${session.access_token}`,
-              },
-              body: JSON.stringify({
-                atendimento_id: atendimento.id,
-                conteudo: `[${mediatype}]`,
-                remetente: "vendedor",
-                media_url: mediaUrlArq,
-                media_type: mediatype,
-                file_name: file.name,
-              }),
-            });
-          }
-          fetchMensagens();
-          onMensagemEnviada?.();
+          mediaUrlArq = resDataArq.media_url || mediaUrlArq;
+          enviado = true;
         }
-        setEnviando(false);
-      };
-      reader.readAsDataURL(file);
+      }
+
+      if (enviado) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          await fetch("/api/atendimentos/mensagens", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: session.token_type + " " + session.access_token,
+            },
+            body: JSON.stringify({
+              atendimento_id: atendimento.id,
+              conteudo: `[${mediatype}]`,
+              remetente: "vendedor",
+              media_url: mediaUrlArq,
+              media_type: mediatype,
+              file_name: file.name,
+            }),
+          });
+        }
+        fetchMensagens();
+        onMensagemEnviada?.();
+      } else {
+        alert("Não foi possível enviar o arquivo. Tente novamente.");
+      }
     } catch (err) {
       console.error("Erro ao enviar arquivo:", err);
+      alert("Não foi possível enviar o arquivo. Tente novamente.");
+    } finally {
       setEnviando(false);
+      e.target.value = "";
     }
-    e.target.value = "";
   };
 
   // ── Gravar Áudio ──
