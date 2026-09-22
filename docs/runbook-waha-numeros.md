@@ -78,9 +78,11 @@ curl -s -H "X-Api-Key: $K" $GW/api/sessions/ROMA_N   # esperado: "status":"WORKI
 ## 4. Registro no CRM (Fase 4 em diante)
 
 - O nome da sessão vira o valor de `WAHA_SESSION`/parâmetro `instance` no CRM.
-- A sessão deve ser criada (ou atualizada via `POST /api/sessions/ROMA_N`) com o
+- A sessão deve ser criada (ou atualizada via **`PUT /api/sessions/{name}`**, ex.: `PUT /api/sessions/ROMA_1`) com o
   **webhook** apontando para `https://<app-vercel>/api/webhooks/waha`, eventos:
   `message`, `message.ack`, `session.status` (ver `docs/plano-implementacao-waha.md` Fase 4).
+  Formato confirmado em produção: `{"config":{"engine":"GOWS","webhooks":[{"url":"...","events":[...]}]}}`
+  — `config.webhooks` é **lista**; após o PUT a sessão vai `STARTING`→`WORKING` **sem novo QR** (login preservado).
 - Teste de envio manual:
   ```bash
   curl -s -X POST $GW/api/sendText -H "X-Api-Key: $K" -H "Content-Type: application/json" \

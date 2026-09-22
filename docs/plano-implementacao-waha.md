@@ -97,13 +97,12 @@ Adapter novo com o mesmo formato de retorno do `lib/evolution-api.ts` (as rotas 
 **Aceite:** envio para um número de teste mostra a progressão ✓ → ✓✓ → ✓✓ azul de verdade. *(smoke real no cutover; sem a migration aplicada as mensagens do vendedor mostram ✓ cinza)*
 
 ### Fase 8 — Cutover, deploy e documentação (1 dia) 🔄 EM ANDAMENTO
-- [ ] Vercel: adicionar `WAHA_API_URL`, `WAHA_API_KEY`, `WAHA_SESSION` (**ação do usuário no painel**); manter `EVOLUTION_*` como rollback (remover após estabilização)
-- [ ] Commit + push (deploy automático) — **após as env vars estarem salvas**
-- [ ] Apontar webhook da sessão `ROMA_1` → `https://crm-roma-romadistribuicao.vercel.app/api/webhooks/waha` (eventos: `message`, `message.ack`, `session.status`)
-- [ ] Testes end-to-end: 2 conversas reais (texto, mídia nos dois sentidos, áudio, transferência de atendimento, contato novo via modal, número inexistente no check) + replay de fixture no webhook
-- [x] `docs/api-reference.md` (§21, §26) atualizado; `PROGRESSO.MD` atualizado
-- [ ] Atualizar `docs/README.md`, `docs/busca-contatos-whatsapp.md`, `docs/chat-inline-redesign.md` (fechar após o E2E, para documentar o comportamento real)
-- [x] `lib/evolution-api.ts` e webhook antigo marcados `@deprecated` (opção "1 release de rollback")
+- [x] Vercel: `WAHA_API_URL`, `WAHA_API_KEY`, `WAHA_SESSION` adicionadas (**ação do usuário, 22/09**); `EVOLUTION_*` mantidas como rollback
+- [x] Commit `a44ea9d` + push (deploy automático) — rota `/api/webhooks/waha` verificada no ar
+- [x] Webhook da sessão `ROMA_1` → `https://crm-roma-romadistribuicao.vercel.app/api/webhooks/waha` (eventos: `message`, `message.ack`, `session.status`) via `PUT /api/sessions/ROMA_1` — sessão `WORKING` preservada (login não caiu)
+- [x] Replay das fixtures em produção: 1º envio → `created` (atendimento + mensagem reais) e 2º → `dedup_skipped`; dados de teste apagados depois
+- [ ] **E2E com conversas reais** (roteiro entregue no chat): texto e mídia nos dois sentidos, áudio, progressão de ticks, transferência, modal de contatos, check de número
+- [ ] Atualizar `docs/README.md`, `docs/busca-contatos-whatsapp.md`, `docs/chat-inline-redesign.md` + remover código legado após estabilização (24–48h)
 
 **Aceite:** checklist E2E verde em produção; docs sem menção ativa à Evolution; rollback testado (reativar `EVOLUTION_*` + webhook antigo funciona).
 

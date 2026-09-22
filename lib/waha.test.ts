@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { enviarTexto, enviarMidia, enviarAudio, enviarLido, verificarSessao, checkNumbers, findContacts, resolverLid, type FetchImpl, type Mediatype } from './waha'
+import { enviarTexto, enviarMidia, enviarAudio, enviarLido, verificarSessao, checkNumbers, findContacts, resolverLid, buscarNomeContato, type FetchImpl, type Mediatype } from './waha'
 
 function fakeFetch(status: number, body: unknown) {
   const calls: Array<{ url: string; init: RequestInit }> = []
@@ -277,7 +277,7 @@ describe('resolverLid', () => {
 
     expect(telefone).toBe('5562999990000')
     expect(calls[0].url).toBe(
-      'http://waha.test:3000/api/sessions/ROMA_1/lids/3E22AD6A8D21AE12C15F4C576AFABE9E'
+      'http://waha.test:3000/api/ROMA_1/lids/3E22AD6A8D21AE12C15F4C576AFABE9E'
     )
     expect(calls[0].init.headers).toMatchObject({ 'X-Api-Key': 'k-test' })
   })
@@ -288,6 +288,38 @@ describe('resolverLid', () => {
     const telefone = await resolverLid('3E22@lid', { fetchImpl: impl, config: CONFIG })
 
     expect(telefone).toBeNull()
+  })
+})
+
+describe('buscarNomeContato', () => {
+  it('prefere pushname (nome do WhatsApp) e monta o endpoint /api/{session}/contacts/{id}', async () => {
+    const { impl, calls } = fakeFetch(200, {
+      id: '556284329526@c.us',
+      name: 'Correios Coimbra Coleta',
+      pushname: 'AGF Campininha',
+    })
+
+    const nome = await buscarNomeContato('556284329526', { fetchImpl: impl, config: CONFIG })
+
+    expect(nome).toBe('AGF Campininha')
+    expect(calls[0].url).toBe('http://waha.test:3000/api/ROMA_1/contacts/556284329526@c.us')
+    expect(calls[0].init.headers).toMatchObject({ 'X-Api-Key': 'k-test' })
+  })
+
+  it('cai para o nome salvo quando não há pushname', async () => {
+    const { impl } = fakeFetch(200, { id: 'x', name: 'Correios', pushname: '' })
+
+    const nome = await buscarNomeContato('556284329526', { fetchImpl: impl, config: CONFIG })
+
+    expect(nome).toBe('Correios')
+  })
+
+  it('devolve null quando o contato não existe', async () => {
+    const { impl } = fakeFetch(404, {})
+
+    const nome = await buscarNomeContato('556284329526', { fetchImpl: impl, config: CONFIG })
+
+    expect(nome).toBeNull()
   })
 })
 

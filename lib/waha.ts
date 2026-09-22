@@ -33,6 +33,20 @@ export interface WahaOptions {
 }
 
 /**
+ * Descreve erros de fetch incluindo a causa de rede (diagnóstico de produção).
+ */
+function descreverErro(err: any): string {
+  const msg = err?.message || 'Erro desconhecido'
+  const causa = err?.cause
+  if (!causa) return msg
+  const detalhe =
+    typeof causa === 'object'
+      ? `${causa.code || ''} ${causa.message || causa}`.trim()
+      : String(causa)
+  return `${msg} — causa: ${detalhe}`
+}
+
+/**
  * Lê a configuração do ambiente (WAHA_API_URL, WAHA_API_KEY, WAHA_SESSION).
  */
 export function getWahaConfig(): WahaConfig {
@@ -86,7 +100,7 @@ export async function enviarTexto(
 
     return { success: true, message_id: data?.id?.id || data?.id || null }
   } catch (err: any) {
-    return { success: false, error: err.message }
+    return { success: false, error: descreverErro(err) }
   }
 }
 
@@ -146,7 +160,7 @@ async function postWaha(
 
     return { success: true, message_id: data?.id?.id || data?.id || null }
   } catch (err: any) {
-    return { success: false, error: err.message }
+    return { success: false, error: descreverErro(err) }
   }
 }
 
@@ -388,7 +402,7 @@ export async function resolverLid(
   try {
     const numero = lid.replace(/@lid$/, '')
     const response = await doFetch(
-      `${config.baseUrl}/api/sessions/${config.session}/lids/${numero}`,
+      `${config.baseUrl}/api/${config.session}/lids/${numero}`,
       { headers: { 'X-Api-Key': config.apiKey } }
     )
     if (!response.ok) return null
@@ -396,6 +410,32 @@ export async function resolverLid(
     const pn: string | null = data?.pn || null
     if (!pn) return null
     return pn.replace(/@c\.us$/, '')
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Busca o nome do contato no WhatsApp (WAHA GET /api/{session}/contacts/{id}).
+ * Prefere `pushname` (nome do WhatsApp); fallback para `name` (nome salvo).
+ */
+export async function buscarNomeContato(
+  telefoneOuJid: string,
+  options: WahaOptions = {}
+): Promise<string | null> {
+  const config = options.config || getWahaConfig()
+  const doFetch = options.fetchImpl || fetch
+
+  if (!config.apiKey) return null
+
+  try {
+    const id = telefoneOuJid.includes('@') ? telefoneOuJid : formatarChatId(telefoneOuJid)
+    const response = await doFetch(`${config.baseUrl}/api/${config.session}/contacts/${id}`, {
+      headers: { 'X-Api-Key': config.apiKey },
+    })
+    if (!response.ok) return null
+    const data = await response.json().catch(() => ({}))
+    return data?.pushname || data?.name || null
   } catch {
     return null
   }
@@ -439,6 +479,6 @@ export async function enviarLido(
 
     return { success: true }
   } catch (err: any) {
-    return { success: false, error: err.message }
+    return { success: false, error: descreverErro(err) }
   }
 }

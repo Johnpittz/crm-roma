@@ -31,7 +31,7 @@ import {
   montarConteudo,
   type MensagemWaha,
 } from "@/lib/waha-webhook";
-import { enviarTexto, getWahaConfig } from "@/lib/waha";
+import { enviarTexto, getWahaConfig, resolverLid, buscarNomeContato } from "@/lib/waha";
 
 export const dynamic = "force-dynamic";
 
@@ -187,7 +187,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const telefoneLimpo = telefoneParaDigitos(dados.telefone);
+    // Resolve JIDs @lid para o número real antes de aceitar (débito §8.2)
+    let telefoneLimpo = telefoneParaDigitos(dados.telefone);
+    if (dados.de_lid) {
+      const resolvido = await resolverLid(dados.jid);
+      if (resolvido) {
+        console.log(`[Webhook WAHA] LID resolvido: ${dados.jid} → ${resolvido}`);
+        telefoneLimpo = telefoneParaDigitos(resolvido);
+      } else {
+        console.warn(`[Webhook WAHA] LID sem mapeamento no WAHA: ${dados.jid}`);
+      }
+    }
     const remetente = dados.from_me ? "vendedor" : "cliente";
     const conteudoMensagem = montarConteudo(dados);
     const temMidia = dados.tipo_midia !== null;
@@ -275,6 +285,7 @@ export async function POST(request: NextRequest) {
     const nomeResolvido =
       cliente?.nome_razao_social ||
       (!dados.from_me && dados.nome ? dados.nome.trim() : null) ||
+      (!dados.from_me ? await buscarNomeContato(dados.jid || telefoneLimpo) : null) ||
       "Cliente";
 
     const vendedorPadrao = await buscarVendedorPadrao();

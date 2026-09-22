@@ -76,6 +76,33 @@ describe('parseEventoWaha', () => {
   })
 })
 
+describe('parseEventoWaha (payloads GOWS)', () => {
+  it('aceita pushname em minúsculas (payload GOWS)', () => {
+    const payload: any = { ...fixtures.message_text.payload }
+    delete payload.pushName
+    const resultado = parseEventoWaha({
+      event: 'message',
+      payload: { ...payload, pushname: 'Maria G.' },
+    }) as MensagemWaha
+    expect(resultado.nome).toBe('Maria G.')
+  })
+
+  it('marca mensagens vindas de JID @lid (número real é resolvido depois)', () => {
+    const resultado = parseEventoWaha({
+      event: 'message',
+      payload: { ...fixtures.message_text.payload, from: '17502058848385@lid' },
+    }) as MensagemWaha
+    expect(resultado.de_lid).toBe(true)
+    expect(resultado.jid).toBe('17502058848385@lid')
+    expect(resultado.telefone).toBe('17502058848385')
+  })
+
+  it('não marca @c.us como lid', () => {
+    const resultado = parseEventoWaha(fixtures.message_text) as MensagemWaha
+    expect(resultado.de_lid).toBe(false)
+  })
+})
+
 describe('mapearCheckmark', () => {
   it('mapeia ack_status do WAHA para o checkmark visual', () => {
     expect(mapearCheckmark(null)).toBe('enviando')

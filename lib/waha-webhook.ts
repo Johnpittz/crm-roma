@@ -8,6 +8,10 @@ export type TipoMidia = 'image' | 'audio' | 'video' | 'document' | null
 export interface MensagemWaha {
   evento: 'message'
   telefone: string
+  /** JID original do remetente (ex.: 123@lid, 5562999990000@c.us) */
+  jid: string
+  /** true quando o remetente veio como @lid (número real precisa de resolução) */
+  de_lid: boolean
   nome: string | null
   conteudo: string
   tipo_midia: TipoMidia
@@ -50,7 +54,9 @@ export function parseEventoWaha(body: unknown): EventoWaha {
     return {
       evento: 'message',
       telefone: rawFrom.replace(/@(c\.us|s\.whatsapp\.net|g\.us|lid)$/, ''),
-      nome: payload.pushName ?? payload.notifyName ?? null,
+      jid: rawFrom,
+      de_lid: rawFrom.endsWith('@lid'),
+      nome: payload.pushName ?? payload.pushname ?? payload.notifyName ?? null,
       conteudo: payload.body || '',
       tipo_midia: payload.hasMedia ? mapTipoMidia(media?.mimetype) : null,
       url_midia: media?.url || null,
