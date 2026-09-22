@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 import { enviarTexto } from "@/lib/waha";
+import { mapearTipoMidiaDb } from "@/lib/waha-webhook";
 
 export const dynamic = "force-dynamic";
 
@@ -69,7 +70,7 @@ export async function POST(request: NextRequest) {
     enviada_por: user.id,
   };
   if (media_url) insertData.url_midia = media_url;
-  if (media_type) insertData.tipo_midia = media_type;
+  if (media_type) insertData.tipo_midia = mapearTipoMidiaDb(media_type);
   if (file_name) insertData.file_name = file_name;
 
   const { data: mensagem, error } = await supabase

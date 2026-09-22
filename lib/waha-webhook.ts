@@ -129,11 +129,13 @@ const MAPA_TIPO_DB: Record<string, string> = {
 
 /**
  * Mapeia o tipo de mídia para o valor aceito pelo CHECK constraint do banco.
- * Constraint: 'texto', 'audio', 'imagem', 'documento'
+ * Constraint (migração 068): 'texto', 'imagem', 'audio', 'documento', 'video', 'sticker'.
+ * Tolerante a pt-BR e maiúsculas; valores desconhecidos passam em minúsculas.
  */
-export function mapearTipoMidiaDb(tipo: TipoMidia): string | null {
+export function mapearTipoMidiaDb(tipo: TipoMidia | string | null | undefined): string | null {
   if (!tipo) return null
-  return MAPA_TIPO_DB[tipo] || tipo
+  const chave = String(tipo).toLowerCase()
+  return MAPA_TIPO_DB[chave] || chave
 }
 
 /**

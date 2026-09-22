@@ -118,10 +118,19 @@ describe('mapearCheckmark', () => {
 describe('mapearTipoMidiaDb', () => {
   it('mapeia para os valores do CHECK constraint do banco', () => {
     expect(mapearTipoMidiaDb('image')).toBe('imagem')
-    expect(mapearTipoMidiaDb('audio')).toBe('audio')
-    expect(mapearTipoMidiaDb('video')).toBe('video')
     expect(mapearTipoMidiaDb('document')).toBe('documento')
+    expect(mapearTipoMidiaDb('audio')).toBe('audio')
     expect(mapearTipoMidiaDb(null)).toBeNull()
+  })
+
+  it('aceita valores já em pt-BR e maiúsculas (tolerante)', () => {
+    expect(mapearTipoMidiaDb('imagem')).toBe('imagem')
+    expect(mapearTipoMidiaDb('DOCUMENT')).toBe('documento')
+  })
+
+  it('preserva video e sticker (migração 068 amplia o CHECK)', () => {
+    expect(mapearTipoMidiaDb('video')).toBe('video')
+    expect(mapearTipoMidiaDb('sticker')).toBe('sticker')
   })
 })
 
