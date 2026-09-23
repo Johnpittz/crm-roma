@@ -1,10 +1,12 @@
 # CRM ROMA - Progresso do Projeto
 
 > **Arquivo de contexto para agentes IA**
-> **Última atualização:** 23/09/2026 (migração WAHA — fix mídia recebida + lightbox de imagem)
+> **Última atualização:** 23/09/2026 (rebase de base + organograma + fixes WAHA `message.any`/payload)
 > **Deploy atual:** https://crm-roma-ten.vercel.app (alias: crm-roma-romadistribuicao.vercel.app — mesmo build)
 > **Conta Vercel:** roma-6489 (romadistribuicao) — plano Hobby/Free
 > **Conversa atual:** Migração WhatsApp Evolution API → WAHA — módulo ATENDIMENTOS (`docs/plano-implementacao-waha.md`)
+>
+> 📌 **Padrão de entrada para novas conversas/agentes:** ler **`PROGRESSO.MD`** (este — diário, estado e pendências) + **`docs/README.md`** (índice técnico com banner de status e links). O índice aponta o resto conforme o assunto — WhatsApp → `docs/runbook-waha-numeros.md` e `docs/HANDOFF-MIGRACAO-WAHA.md`; API/rotas → `docs/api-reference.md`; estrutura → `ARQUITETURA.md`; plano/roadmap → `docs/plano-implementacao-waha.md`. Preferências de trabalho e armadilhas: `HANDOFF` §13.
 
 ---
 
