@@ -10,6 +10,8 @@ import { Search, UserPlus } from "lucide-react";
 import { BuscarContatosWhatsApp, type WhatsAppContact } from "@/components/features/atendimento/buscar-contatos-whatsapp";
 import { BarraMetricasAtendimento } from "@/components/features/atendimento/barra-metricas";
 import { createClient } from "@/lib/supabase/client";
+import { extrairTelefoneJid } from "@/lib/telefone";
+import { toast } from "sonner";
 
 interface Atendimento {
   id: string;
@@ -200,9 +202,11 @@ export default function AtendimentoPage() {
   };
 
   const handleContatoSelecionado = useCallback(async (contact: WhatsAppContact) => {
-    const telefone = contact.remoteJid
-      .replace("@s.whatsapp.net", "")
-      .replace("@lid", "");
+    const telefone = extrairTelefoneJid(contact.remoteJid);
+    if (!telefone) {
+      toast.error("Este contato não tem número discável (grupo ou ID não resolvido).");
+      return;
+    }
 
     try {
       const { data: { session } } = await supabase.auth.getSession();

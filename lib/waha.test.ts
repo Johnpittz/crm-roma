@@ -404,6 +404,26 @@ describe('findContacts', () => {
 
     expect(resultado.contacts[0].remoteJid).toBe('5562999990000@s.whatsapp.net')
   })
+
+  it('lê o payload real do GOWS: pushname minúsculo, name vazio e pushname numérico = sem nome', async () => {
+    const { impl } = fakeFetch(200, [
+      { id: '13135550002@c.us', name: '', pushname: '13135550002' },
+      { id: '17867961367@c.us', name: '', pushname: 'Ricardo Sanches' },
+      { id: '5562999990000@c.us', name: 'Salvo na agenda', pushname: '' },
+    ])
+
+    const resultado = await findContacts({}, { fetchImpl: impl, config: CONFIG })
+
+    expect(resultado.success).toBe(true)
+    // payload real (23/09): pushname minúsculo com o nome; name vazio para não-salvos
+    expect(resultado.contacts[0].pushName).toBeNull() // pushname igual ao número = "sem nome"
+    expect(resultado.contacts[1].pushName).toBe('Ricardo Sanches')
+    expect(resultado.contacts[2].pushName).toBe('Salvo na agenda')
+    expect(resultado.contacts[0].isSaved).toBe(false)
+    expect(resultado.contacts[2].isSaved).toBe(true)
+    // JID preservado — extrairTelefoneJid (lib/telefone) cuida da exibição/seleção
+    expect(resultado.contacts[0].remoteJid).toBe('13135550002@c.us')
+  })
 })
 
 describe('resolverLid', () => {

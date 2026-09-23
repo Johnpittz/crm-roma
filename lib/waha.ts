@@ -442,15 +442,24 @@ export async function findContacts(
       return { success: false, contacts: [], total: 0, error: `${msg} (HTTP ${response.status})` }
     }
 
-    let contacts: WahaContact[] = (Array.isArray(data) ? data : []).map((c: any) => ({
-      id: c.id || '',
-      remoteJid: c.id || '',
-      pushName: c.pushName ?? c.name ?? null,
-      profilePicUrl: c.profilePicUrl ?? null,
-      isSaved: Boolean(c.name),
-      isGroup: String(c.id || '').endsWith('@g.us'),
-      type: 'contact',
-    }))
+    let contacts: WahaContact[] = (Array.isArray(data) ? data : []).map((c: any) => {
+      // Payload real do GOWS (verificado 23/09): { id, name: "", pushname: "Nome" } —
+      // o nome vem em `pushname` (minúsculas) e `name` só tem valor se estiver salvo na agenda.
+      // pushname igual ao próprio número não é nome → null (evita duplicar o número na tela).
+      const nomeBruto = [c.pushname, c.pushName, c.name].find(
+        (n: any) => typeof n === 'string' && n.trim() !== ''
+      )
+      const nome = nomeBruto?.trim() || null
+      return {
+        id: c.id || '',
+        remoteJid: c.id || '',
+        pushName: nome && /^\d+$/.test(nome) ? null : nome,
+        profilePicUrl: c.profilePicUrl ?? null,
+        isSaved: Boolean(c.name && String(c.name).trim()),
+        isGroup: String(c.id || '').endsWith('@g.us'),
+        type: 'contact',
+      }
+    })
 
     // Resolve JIDs @lid para o número real (docs/busca-contatos-whatsapp.md §8.2)
     await Promise.all(

@@ -557,6 +557,7 @@ EVOLUTION_API_KEY=e3186c32139f79c7566a1d6a3f5bc702fae199c725a313ce9b7f8ff035123b
 - [x] `docs/HANDOFF-MIGRACAO-WAHA.md` atualizado (estado, bugs resolvidos, pendências)
 - [x] Bug do envio do CRM (**500 RLS — BUG-7**): POST `/api/atendimentos/mensagens` passou a escrever via service role (a policy só deixava o vendedor dono do atendimento escrever; quebrou quando o roteamento atribuiu `vendedor_id`) — commit `1fe771d`, verificado RED→GREEN com `scripts/smoke-envio-mensagens.sh` + entrega real no WhatsApp
 - [x] Toast de erro no envio de mensagem (falha não fica mais em silêncio no cliente)
+- [x] Busca de contatos ("Novo Contato"): nomes apareciam todos "Sem nome" e alguns com `@c.us` cru — payload real do GOWS usa `pushname` minúsculo + JID `@c.us`; helper única `extrairTelefoneJid` (`lib/telefone.ts`) no modal e na seleção (também evitava criar atendimento com JID de grupo/@lid como telefone)
 - [x] Validação E2E: imagem nova recebida aparece no chat + lightbox no navegador (confirmado pelo usuário)
 - [x] **LIBERADO PARA USO PELA EQUIPE** (23/09/2026): texto e mídia (vídeo, áudio, documento) enviando e recebendo — validado pelo usuário
 - [ ] Varredura de mídia (vídeo/sticker **recebidos** ainda não testados ao vivo — conferir organicamente no uso)

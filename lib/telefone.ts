@@ -23,3 +23,15 @@ export function formatarTelefone(telefone: string): string {
 export function telefoneParaDigitos(telefone: string): string {
   return telefone.replace(/\D/g, '')
 }
+
+/**
+ * Extrai o telefone discável de um JID do WhatsApp (lib/telefone — fonte única).
+ * GOWS (WAHA) devolve `@c.us`; Baileys/Evolution devolvem `@s.whatsapp.net`.
+ * @lid não resolvido e grupos (@g.us) não são discáveis → null.
+ */
+export function extrairTelefoneJid(jid: string | null | undefined): string | null {
+  if (!jid) return null
+  if (jid.includes('@lid') || jid.includes('@g.us')) return null
+  const local = jid.split('@')[0]
+  return /^\d{8,15}$/.test(local) ? local : null
+}

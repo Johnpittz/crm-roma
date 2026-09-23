@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Search, Loader2, UserPlus, Phone, MessageSquare, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { extrairTelefoneJid } from "@/lib/telefone";
 
 export interface WhatsAppContact {
   id: string;
@@ -82,16 +83,12 @@ export function BuscarContatosWhatsApp({
     }
   }, [open, fetchContacts]);
 
-  const extractPhone = (jid: string) => {
-    return jid.replace("@s.whatsapp.net", "").replace("@lid", "");
-  };
+  const extractPhone = (jid: string) => extrairTelefoneJid(jid) ?? "—";
 
-  // Verifica se o JID é @lid (ID interno WhatsApp, não é número de telefone)
-  const isLid = (jid: string) => jid.includes("@lid");
-
-  // Filtrar contatos: apenas @s.whatsapp.net (números reais)
-  const callableContacts = contacts.filter((c) => !isLid(c.remoteJid));
-  const lidCount = contacts.filter((c) => isLid(c.remoteJid)).length;
+  // Filtrar contatos discáveis: apenas números reais
+  // (@lid não resolvido, grupos e entradas inválidas ficam de fora)
+  const callableContacts = contacts.filter((c) => extrairTelefoneJid(c.remoteJid) !== null);
+  const lidCount = contacts.filter((c) => extrairTelefoneJid(c.remoteJid) === null).length;
 
   const handleSelect = (contact: WhatsAppContact) => {
     onSelect(contact);

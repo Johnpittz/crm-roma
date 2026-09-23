@@ -609,3 +609,19 @@ o atendimento específico.
 4. **Paginação** — Implementar paginação para listas com mais de 100 contatos.
 5. **Unificar formatarTelefone** — Remover duplicata entre `evolution-api.ts` e `botconversa.ts`.
 6. **Cache** — Adicionar cache de contatos para evitar chamadas repetidas à API.
+
+---
+
+## 13. Payload do GOWS — estado atual (verificado ao vivo em 23/09/2026)
+
+> Esta seção tem precedência sobre o resto do doc, que descreve a era Evolution API.
+> Hoje a busca usa `findContacts` de `lib/waha.ts` → `GET /api/contacts/all` do WAHA (engine **GOWS**).
+
+`GET /api/contacts/all` do GOWS devolve **só** `{id, name, pushname}`:
+
+- O nome do contato está em **`pushname` (minúsculas)** — `name` vem `""` para quem não está salvo na agenda (aí `isSaved=false`). Lendo `pushName` camelCase (como o código antigo fazia) saía tudo "Sem nome".
+- JIDs vêm no formato **`@c.us`** (não `@s.whatsapp.net` como no Baileys/Evolution) — sufixo aparecia cru na tela e contaminava o telefone do atendimento.
+- `pushname` **às vezes é o próprio número** (contato sem nome no WhatsApp) → tratar como "senha sem nome"; senão o número aparece duplicado na linha de cima/abaixo.
+
+**Fonte única**: `lib/telefone.ts` → `extrairTelefoneJid(jid)` remove `@c.us`/`@s.whatsapp.net` e devolve `null` para `@lid` não resolvido, `@g.us` (grupos) e entradas inválidas (não são discáveis). `findContacts` mapeia `pushname | pushName | name` (primeiro não-vazio; se numérico → `null`). O modal (`buscar-contatos-whatsapp.tsx`) e a seleção do atendimento (`page.tsx` → `handleContatoSelecionado`) usam **só** essa helper — não reimplementar `replace` de sufixos.
+Testes: `lib/telefone.test.ts` (describe `extrairTelefoneJid`) e `lib/waha.test.ts` (describe `findContacts`, caso "payload real do GOWS").
