@@ -4,14 +4,14 @@
  * Painel inferior do Atendimento — dois containers lado a lado ocupando a
  * faixa entre os cards de métrica e a área de chat:
  *  - Esquerda: Top 20 melhores vendedores (MOCK por enquanto)
- *  - Direita:  listagem de clientes no mesmo estilo da página CLIENTES
- *              (reusa o componente ClientList) — dados MOCK por enquanto
+ *  - Direita:  CLIENTES REAIS, escopados pela carteira do usuário logado
+ *              (vendedor = só o dele, gestor = carteira toda) via GET /api/clientes
  *
- * DADOS MOCKADOS (23/09/2026): substituir por fontes reais depois
- * (vendedores: ranking de vendas; clientes: igual a página /clientes).
+ * O card não faz query própria: recebe `clientes` pronto da página, que busca
+ * em /api/clientes — o escopo é decidido no servidor pelo cargo (lib/carteira.ts).
  */
 
-import { Trophy } from "lucide-react";
+import { Trophy, Users } from "lucide-react";
 import { ClientList } from "@/components/features/clientes/client-list";
 
 interface VendedorRanking {
@@ -43,24 +43,18 @@ const TOP_VENDEDORES: VendedorRanking[] = [
   { nome: "Priscila Mendes", vendas: 12, valor: 64500 },
 ];
 
-// No mesmo formato do supabase `clientes` que o ClientList espera
-const CLIENTES_MOCK = [
-  { id: "c1", nome_razao_social: "Distribuidora Rio Verde LTDA", cpf_cnpj: "12.345.678/0001-90", telefone: "556234165014", email: "contato@rioverde.com.br", cidade: "Goiânia", estado: "GO", status: "ativo", tipo: "juridica" },
-  { id: "c2", nome_razao_social: "Supermercado Bom Preço", cpf_cnpj: "98.765.432/0001-10", telefone: "5562988887777", email: "compras@bompreco.com", cidade: "Aparecida de Goiânia", estado: "GO", status: "ativo", tipo: "juridica" },
-  { id: "c3", nome_razao_social: "Padaria São João", cpf_cnpj: "45.678.912/0001-33", telefone: "556235554444", email: "padaria.saojoao@gmail.com", cidade: "Anápolis", estado: "GO", status: "ativo", tipo: "juridica" },
-  { id: "c4", nome_razao_social: "Mercado Ponto Certo", cpf_cnpj: "22.334.455/0001-66", telefone: "5562977776666", email: "ponto.certo@outlook.com", cidade: "Rio Verde", estado: "GO", status: "ativo", tipo: "juridica" },
-  { id: "c5", nome_razao_social: "Restaurante Sabor Caseiro", cpf_cnpj: "33.445.566/0001-77", telefone: "556236665555", email: "saborcaseiro@hotmail.com", cidade: "Goiânia", estado: "GO", status: "ativo", tipo: "juridica" },
-  { id: "c6", nome_razao_social: "Farmácia Vida Nova", cpf_cnpj: "55.667.788/0001-99", telefone: "5562966665555", email: "vidanova@farmacia.com", cidade: "Goiânia", estado: "GO", status: "ativo", tipo: "juridica" },
-  { id: "c7", nome_razao_social: "Auto Peças Três Rios", cpf_cnpj: "66.778.899/0001-22", telefone: "556237776666", email: "vendas@tresrios.com.br", cidade: "Três Rios", estado: "RJ", status: "ativo", tipo: "juridica" },
-  { id: "c8", nome_razao_social: "Hortifruti Frescor", cpf_cnpj: "77.889.900/0001-55", telefone: "5562955554444", email: "frescor@hortifruti.com", cidade: "Anápolis", estado: "GO", status: "ativo", tipo: "juridica" },
-  { id: "c9", nome_razao_social: "Casa do Móvel Planejado", cpf_cnpj: "88.990.011/0001-88", telefone: "556238887777", email: "contato@casadomovel.com.br", cidade: "Goiânia", estado: "GO", status: "ativo", tipo: "juridica" },
-  { id: "c10", nome_razao_social: "Depósito Central Química", cpf_cnpj: "11.223.344/0001-12", telefone: "5562944443333", email: "central@quimica.com.br", cidade: "Rio Verde", estado: "GO", status: "ativo", tipo: "juridica" },
-  { id: "c11", nome_razao_social: "Lanchonete Ponto de Encontro", cpf_cnpj: "13.141.516/0001-44", telefone: "556239998888", email: "pontoencontro@gmail.com", cidade: "Aparecida de Goiânia", estado: "GO", status: "ativo", tipo: "fisica" },
-  { id: "c12", nome_razao_social: "Construtora Pedra Alta", cpf_cnpj: "15.161.718/0001-91", telefone: "5562933332222", email: "obras@pedraalta.com.br", cidade: "Goiânia", estado: "GO", status: "ativo", tipo: "juridica" },
-  { id: "c13", nome_razao_social: "Papelaria Escola A+, Bazar e Utilidades", cpf_cnpj: "17.181.920/0001-07", telefone: "556232223333", email: "escolaamais@papelaria.com", cidade: "Anápolis", estado: "GO", status: "ativo", tipo: "juridica" },
-  { id: "c14", nome_razao_social: "Pet Shop Amigo Fiel", cpf_cnpj: "19.202.122/0001-63", telefone: "5562922221111", email: "amigofiel@petshop.com", cidade: "Goiânia", estado: "GO", status: "ativo", tipo: "juridica" },
-  { id: "c15", nome_razao_social: "Ótica Visão Perfeita", cpf_cnpj: "21.222.324/0001-79", telefone: "556231114444", email: "visaoperfeita@otica.com", cidade: "Goiânia", estado: "GO", status: "ativo", tipo: "juridica" },
-];
+// Mesmo formato do supabase `clientes` que o ClientList espera
+export interface ClienteCard {
+  id: string;
+  nome_razao_social: string;
+  cpf_cnpj: string | null;
+  telefone: string | null;
+  email: string | null;
+  cidade: string | null;
+  estado: string | null;
+  status: string;
+  tipo: string;
+}
 
 function iniciais(nome: string): string {
   const partes = nome.trim().split(/\s+/);
@@ -68,14 +62,25 @@ function iniciais(nome: string): string {
 }
 
 interface PainelInferiorProps {
+  /** Clientes reais já escopados pela carteira do logado (vem de /api/clientes) */
+  clientes: ClienteCard[];
+  /** Tamanho da carteira — pode ser maior que a lista, que vem com limite */
+  totalClientes?: number;
   /** Abre a conversa dentro do CRM (fluxo do Buscar Contatos) */
   onAbrirConversa: (telefone: string, nome?: string) => void;
 }
 
-export function PainelInferior({ onAbrirConversa }: PainelInferiorProps) {
+export function PainelInferior({
+  clientes,
+  totalClientes,
+  onAbrirConversa,
+}: PainelInferiorProps) {
+  const total = totalClientes ?? clientes.length;
+  const truncado = total > clientes.length;
+
   return (
     <div className="grid grid-cols-2 gap-3 mb-3 shrink-0 h-[165px]">
-      {/* Esquerda: Top 20 melhores vendedores */}
+      {/* Esquerda: Top 20 melhores vendedores (mock) */}
       <div className="bg-white border border-slate-200 rounded-lg flex flex-col overflow-hidden">
         <div className="flex items-center gap-2 px-3 py-2 border-b border-slate-100 shrink-0">
           <Trophy className="h-4 w-4 text-amber-500" />
@@ -113,21 +118,30 @@ export function PainelInferior({ onAbrirConversa }: PainelInferiorProps) {
         </div>
       </div>
 
-      {/* Direita: Listagem de clientes (mesmo estilo da página CLIENTES) */}
+      {/* Direita: CLIENTES REAIS da carteira (mesmo ClientList da página /clientes) */}
       <div className="bg-white border border-slate-200 rounded-lg flex flex-col overflow-hidden">
         <div className="flex items-center gap-2 px-3 py-2 border-b border-slate-100 shrink-0">
+          <Users className="h-4 w-4 text-slate-500" />
           <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide">
             Clientes
           </p>
-          <span className="text-[10px] text-slate-400">
-            {CLIENTES_MOCK.length}
+          <span className="text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
+            {total}
           </span>
-          <span className="ml-auto text-[9px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
-            dados de exemplo
-          </span>
+          {truncado && (
+            <span className="ml-auto text-[9px] text-slate-400">
+              mostrando {clientes.length} de {total}
+            </span>
+          )}
         </div>
         <div className="flex-1 min-h-0 overflow-y-auto p-2">
-          <ClientList clientes={CLIENTES_MOCK} onAbrirConversa={onAbrirConversa} />
+          {clientes.length > 0 ? (
+            <ClientList clientes={clientes} onAbrirConversa={onAbrirConversa} />
+          ) : (
+            <p className="text-xs text-slate-400 py-1">
+              Nenhum cliente na sua carteira.
+            </p>
+          )}
         </div>
       </div>
     </div>

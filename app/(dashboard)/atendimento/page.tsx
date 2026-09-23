@@ -9,7 +9,10 @@ import { FiltroEtiquetas } from "@/components/features/atendimento/filtro-etique
 import { Search, UserPlus } from "lucide-react";
 import { BuscarContatosWhatsApp, type WhatsAppContact } from "@/components/features/atendimento/buscar-contatos-whatsapp";
 import { BarraMetricasAtendimento } from "@/components/features/atendimento/barra-metricas";
-import { PainelInferior } from "@/components/features/atendimento/painel-inferior";
+import {
+  PainelInferior,
+  type ClienteCard,
+} from "@/components/features/atendimento/painel-inferior";
 import { createClient } from "@/lib/supabase/client";
 import { extrairTelefoneJid, telefoneParaJid } from "@/lib/telefone";
 import { toast } from "sonner";
@@ -48,6 +51,9 @@ export default function AtendimentoPage() {
   const [tarefasPorAtendimento, setTarefasPorAtendimento] = useState<Record<string, number>>({});
   const [userCargo, setUserCargo] = useState("");
   const [buscarContatosAberto, setBuscarContatosAberto] = useState(false);
+  // Card CLIENTES da faixa inferior — dados já escopados pelo servidor
+  const [clientesCard, setClientesCard] = useState<ClienteCard[]>([]);
+  const [totalClientesCard, setTotalClientesCard] = useState(0);
 
   const atendimentosFiltrados = atendimentos.filter((a) => {
     const termo = busca.toLowerCase().trim();
@@ -121,6 +127,24 @@ export default function AtendimentoPage() {
     }
   }, [supabase]);
 
+  // Buscar clientes da carteira do logado (vendedor = só o dele, gestor = toda)
+  const fetchClientesCard = useCallback(async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const res = await fetch("/api/clientes?limite=300", {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setClientesCard(data.clientes || []);
+        setTotalClientesCard(data.total || 0);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  }, [supabase]);
+
   // Buscar tarefas ativas por atendimento (para badge na lista)
   const fetchTarefasAtendimentos = useCallback(async () => {
     try {
@@ -142,6 +166,7 @@ export default function AtendimentoPage() {
     fetchAtendimentos();
     fetchEtiquetasAtendimentos();
     fetchTarefasAtendimentos();
+    fetchClientesCard();
     // Busca cargo do usuário para mostrar simular WhatsApp
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -154,7 +179,7 @@ export default function AtendimentoPage() {
         if (profile?.cargo) setUserCargo(profile.cargo);
       }
     })();
-  }, [fetchAtendimentos, fetchEtiquetasAtendimentos, fetchTarefasAtendimentos, supabase]);
+  }, [fetchAtendimentos, fetchEtiquetasAtendimentos, fetchTarefasAtendimentos, fetchClientesCard, supabase]);
 
   // Polling: atualiza lista a cada 15s em background (sem loading visual)
   useEffect(() => {
@@ -302,7 +327,11 @@ export default function AtendimentoPage() {
 
       {/* Dois containers lado a lado (Top 20 vendedores + Clientes) — ocupam a
           faixa liberada pelo corte dos cards de métrica */}
-      <PainelInferior onAbrirConversa={abrirConversaPorTelefone} />
+      <PainelInferior
+        clientes={clientesCard}
+        totalClientes={totalClientesCard}
+        onAbrirConversa={abrirConversaPorTelefone}
+      />
 
       {/* WhatsApp Web 3 COLUNAS: Lista + Chat + Painel Contato */}
       <div className="flex-1 min-h-0 flex border border-slate-200 rounded-lg overflow-hidden bg-white">

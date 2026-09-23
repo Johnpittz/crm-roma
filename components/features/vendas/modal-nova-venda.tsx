@@ -76,11 +76,11 @@ export function ModalNovaVenda({ onSuccess }: ModalNovaVendaProps) {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
-      // Busca clientes
-      const { data: clientesData } = await supabase
-        .from("clientes")
-        .select("id, nome_razao_social")
-        .order("nome_razao_social");
+      // Busca clientes da carteira do logado (escopo aplicado no servidor)
+      const resClientes = await fetch("/api/clientes?limite=1000", {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      const clientesJson = resClientes.ok ? await resClientes.json() : { clientes: [] };
 
       // Busca produtos
       const { data: produtosData } = await supabase
@@ -88,7 +88,7 @@ export function ModalNovaVenda({ onSuccess }: ModalNovaVendaProps) {
         .select("id, nome, preco_venda")
         .order("nome");
 
-      setClientes(clientesData || []);
+      setClientes(clientesJson.clientes || []);
       setProdutos(produtosData || []);
       setCarregandoDados(false);
     };

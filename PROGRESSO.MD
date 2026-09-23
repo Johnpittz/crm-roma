@@ -1,7 +1,7 @@
 # CRM ROMA - Progresso do Projeto
 
 > **Arquivo de contexto para agentes IA**
-> **Última atualização:** 23/09/2026 (rebase de base + organograma + fixes WAHA `message.any`/payload)
+> **Última atualização:** 23/09/2026 (escopo de carteira por vendedor + rebase de base + organograma + fixes WAHA `message.any`/payload)
 > **Deploy atual:** https://crm-roma-ten.vercel.app (alias: crm-roma-romadistribuicao.vercel.app — mesmo build)
 > **Conta Vercel:** roma-6489 (romadistribuicao) — plano Hobby/Free
 > **Conversa atual:** Migração WhatsApp Evolution API → WAHA — módulo ATENDIMENTOS (`docs/plano-implementacao-waha.md`)
@@ -529,7 +529,7 @@ EVOLUTION_API_KEY=e3186c32139f79c7566a1d6a3f5bc702fae199c725a313ce9b7f8ff035123b
 - **Persistência:** Busca salva na URL (?q=termo)
 
 ### 12.5 Dados de Produção (atualizado 23/09/2026)
-- **Vendedores ativos:** equipe Murilo (Raquel, Valdean, Christyan, Ellen, Dara), equipe Jackson (Brennda) + João Pedro (sem equipe) + Demonstração
+- **Vendedores ativos:** equipe GERENTE (ex-Murilo: Raquel, Valdean, Christyan, Ellen, Dara), equipe Jackson (Brennda) + **João Pedro (`diretor` — cargo trocado de `vendedor` em 23/09, estava com carteira zerada)** + Demonstração
 - **Desativados (ativo=false):** Gabriel, Keila, djfhsujdhfjsdhf (ecommerce@)
 - **Cargos:** vendedor, gerente_comercial, diretor, admin, demonstracao
 - **Clientes:** 3.073 (rebase 23/09 via `scripts/rebase-base-clientes.js` a partir de `base_clientes/*.xls`)
@@ -551,6 +551,16 @@ EVOLUTION_API_KEY=e3186c32139f79c7566a1d6a3f5bc702fae199c725a313ce9b7f8ff035123b
 ---
 
 ## 14. Histórico de Commits Importantes
+
+### 23/09/2026 (Escopo de carteira: vendedor só vê os próprios clientes)
+- [x] **Regra aplicada nos 5 pontos que leem a base de clientes** (página `/clientes`, `GET /api/clientes`, card CLIENTES do atendimento, dropdown da Nova Venda, `GET /api/promocoes/clientes`): `vendedor` → só `vendedor_responsavel_id = ele`; `gerente_comercial`/`diretor`/`admin` → carteira toda (**visão provisória**, troca quando isso sumir do produto); `demonstracao` → própria, mesmo vazia (a sidebar já oculta `/clientes` para demo: "não deve ver clientes reais")
+- [x] Régua única **`lib/carteira.ts`** (`escopoCarteira(cargo)`, `ehGestor(cargo)`, `aplicarEscopoClientes(query, escopo, userId)`) — TDD RED→GREEN com `lib/carteira.test.ts` (13 testes), suíte **83/83**, `tsc --noEmit` e `next build` limpos
+- [x] `GET /api/clientes` deixou de devolver `clientes: []` + total global via service role: agora valida o token, lê o **cargo no servidor**, aplica o escopo e devolve `{ clientes, total, escopo, limite }` (query `limite` padrão 200/máx 1000, `busca`, `status`)
+- [x] Página `/clientes`: os 5 cards de estatística, a busca, o "Mostrar todos" e a listagem contam só o escopo do logado (leitura via service role **com escopo aplicado no servidor** — a RLS de `clientes` não está versionada no repo, então não dá pra depender dela)
+- [x] Card **CLIENTES** do atendimento (`painel-inferior.tsx`): `CLIENTES_MOCK` + badge "dados de exemplo" removidos — reusa o mesmo `ClientList` da página de clientes, com contador da carteira, estado vazio e aviso quando a lista vem truncada (**Top 20 continua mock**)
+- [x] **Dados de produção:** único vendedor ativo com carteira zerada era **João Pedro (0 de 3.073)** → cargo alterado para `diretor` (vê tudo). Verificação pós-alteração: **nenhum vendedor ativo zerado**; soma das carteiras = 2.673 (vendedores) + 400 (Jackson, gestor com carteira própria) = 3.073
+- [ ] Pendência: **não existe transferência de carteira** (`PATCH /api/clientes/[id]` inexistente; card "Transfer" hardcoded em `0`) — atribuição errada não tem como corrigir pela UI
+- [ ] Pendência conhecida (não mexida): `GET /api/atendimentos/mensagens` não checa dono (service role nos dois lados, legado do BUG-7) e `POST /api/promocoes` tem `isGestor = true` hardcoded
 
 ### 23/09/2026
 - [x] Fix mídia recebida (BUG-5 — URL `localhost` do WAHA): `resolverUrlMidia()` (normalização + fallback por histórico) plugada no `processarMidia()` do webhook — commit `b880ea2` (TDD: 5 testes novos)

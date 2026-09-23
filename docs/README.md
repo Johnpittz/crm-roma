@@ -4,7 +4,7 @@
 
 O CRM ROMA é uma plataforma web completa para gestão de vendas e atendimento de empresas distribuidoras. Integra WhatsApp via **WAHA** (self-hosted, engine GOWS — a Evolution API ficou só como rollback), oferece quadros Kanban para gestão do funil de vendas, controle de clientes, tarefas, leads e dashboards gerenciais em tempo real.
 
-> **Status rápido (23/09/2026):** módulo **ATENDIMENTOS em produção** com WAHA (liberado para a equipe em 23/09) · **70 testes** (`npm test`) · organograma/base refaços hoje — ver `PROGRESSO.MD` (diário de bordo) e §12.5 (usuários atuais) · runbook de números: `runbook-waha-numeros.md` · handoff técnico: `HANDOFF-MIGRACAO-WAHA.md`.
+> **Status rápido (23/09/2026):** módulo **ATENDIMENTOS em produção** com WAHA (liberado para a equipe em 23/09) · **83 testes** (`npm test`) · **regra de carteira ativa:** vendedor só vê os próprios clientes (`lib/carteira.ts`) · organograma/base refaços hoje — ver `PROGRESSO.MD` (diário de bordo) e §12.5 (usuários atuais) · runbook de números: `runbook-waha-numeros.md` · handoff técnico: `HANDOFF-MIGRACAO-WAHA.md`.
 
 ---
 
@@ -78,6 +78,7 @@ O CRM ROMA foi projetado para equipes comerciais de distribuidoras, oferecendo:
 - Filtros por busca e período
 
 ### 👥 Gestão de Clientes
+- **Escopo por carteira:** cada vendedor vê apenas os próprios clientes; `gerente_comercial`/`diretor`/`admin` veem a carteira toda (visão provisória) — régua única em `lib/carteira.ts`
 - Cadastro, edição e busca de clientes
 - Filtros por status (ativo, inativo, bloqueado, prospect)
 - Estatísticas detalhadas (total, ativos, inativos, etc.)
@@ -316,7 +317,8 @@ npm run start
 - `POST /api/atendimentos/sync` — Sincronização
 
 ### Clientes
-- `GET/POST /api/clientes` — CRUD de clientes
+- `GET /api/clientes` — lista clientes **do escopo do logado** (`?limite=&busca=&status=`) → `{ clientes, total, escopo, limite }`
+- `POST /api/clientes` — cria cliente já na carteira de quem cadastrou (demo bloqueado)
 
 ### Leads
 - `GET/POST /api/leads` — CRUD de leads

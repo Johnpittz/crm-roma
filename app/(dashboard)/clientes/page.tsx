@@ -13,6 +13,8 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils/cn";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { escopoCarteira, aplicarEscopoClientes } from "@/lib/carteira";
 import { ModalNovoCliente } from "@/components/features/clientes/modal-novo-cliente";
 import { MostrarTodosButton } from "@/components/features/clientes/mostrar-todos-button";
 import { LimparUrlNoLoad } from "@/components/features/clientes/limpar-url-no-load";
@@ -28,6 +30,21 @@ interface ClientesPageProps {
 
 export default async function ClientesPage({ searchParams }: ClientesPageProps) {
   const supabase = createClient();
+
+  // REGRA DE CARTEIRA: vendedor vê só os próprios clientes, gestor vê a carteira
+  // toda (visão provisória). Resolvido aqui pelo cargo — ver lib/carteira.ts.
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const { data: perfil } = user
+    ? await supabase.from("profiles").select("cargo").eq("id", user.id).single()
+    : { data: null };
+  const escopo = escopoCarteira(perfil?.cargo);
+  const userId = user?.id || "";
+  // Leitura com escopo aplicado pelo servidor (RLS de `clientes` não está versionada
+  // no repo — não dá pra depender dela)
+  const db = createAdminClient();
+
   const busca = typeof searchParams.q === "string" ? searchParams.q : "";
   const formSubmitido = typeof searchParams.q === "string" || typeof searchParams.status === "string";
   const filtroStatus = typeof searchParams.status === "string" ? searchParams.status : "todos";
@@ -35,13 +52,18 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
   const mostrarTodos = searchParams.mostrar === "todos";
   const deveBuscar = formSubmitido || mostrarTodos; // Buscar se formulário enviado OU "mostrar todos" clicado
 
-  // Estatísticas — queries HEAD (só count, sem dados) em paralelo
+  // Estatísticas — queries HEAD (só count, sem dados) em paralelo, todas do escopo
+  const contagem = (status?: string) => {
+    let q = db.from("clientes").select("id", { count: "exact", head: true });
+    if (status) q = q.eq("status", status);
+    return aplicarEscopoClientes(q, escopo, userId);
+  };
   const [totalRes, ativosRes, inativosRes, bloqueadosRes, prospectsRes] = await Promise.all([
-    supabase.from("clientes").select("id", { count: "exact", head: true }),
-    supabase.from("clientes").select("id", { count: "exact", head: true }).eq("status", "ativo"),
-    supabase.from("clientes").select("id", { count: "exact", head: true }).eq("status", "inativo"),
-    supabase.from("clientes").select("id", { count: "exact", head: true }).eq("status", "bloqueado"),
-    supabase.from("clientes").select("id", { count: "exact", head: true }).eq("status", "prospect"),
+    contagem(),
+    contagem("ativo"),
+    contagem("inativo"),
+    contagem("bloqueado"),
+    contagem("prospect"),
   ]);
 
   const stats = {
@@ -60,9 +82,10 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
   if (deveBuscar) {
     // Helper para montar query base
     const buildQuery = (offset: number, limit: number) => {
-      let q = supabase.from("clientes").select("*, grupo:grupos_economicos!grupo_economico_id(id, nome)", { count: "exact" });
+      let q = db.from("clientes").select("*, grupo:grupos_economicos!grupo_economico_id(id, nome)", { count: "exact" });
       if (busca) q = q.ilike("nome_razao_social", `%${busca}%`);
       if (filtroStatus !== "todos") q = q.eq("status", filtroStatus);
+      q = aplicarEscopoClientes(q, escopo, userId);
       let orderField = "nome_razao_social";
       let ascending = true;
       if (ordenar === "za") { orderField = "nome_razao_social"; ascending = false; }

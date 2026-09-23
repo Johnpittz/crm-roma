@@ -476,12 +476,16 @@ Retorna métricas agregadas de tarefas e vendas para o período informado.
 
 ### GET `/api/clientes`
 
-Conta clientes no sistema. Retorna apenas a contagem total.
+Lista os clientes **do escopo do logado**: vendedor recebe só a própria carteira, gestor/direção a carteira toda. O escopo é resolvido no servidor a partir do cargo (`lib/carteira.ts`).
+
+**Query params:** `limite` (padrão 200, máx 1000) · `busca` (nome) · `status`
 
 **Resposta (200):**
 ```json
-{ "clientes": [], "total": 150 }
+{ "clientes": [], "total": 150, "escopo": "proprio", "limite": 200 }
 ```
+
+`total` é o tamanho do escopo (ignora o `limite`); `escopo` é `"proprio"` ou `"todos"`.
 
 ---
 

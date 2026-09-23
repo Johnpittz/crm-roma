@@ -89,4 +89,4 @@ Acesse: http://localhost:3000
 - O restante do atendimento usa dados reais (Supabase + WAHA)
 - Projeção matemática calcula tendência baseada em dias úteis
 - Kanban permite arrastar tarefas entre colunas
-- Testes automatizados: `npm test` (vitest, 70 testes)
+- Testes automatizados: `npm test` (vitest, 83 testes)

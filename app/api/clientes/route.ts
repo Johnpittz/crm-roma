@@ -1,10 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, createClient as createServiceClient } from "@supabase/supabase-js";
+import { escopoCarteira, aplicarEscopoClientes } from "@/lib/carteira";
 
 const SUPABASE_URL = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").trim();
 const ANON_KEY = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "").trim();
 const SERVICE_KEY = (process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
 
+const COLUNAS_LISTA =
+  "id, nome_razao_social, cpf_cnpj, telefone, celular, email, cidade, estado, status, tipo";
+
+// GET /api/clientes[?limite=200&busca=&status=]
+// REGRA: vendedor só vê a própria carteira; gestor vê a carteira toda (visão provisória).
+// O escopo é decidido AQUI, no servidor, pelo cargo — nunca vem do cliente.
 export async function GET(request: NextRequest) {
   try {
     const authHeader = request.headers.get("authorization");
@@ -12,16 +19,66 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
     }
 
+    const token = authHeader.replace("Bearer ", "").trim();
     const supabase = createServiceClient(SUPABASE_URL, SERVICE_KEY);
-    const { data: clientes, error } = await supabase
-      .from("clientes")
-      .select("id", { count: "exact", head: true });
+
+    const { data: userData, error: userError } = await supabase.auth.getUser(token);
+    if (userError || !userData.user) {
+      return NextResponse.json({ error: "Token inválido" }, { status: 401 });
+    }
+
+    const { data: perfil } = await supabase
+      .from("profiles")
+      .select("cargo")
+      .eq("id", userData.user.id)
+      .single();
+
+    const escopo = escopoCarteira(perfil?.cargo);
+
+    const { searchParams } = new URL(request.url);
+    const limite = Math.min(
+      Math.max(parseInt(searchParams.get("limite") || "200", 10) || 200, 1),
+      1000
+    );
+    const busca = searchParams.get("busca") || "";
+    const status = searchParams.get("status") || "";
+
+    // Total do escopo (independente do limite) — alimenta contadores e métricas
+    let countQuery = supabase.from("clientes").select("id", { count: "exact", head: true });
+    if (busca) countQuery = countQuery.ilike("nome_razao_social", `%${busca}%`);
+    if (status) countQuery = countQuery.eq("status", status);
+    const { count, error: countError } = await aplicarEscopoClientes(
+      countQuery,
+      escopo,
+      userData.user.id
+    );
+
+    if (countError) {
+      return NextResponse.json({ error: countError.message }, { status: 500 });
+    }
+
+    // Lista do escopo (com limite — o card do atendimento não carrega 3 mil linhas)
+    let listQuery = supabase.from("clientes").select(COLUNAS_LISTA);
+    if (busca) listQuery = listQuery.ilike("nome_razao_social", `%${busca}%`);
+    if (status) listQuery = listQuery.eq("status", status);
+    const { data: clientes, error } = await aplicarEscopoClientes(
+      listQuery,
+      escopo,
+      userData.user.id
+    )
+      .order("nome_razao_social", { ascending: true })
+      .limit(limite);
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ clientes: [], total: clientes?.length || 0 });
+    return NextResponse.json({
+      clientes: clientes || [],
+      total: count ?? 0,
+      escopo,
+      limite,
+    });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || "Erro interno" }, { status: 500 });
   }
