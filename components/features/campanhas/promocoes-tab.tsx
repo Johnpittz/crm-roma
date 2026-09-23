@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { urlWaMe } from "@/lib/telefone";
 import {
   Tag,
   Package,
@@ -689,10 +690,7 @@ export function PromocoesTab() {
                       )}
                       {cliente.celular && (
                         <a
-                          href={`https://wa.me/55${cliente.celular.replace(
-                            /\D/g,
-                            ""
-                          )}`}
+                          href={urlWaMe(cliente.celular)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="p-1.5 rounded-md hover:bg-green-50 text-slate-400 hover:text-green-600"

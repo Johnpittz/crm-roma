@@ -35,3 +35,18 @@ export function extrairTelefoneJid(jid: string | null | undefined): string | nul
   const local = jid.split('@')[0]
   return /^\d{8,15}$/.test(local) ? local : null
 }
+
+/**
+ * Monta a URL wa.me para abrir conversa com o número (com ou sem contato salvo).
+ * Regra por COMPRIMENTO: até 11 dígitos = nacional (DDD+número) → prefixa 55;
+ * 12+ = já internacional → não mexe. Corrige dois bugs latentes dos links
+ * existentes: `55${...}` duplicava o DDI, e startsWith('55') confundia DDD 55
+ * (Santa Maria/RS) com DDI. Retorna '' sem telefone (o botão não renderiza).
+ */
+export function urlWaMe(telefone: string | null | undefined): string {
+  if (!telefone) return ''
+  const digits = telefoneParaDigitos(telefone)
+  if (!digits) return ''
+  const intl = digits.length <= 11 ? '55' + digits : digits
+  return `https://wa.me/${intl}`
+}

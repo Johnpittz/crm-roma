@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { formatarTelefone, extrairTelefoneJid } from './telefone'
+import { formatarTelefone, extrairTelefoneJid, urlWaMe } from './telefone'
 
 describe('formatarTelefone', () => {
   it('remove caracteres não numéricos de formatos brasileiros', () => {
@@ -37,5 +37,21 @@ describe('extrairTelefoneJid', () => {
     expect(extrairTelefoneJid('')).toBeNull()
     expect(extrairTelefoneJid(null)).toBeNull()
     expect(extrairTelefoneJid(undefined)).toBeNull()
+  })
+})
+
+describe('urlWaMe', () => {
+  it('monta URL wa.me para abrir conversa (com ou sem contato salvo)', () => {
+    // já tem DDI 55 — não duplicar (5555...)
+    expect(urlWaMe('5562988887777')).toBe('https://wa.me/5562988887777')
+    // local com DDD — prefixar 55
+    expect(urlWaMe('(62) 98888-7777')).toBe('https://wa.me/5562988887777')
+    expect(urlWaMe('6234165014')).toBe('https://wa.me/556234165014')
+    // DDD 55 (Santa Maria/RS): 10 dígitos começando com 55 ≠ DDI
+    expect(urlWaMe('5599918888')).toBe('https://wa.me/555599918888')
+    // sem telefone → string vazia (botão não renderiza)
+    expect(urlWaMe('')).toBe('')
+    expect(urlWaMe(null)).toBe('')
+    expect(urlWaMe('abc')).toBe('')
   })
 })

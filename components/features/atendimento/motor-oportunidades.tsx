@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { urlWaMe } from "@/lib/telefone";
 import { Flame, Gift, Link2, TrendingUp, Phone, MessageCircle, X, Eye, Loader2, RefreshCw, Tag, ChevronDown, ChevronUp, Package, Users } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -292,7 +293,7 @@ export function MotorOportunidades() {
                                       {(cli.telefone || cli.celular) && (
                                         <Button size="icon" variant="ghost" className="h-6 w-6 text-slate-400 hover:text-green-600" asChild>
                                           <a
-                                            href={`https://wa.me/55${(cli.celular || cli.telefone || "").replace(/\D/g, "")}`}
+                                            href={urlWaMe(cli.celular || cli.telefone || "")}
                                             target="_blank"
                                             rel="noopener noreferrer"
                                           >
