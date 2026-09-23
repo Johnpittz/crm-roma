@@ -526,10 +526,11 @@ EVOLUTION_API_KEY=e3186c32139f79c7566a1d6a3f5bc702fae199c725a313ce9b7f8ff035123b
 - **Modal de Detalhes:** Clique no nome para ver informações completas
 - **Persistência:** Busca salva na URL (?q=termo)
 
-### 12.5 Dados de Teste
-- **Vendedores:** Raquel, Brenda, Christyan, Gabriel, Jackson, João Pedro, Keila, Murilo
-- **Cargos:** vendedor, gerente_comercial, diretor, admin
-- **Clientes:** ~1739 clientes no banco
+### 12.5 Dados de Produção (atualizado 23/09/2026)
+- **Vendedores ativos:** equipe Murilo (Raquel, Valdean, Christyan, Ellen, Dara), equipe Jackson (Brennda) + João Pedro (sem equipe) + Demonstração
+- **Desativados (ativo=false):** Gabriel, Keila, djfhsujdhfjsdhf (ecommerce@)
+- **Cargos:** vendedor, gerente_comercial, diretor, admin, demonstracao
+- **Clientes:** 3.073 (rebase 23/09 via `scripts/rebase-base-clientes.js` a partir de `base_clientes/*.xls`)
 - **Produtos:** 2195 produtos
 
 ---
@@ -561,6 +562,17 @@ EVOLUTION_API_KEY=e3186c32139f79c7566a1d6a3f5bc702fae199c725a313ce9b7f8ff035123b
 - [x] Validação E2E: imagem nova recebida aparece no chat + lightbox no navegador (confirmado pelo usuário)
 - [x] **LIBERADO PARA USO PELA EQUIPE** (23/09/2026): texto e mídia (vídeo, áudio, documento) enviando e recebendo — validado pelo usuário
 - [ ] Varredura de mídia (vídeo/sticker **recebidos** ainda não testados ao vivo — conferir organicamente no uso)
+
+### 23/09/2026 (Rebase da base de clientes + organograma)
+- [x] **Base de clientes refeita do zero:** 1.739 clientes antigos apagados (com backup JSON) e substituídos pelos **3.073 clientes únicos** das 7 planilhas de `base_clientes/*.xls` (exportação Millennium "Parceiro", 3.080 linhas brutas − 7 duplicações de `cpf_cnpj`: 4 internas + 3 entre planilhas — o banco tem UNIQUE em `cpf_cnpj`)
+- [x] Script `scripts/rebase-base-clientes.js` (fases `backup|wipe|perfis|import|verify`, retomável/idempotente): importador novo com dedupe por `codigo_erp` + `cpf_cnpj`, bisecção para isolar linhas rejeitadas, mapeamento planilha→vendedor, enum `tipo_pessoa` = `pf`/`pj`, CEP = coluna 27 (o importador antigo lia a 26 por engano)
+- [x] Backup pré-limpeza: `backups/rebase-2026-09-23/` (profiles, clientes, vendas, venda_itens, atendimentos, atendimento_mensagens, atendimento_etiquetas, leads, tarefas, oportunidades + `import-summary.json`)
+- [x] Limpeza de dependentes de teste na ordem correta (FK `leads.cliente_id → clientes` sem ON DELETE): tarefas, leads, venda_itens, vendas, atendimentos (mensagens/etiquetas em CASCADE), clientes
+- [x] **Organograma novo:** Jackson **promovido a `gerente_comercial`** (gestor de si mesmo, carteira própria JACKSON.xls = 400) com equipe: **Brennda**; Murilo (`gerente_comercial`) com equipe: **Raquel, Valdean, Christyan, Ellen, Dara** (Valdean antes sem gestor → Murilo)
+- [x] Novos vendedores criados no auth: **Ellen** (ellen@romagyn.com.br) e **Dara** (dara@romagyn.com.br), senha temporária padrão, `gestor_id` → Murilo
+- [x] Desativados (`ativo=false`): **Gabriel** (saiu da gestão), **Keila** (fora do novo organograma), **djfhsujdhfjsdhf** (perfil de teste ecommerce@)
+- [x] Verificação final: total 3.073 ✅, soma por vendedor bate ✅, organograma impresso ✅
+- ⚠️ Pendências: `ativo=false` **não bloqueia login** hoje (não há checagem no login) — se quiser, criar essa checagem + filtro `ativo` nas listagens; Valdean usa domínio `romadistribuicao` (diferente dos demais da equipe Murilo que são `romagyn`)
 
 ### 22/09/2026
 - [x] Migração WhatsApp Evolution → WAHA (módulo ATENDIMENTOS): `docs/plano-implementacao-waha.md` (9 fases) + `docs/pesquisa-waha-atendimento.md` (13 fontes)
