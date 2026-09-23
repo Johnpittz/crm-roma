@@ -9,6 +9,7 @@ import { FiltroEtiquetas } from "@/components/features/atendimento/filtro-etique
 import { Search, UserPlus } from "lucide-react";
 import { BuscarContatosWhatsApp, type WhatsAppContact } from "@/components/features/atendimento/buscar-contatos-whatsapp";
 import { BarraMetricasAtendimento } from "@/components/features/atendimento/barra-metricas";
+import { PainelInferior } from "@/components/features/atendimento/painel-inferior";
 import { createClient } from "@/lib/supabase/client";
 import { extrairTelefoneJid } from "@/lib/telefone";
 import { toast } from "sonner";
@@ -264,6 +265,10 @@ export default function AtendimentoPage() {
       
       {/* BARRA DE MÉTRICAS + GAUGE REALIZADO vs META */}
       <BarraMetricasAtendimento />
+
+      {/* Dois containers lado a lado (Top 20 vendedores + Clientes) — ocupam a
+          faixa liberada pelo corte dos cards de métrica */}
+      <PainelInferior />
 
       {/* WhatsApp Web 3 COLUNAS: Lista + Chat + Painel Contato */}
       <div className="flex-1 min-h-0 flex border border-slate-200 rounded-lg overflow-hidden bg-white">
