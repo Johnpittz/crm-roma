@@ -261,7 +261,7 @@ export default function AtendimentoPage() {
   });
 
   return (
-    <div className="h-[calc(100vh-9rem)] flex flex-col overflow-hidden">
+    <div className="h-full flex flex-col overflow-hidden">
       
       {/* BARRA DE MÉTRICAS + GAUGE REALIZADO vs META */}
       <BarraMetricasAtendimento />
