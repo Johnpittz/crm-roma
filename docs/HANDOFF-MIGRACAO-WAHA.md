@@ -62,6 +62,7 @@ Eventos: `message`, `message.ack`, `session.status`.
 | Checkmarks (✓/✓✓/azul) reais via `message.ack` | ✅ funcionando |
 | Nomes de contatos reais + resolução LID→número | ✅ funcionando |
 | Migração Evolution → WAHA (só módulo ATENDIMENTOS) | ✅ fechada |
+| **Liberado para uso pela equipe** | ✅ **23/09/2026** — texto/mídia (vídeo, áudio, documento) enviada e recebida, validado pelo usuário |
 | F8 (apagar legado Evolution após 24–48h estáveis) | 🔄 pendente |
 | Lightbox de imagem (clique expande no CRM) | ✅ implementado 23/09 (`33bfcbc`) — overlay no CRM (fecha com clique/Esc) — **validado E2E pelo usuário** |
 | Fix da URL `localhost` da mídia recebida | ✅ **concluído** 23/09 (`b880ea2`) — **validado E2E pelo usuário** |
@@ -271,5 +272,5 @@ Comportamento do webhook em produção: POST `{}` → 400 `Payload inválido: ev
 
 1. ~~**§6.1** — plug do `montarUrlArquivo`/`buscarUrlMidiaHistoria` no webhook~~ ✅ **feito e validado E2E 23/09 (`b880ea2`)**.
 2. ~~**§6.2** — lightbox de imagem + corrigir legenda `[image]`~~ ✅ **feito e validado E2E 23/09 (`33bfcbc`)**.
-3. Varredura de todos os tipos de mídia (imagem, áudio, vídeo, documento, sticker) × (enviado, recebido) — pedido explícito do usuário: *"importante ver tudo de media pra ver se vai funcionar"*. **Testar vídeo/sticker recebidos de verdade** — nunca foram testados ao vivo.
+3. Varredura de todos os tipos de mídia (imagem, áudio, vídeo, documento, sticker) × (enviado, recebido) — pedido explícito do usuário: *"importante ver tudo de media pra ver se vai funcionar"*. **23/09: vídeo/áudio/documento ENVIADOS validados; vídeo/sticker RECEBIDOS ainda não testados ao vivo** — pode ser conferido organicamente durante o uso (se falhar, caminho é o mesmo do BUG-5: `resolverUrlMidia` no webhook + bolha no chat).
 4. **§6.3** — F8: apagar legado Evolution depois de 24–48h estáveis.
