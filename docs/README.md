@@ -4,7 +4,7 @@
 
 O CRM ROMA é uma plataforma web completa para gestão de vendas e atendimento de empresas distribuidoras. Integra WhatsApp via **WAHA** (self-hosted, engine GOWS — a Evolution API ficou só como rollback), oferece quadros Kanban para gestão do funil de vendas, controle de clientes, tarefas, leads e dashboards gerenciais em tempo real.
 
-> **Status rápido (23/09/2026):** módulo **ATENDIMENTOS em produção** com WAHA (liberado para a equipe em 23/09) · **83 testes** (`npm test`) · **regra de carteira ativa:** vendedor só vê os próprios clientes (`lib/carteira.ts`) · organograma/base refaços hoje — ver `PROGRESSO.MD` (diário de bordo) e §12.5 (usuários atuais) · runbook de números: `runbook-waha-numeros.md` · handoff técnico: `HANDOFF-MIGRACAO-WAHA.md`.
+> **Status rápido (23/09/2026):** módulo **ATENDIMENTOS em produção** com WAHA (liberado para a equipe em 23/09) · **87 testes** (`npm test`) · **regra de carteira ativa:** a carteira é **dividida entre os gestores** — vendedor só vê os próprios, `gerente_comercial` vê a carteira da sua equipe, direção vê tudo (`lib/carteira.ts`) · organograma/base refaços hoje — ver `PROGRESSO.MD` (diário de bordo) e §12.5 (usuários atuais) · runbook de números: `runbook-waha-numeros.md` · handoff técnico: `HANDOFF-MIGRACAO-WAHA.md`.
 
 ---
 
@@ -78,7 +78,7 @@ O CRM ROMA foi projetado para equipes comerciais de distribuidoras, oferecendo:
 - Filtros por busca e período
 
 ### 👥 Gestão de Clientes
-- **Escopo por carteira:** cada vendedor vê apenas os próprios clientes; `gerente_comercial`/`diretor`/`admin` veem a carteira toda (visão provisória) — régua única em `lib/carteira.ts`
+- **Escopo por carteira (a carteira é dividida ENTRE OS GESTORES):** cada vendedor vê apenas os próprios clientes; `gerente_comercial` vê a carteira da **sua equipe** (23/09: GERENTE 1.928 + Jackson 1.145 = 3.073); `diretor`/`admin` (direção) veem a carteira toda; `demonstracao` não vê clientes reais — régua única em `lib/carteira.ts`
 - Cadastro, edição e busca de clientes
 - Filtros por status (ativo, inativo, bloqueado, prospect)
 - Estatísticas detalhadas (total, ativos, inativos, etc.)

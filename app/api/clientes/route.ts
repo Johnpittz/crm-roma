@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, createClient as createServiceClient } from "@supabase/supabase-js";
-import { escopoCarteira, aplicarEscopoClientes } from "@/lib/carteira";
+import { escopoCarteira, aplicarEscopoClientes, idsDaEquipe } from "@/lib/carteira";
 
 const SUPABASE_URL = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").trim();
 const ANON_KEY = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "").trim();
@@ -34,6 +34,8 @@ export async function GET(request: NextRequest) {
       .single();
 
     const escopo = escopoCarteira(perfil?.cargo);
+    // Gestor: resolve a equipe (a carteira é dividida entre os gestores)
+    const equipe = escopo === "equipe" ? await idsDaEquipe(supabase, userData.user.id) : [];
 
     const { searchParams } = new URL(request.url);
     const limite = Math.min(
@@ -50,7 +52,8 @@ export async function GET(request: NextRequest) {
     const { count, error: countError } = await aplicarEscopoClientes(
       countQuery,
       escopo,
-      userData.user.id
+      userData.user.id,
+      equipe
     );
 
     if (countError) {
@@ -64,7 +67,8 @@ export async function GET(request: NextRequest) {
     const { data: clientes, error } = await aplicarEscopoClientes(
       listQuery,
       escopo,
-      userData.user.id
+      userData.user.id,
+      equipe
     )
       .order("nome_razao_social", { ascending: true })
       .limit(limite);

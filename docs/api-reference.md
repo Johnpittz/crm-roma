@@ -476,7 +476,7 @@ Retorna métricas agregadas de tarefas e vendas para o período informado.
 
 ### GET `/api/clientes`
 
-Lista os clientes **do escopo do logado**: vendedor recebe só a própria carteira, gestor/direção a carteira toda. O escopo é resolvido no servidor a partir do cargo (`lib/carteira.ts`).
+Lista os clientes **do escopo do logado**: vendedor só os próprios; `gerente_comercial` a carteira da **sua equipe** (a carteira é dividida entre os gestores); direção (`diretor`/`admin`) a carteira toda. O escopo é resolvido no servidor a partir do cargo (`lib/carteira.ts`).
 
 **Query params:** `limite` (padrão 200, máx 1000) · `busca` (nome) · `status`
 
@@ -485,7 +485,7 @@ Lista os clientes **do escopo do logado**: vendedor recebe só a própria cartei
 { "clientes": [], "total": 150, "escopo": "proprio", "limite": 200 }
 ```
 
-`total` é o tamanho do escopo (ignora o `limite`); `escopo` é `"proprio"` ou `"todos"`.
+`total` é o tamanho do escopo (ignora o `limite`); `escopo` é `"proprio"`, `"equipe"` ou `"todos"`.
 
 ---
 

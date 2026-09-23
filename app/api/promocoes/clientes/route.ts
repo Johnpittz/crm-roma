@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
-import { escopoCarteira } from "@/lib/carteira";
+import { escopoCarteira, pertenceAoEscopo, idsDaEquipe } from "@/lib/carteira";
 
 export const dynamic = "force-dynamic";
 
@@ -123,17 +123,17 @@ export async function GET(request: NextRequest) {
     (a, b) => new Date(b.ultima_compra).getTime() - new Date(a.ultima_compra).getTime()
   );
 
-  // REGRA DE CARTEIRA: vendedor só enxerga clientes da própria carteira
+  // REGRA DE CARTEIRA: vendedor só o dele; gestor a da própria equipe; direção tudo
   const { data: meuPerfil } = await supabase
     .from("profiles")
     .select("cargo")
     .eq("id", user.id)
     .single();
   const escopo = escopoCarteira(meuPerfil?.cargo);
-  const clientes =
-    escopo === "proprio"
-      ? clientesOrdenados.filter((c) => c.vendedor_responsavel_id === user.id)
-      : clientesOrdenados;
+  const equipe = escopo === "equipe" ? await idsDaEquipe(service, user.id) : [];
+  const clientes = clientesOrdenados.filter((c) =>
+    pertenceAoEscopo(escopo, user.id, equipe, c.vendedor_responsavel_id)
+  );
 
   return NextResponse.json({
     clientes,

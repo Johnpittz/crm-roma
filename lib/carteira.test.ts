@@ -1,10 +1,21 @@
 import { describe, it, expect } from 'vitest'
-import { escopoCarteira, ehGestor, aplicarEscopoClientes } from './carteira'
+import {
+  escopoCarteira,
+  ehGestor,
+  aplicarEscopoClientes,
+  idsDaEquipe,
+  pertenceAoEscopo,
+} from './carteira'
 
 /**
- * Builder falso no formato do supabase-js: `eq()` registra a chamada e
- * retorna a própria query (encadeável), como o PostgrestFilterBuilder real.
+ * REGRA (documentada em PROGRESSO.MD e docs/README.md):
+ * a carteira é dividida ENTRE OS GESTORES — cada gestor vê a carteira da sua
+ * equipe; a direção vê tudo; cada vendedor vê só o que é dele.
+ *
+ * Produção 23/09/2026: GERENTE 1.928 (Christyan, Dara, Raquel, Valdean, Ellen)
+ * + Jackson 1.145 (Brennda + carteira própria dele) = 3.073.
  */
+
 function criarQueryFake() {
   const chamadas: Array<{ metodo: string; args: unknown[] }> = []
   const query: any = {
@@ -16,6 +27,10 @@ function criarQueryFake() {
       chamadas.push({ metodo: 'eq', args })
       return query
     },
+    in(...args: unknown[]) {
+      chamadas.push({ metodo: 'in', args })
+      return query
+    },
     order(...args: unknown[]) {
       chamadas.push({ metodo: 'order', args })
       return query
@@ -24,24 +39,18 @@ function criarQueryFake() {
   return { query, chamadas }
 }
 
-describe('escopoCarteira — quem enxerga a carteira inteira', () => {
+describe('escopoCarteira — quem enxerga o quê', () => {
   it('vendedor vê apenas os próprios clientes', () => {
     expect(escopoCarteira('vendedor')).toBe('proprio')
-  })
-
-  it('vendedora vê apenas os próprios clientes', () => {
     expect(escopoCarteira('vendedora')).toBe('proprio')
   })
 
-  it('gerente_comercial vê a carteira toda (visão provisória)', () => {
-    expect(escopoCarteira('gerente_comercial')).toBe('todos')
+  it('gerente_comercial vê a carteira da SUA equipe (não a empresa)', () => {
+    expect(escopoCarteira('gerente_comercial')).toBe('equipe')
   })
 
-  it('diretor vê a carteira toda', () => {
+  it('direção (diretor/admin) vê a carteira toda', () => {
     expect(escopoCarteira('diretor')).toBe('todos')
-  })
-
-  it('admin vê a carteira toda', () => {
     expect(escopoCarteira('admin')).toBe('todos')
   })
 
@@ -58,7 +67,8 @@ describe('escopoCarteira — quem enxerga a carteira inteira', () => {
 
   it('cargos reais em produção (23/09/2026)', () => {
     expect(escopoCarteira('vendedor')).toBe('proprio') // Brennda, Dara, Raquel...
-    expect(escopoCarteira('gerente_comercial')).toBe('todos') // GERENTE, Jackson
+    expect(escopoCarteira('gerente_comercial')).toBe('equipe') // GERENTE, Jackson
+    expect(escopoCarteira('diretor')).toBe('todos') // João Pedro
   })
 })
 
@@ -90,18 +100,83 @@ describe('aplicarEscopoClientes — aplica o filtro na query', () => {
     })
   })
 
+  it('escopo "equipe" filtra por in() com a equipe + o próprio gestor', () => {
+    const { query, chamadas } = criarQueryFake()
+    aplicarEscopoClientes(query, 'equipe', 'gestor-1', ['v1', 'v2', 'gestor-1'])
+
+    const filtro = chamadas.find((c) => c.metodo === 'in')
+    expect(filtro?.args).toEqual(['vendedor_responsavel_id', ['gestor-1', 'v1', 'v2']])
+    expect(chamadas.some((c) => c.metodo === 'eq')).toBe(false)
+  })
+
+  it('escopo "equipe" sem equipe resolvida cai no próprio (fail-closed)', () => {
+    const { query, chamadas } = criarQueryFake()
+    aplicarEscopoClientes(query, 'equipe', 'gestor-1', [])
+
+    const filtro = chamadas.find((c) => c.metodo === 'in')
+    expect(filtro?.args).toEqual(['vendedor_responsavel_id', ['gestor-1']])
+  })
+
   it('escopo "todos" não adiciona filtro algum', () => {
     const { query, chamadas } = criarQueryFake()
     aplicarEscopoClientes(query, 'todos', 'user-123')
 
-    expect(chamadas.filter((c) => c.metodo === 'eq')).toHaveLength(0)
+    expect(chamadas).toHaveLength(0)
+  })
+})
+
+describe('idsDaEquipe — resolve quem compõe a carteira do gestor', () => {
+  it('busca os vendedores com gestor_id = gestor', async () => {
+    const chamadas: unknown[][] = []
+    const db: any = {
+      from(tabela: string) {
+        return {
+          select(cols: string) {
+            return {
+              eq(col: string, valor: string) {
+                chamadas.push([tabela, cols, col, valor])
+                return Promise.resolve({ data: [{ id: 'v1' }, { id: 'v2' }], error: null })
+              },
+            }
+          },
+        }
+      },
+    }
+
+    const ids = await idsDaEquipe(db, 'gestor-9')
+
+    expect(chamadas).toEqual([['profiles', 'id', 'gestor_id', 'gestor-9']])
+    expect(ids).toEqual(['v1', 'v2'])
   })
 
-  it('não filtra por outro vendedor sob nenhuma hipótese', () => {
-    const { query, chamadas } = criarQueryFake()
-    aplicarEscopoClientes(query, 'proprio', 'user-123')
+  it('erro do banco devolve lista vazia (nunca derruba a página)', async () => {
+    const db: any = {
+      from: () => ({
+        select: () => ({
+          eq: () => Promise.resolve({ data: null, error: { message: 'boom' } }),
+        }),
+      }),
+    }
+    expect(await idsDaEquipe(db, 'g')).toEqual([])
+  })
+})
 
-    const filtro = chamadas.find((c) => c.metodo === 'eq')
-    expect(filtro?.args).toEqual(['vendedor_responsavel_id', 'user-123'])
+describe('pertenceAoEscopo — checagem em memória (Campanhas)', () => {
+  it('direção vê qualquer cliente', () => {
+    expect(pertenceAoEscopo('todos', 'd1', [], 'qualquer')).toBe(true)
+    expect(pertenceAoEscopo('todos', 'd1', [], null)).toBe(true)
+  })
+
+  it('vendedor vê só o dele', () => {
+    expect(pertenceAoEscopo('proprio', 'v1', [], 'v1')).toBe(true)
+    expect(pertenceAoEscopo('proprio', 'v1', [], 'v2')).toBe(false)
+    expect(pertenceAoEscopo('proprio', 'v1', [], null)).toBe(false)
+  })
+
+  it('gestor vê a equipe + a carteira própria', () => {
+    expect(pertenceAoEscopo('equipe', 'g1', ['v1', 'v2'], 'v2')).toBe(true)
+    expect(pertenceAoEscopo('equipe', 'g1', ['v1', 'v2'], 'g1')).toBe(true)
+    expect(pertenceAoEscopo('equipe', 'g1', ['v1', 'v2'], 'v3')).toBe(false)
+    expect(pertenceAoEscopo('equipe', 'g1', ['v1'], null)).toBe(false)
   })
 })

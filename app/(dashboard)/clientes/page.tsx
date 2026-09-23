@@ -14,7 +14,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils/cn";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { escopoCarteira, aplicarEscopoClientes } from "@/lib/carteira";
+import { escopoCarteira, aplicarEscopoClientes, idsDaEquipe } from "@/lib/carteira";
 import { ModalNovoCliente } from "@/components/features/clientes/modal-novo-cliente";
 import { MostrarTodosButton } from "@/components/features/clientes/mostrar-todos-button";
 import { LimparUrlNoLoad } from "@/components/features/clientes/limpar-url-no-load";
@@ -44,6 +44,8 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
   // Leitura com escopo aplicado pelo servidor (RLS de `clientes` não está versionada
   // no repo — não dá pra depender dela)
   const db = createAdminClient();
+  // Gestor: a carteira dele é a da própria equipe (dividida entre os gestores)
+  const equipe = escopo === "equipe" && userId ? await idsDaEquipe(db, userId) : [];
 
   const busca = typeof searchParams.q === "string" ? searchParams.q : "";
   const formSubmitido = typeof searchParams.q === "string" || typeof searchParams.status === "string";
@@ -56,7 +58,7 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
   const contagem = (status?: string) => {
     let q = db.from("clientes").select("id", { count: "exact", head: true });
     if (status) q = q.eq("status", status);
-    return aplicarEscopoClientes(q, escopo, userId);
+    return aplicarEscopoClientes(q, escopo, userId, equipe);
   };
   const [totalRes, ativosRes, inativosRes, bloqueadosRes, prospectsRes] = await Promise.all([
     contagem(),
@@ -85,7 +87,7 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
       let q = db.from("clientes").select("*, grupo:grupos_economicos!grupo_economico_id(id, nome)", { count: "exact" });
       if (busca) q = q.ilike("nome_razao_social", `%${busca}%`);
       if (filtroStatus !== "todos") q = q.eq("status", filtroStatus);
-      q = aplicarEscopoClientes(q, escopo, userId);
+      q = aplicarEscopoClientes(q, escopo, userId, equipe);
       let orderField = "nome_razao_social";
       let ascending = true;
       if (ordenar === "za") { orderField = "nome_razao_social"; ascending = false; }
