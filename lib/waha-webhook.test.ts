@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import fixtures from './__fixtures__/waha-webhook.json'
-import { parseEventoWaha, mapearTipoMidiaDb, mapearCheckmark, montarConteudo, type MensagemWaha, type AckWaha, type StatusWaha } from './waha-webhook'
+import { parseEventoWaha, mapearTipoMidiaDb, mapearCheckmark, montarConteudo, ehPlaceholderConteudo, type MensagemWaha, type AckWaha, type StatusWaha } from './waha-webhook'
 
 describe('parseEventoWaha', () => {
   it('extrai os campos de uma mensagem de texto', () => {
@@ -143,5 +143,23 @@ describe('montarConteudo', () => {
   it('usa o texto para mensagens sem mídia', () => {
     const msg = parseEventoWaha(fixtures.message_text) as MensagemWaha
     expect(montarConteudo(msg)).toBe('Olá, tudo bem?')
+  })
+})
+
+describe('ehPlaceholderConteudo (evita legenda [image] duplicada na imagem)', () => {
+  it('reconhece placeholders de mídia gerados pelo WAHA, pelo banco e pelo legado Evolution', () => {
+    for (const p of ['[image]', '[imagem]', '[audio]', '[áudio]', '[ptt]', '[video]', '[vídeo]', '[document]', '[documento]', '[sticker]', '[figurinha]', '[gif]']) {
+      expect(ehPlaceholderConteudo(p), p).toBe(true)
+    }
+    expect(ehPlaceholderConteudo('[IMAGE]')).toBe(true) // caixa alta
+    expect(ehPlaceholderConteudo('[ Imagem ]')).toBe(true) // espaços internos
+  })
+
+  it('texto de verdade nunca é placeholder, mesmo entre colchetes', () => {
+    for (const t of ['Olá, tudo bem?', '[risos] que demais', 'segue o comprovante [2024]', '[anexo] pedido.pdf', 'foto [imagem] na legenda', '']) {
+      expect(ehPlaceholderConteudo(t), t).toBe(false)
+    }
+    expect(ehPlaceholderConteudo(null)).toBe(false)
+    expect(ehPlaceholderConteudo(undefined)).toBe(false)
   })
 })

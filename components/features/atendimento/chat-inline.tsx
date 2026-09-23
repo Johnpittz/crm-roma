@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { ehPlaceholderConteudo } from "@/lib/waha-webhook";
+import { Lightbox } from "@/components/features/atendimento/lightbox";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
@@ -138,6 +140,7 @@ export function ChatInline({ atendimento, onMarcarResolvido, onMensagemEnviada, 
 
   // States para gravação de áudio
   const [isRecording, setIsRecording] = useState(false);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [recordingTime, setRecordingTime] = useState(0);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -566,10 +569,10 @@ export function ChatInline({ atendimento, onMarcarResolvido, onMensagemEnviada, 
                 src={resolvedUrl}
                 alt="Imagem"
                 className="rounded-lg cursor-pointer hover:brightness-90 transition-all"
-                onClick={() => window.open(resolvedUrl!, "_blank")}
+                onClick={() => setLightboxUrl(resolvedUrl!)}
                 loading="lazy"
               />
-              {msg.conteudo && msg.conteudo !== `[${msg.tipo_midia || msg.media_type}]` && (
+              {msg.conteudo && !ehPlaceholderConteudo(msg.conteudo) && (
                 <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-2 rounded-b-lg">
                   <p className="text-white text-xs">{msg.conteudo}</p>
                 </div>
@@ -607,7 +610,7 @@ export function ChatInline({ atendimento, onMarcarResolvido, onMensagemEnviada, 
                 className="rounded-lg"
                 preload="metadata"
               />
-              {msg.conteudo && msg.conteudo !== `[${msg.tipo_midia || msg.media_type}]` && (
+              {msg.conteudo && !ehPlaceholderConteudo(msg.conteudo) && (
                 <p className="text-xs mt-1 whitespace-pre-wrap break-words">{msg.conteudo}</p>
               )}
             </div>
@@ -964,6 +967,9 @@ export function ChatInline({ atendimento, onMarcarResolvido, onMensagemEnviada, 
           </div>
         </>
       )}
+
+      {/* Imagem expandida dentro do CRM (não abre aba nova) */}
+      <Lightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />
     </div>
   );
 }

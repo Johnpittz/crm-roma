@@ -144,3 +144,21 @@ export function mapearTipoMidiaDb(tipo: TipoMidia | string | null | undefined): 
 export function montarConteudo(msg: MensagemWaha): string {
   return msg.tipo_midia ? `[${msg.tipo_midia}]` : msg.conteudo
 }
+
+/** Tokens de placeholder de mídia (WAHA en, banco pt-BR, legado Evolution) após normalização. */
+const PLACEHOLDERS_MIDIA = new Set([
+  'image', 'imagem', 'audio', 'ptt', 'video', 'document', 'documento', 'sticker', 'figurinha', 'gif',
+])
+
+/**
+ * true se o conteúdo é um placeholder de mídia ([image], [áudio], [ptt]...) e não uma legenda real.
+ * Usado para não renderizar a legenda duplicada dentro da mídia.
+ * Texto de verdade entre colchetes (ex.: '[risos] que demais') não é placeholder.
+ */
+export function ehPlaceholderConteudo(conteudo: string | null | undefined): boolean {
+  if (!conteudo) return false
+  const m = conteudo.trim().match(/^\[(.+)\]$/)
+  if (!m) return false
+  const token = m[1].trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  return PLACEHOLDERS_MIDIA.has(token)
+}
