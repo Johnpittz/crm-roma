@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils/cn";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { escopoCarteira, aplicarEscopoClientes, idsDaEquipe } from "@/lib/carteira";
+import { filtroBuscaClientes } from "@/lib/busca-clientes";
 import { ModalNovoCliente } from "@/components/features/clientes/modal-novo-cliente";
 import { MostrarTodosButton } from "@/components/features/clientes/mostrar-todos-button";
 import { LimparUrlNoLoad } from "@/components/features/clientes/limpar-url-no-load";
@@ -48,6 +49,8 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
   const equipe = escopo === "equipe" && userId ? await idsDaEquipe(db, userId) : [];
 
   const busca = typeof searchParams.q === "string" ? searchParams.q : "";
+  // Mesmo filtro do card do atendimento: nome, CPF/CNPJ, telefone, celular, e-mail
+  const filtroBusca = filtroBuscaClientes(busca);
   const formSubmitido = typeof searchParams.q === "string" || typeof searchParams.status === "string";
   const filtroStatus = typeof searchParams.status === "string" ? searchParams.status : "todos";
   const ordenar = typeof searchParams.ordenar === "string" ? searchParams.ordenar : "az";
@@ -85,7 +88,7 @@ export default async function ClientesPage({ searchParams }: ClientesPageProps) 
     // Helper para montar query base
     const buildQuery = (offset: number, limit: number) => {
       let q = db.from("clientes").select("*, grupo:grupos_economicos!grupo_economico_id(id, nome)", { count: "exact" });
-      if (busca) q = q.ilike("nome_razao_social", `%${busca}%`);
+      if (filtroBusca) q = q.or(filtroBusca);
       if (filtroStatus !== "todos") q = q.eq("status", filtroStatus);
       q = aplicarEscopoClientes(q, escopo, userId, equipe);
       let orderField = "nome_razao_social";

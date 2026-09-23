@@ -478,7 +478,7 @@ Retorna métricas agregadas de tarefas e vendas para o período informado.
 
 Lista os clientes **do escopo do logado**: vendedor só os próprios; `gerente_comercial` a carteira da **sua equipe** (a carteira é dividida entre os gestores); direção (`diretor`/`admin`) a carteira toda. O escopo é resolvido no servidor a partir do cargo (`lib/carteira.ts`).
 
-**Query params:** `limite` (padrão 200, máx 1000) · `busca` (nome) · `status`
+**Query params:** `limite` (padrão 200, máx 1000) · `busca` (nome, CPF/CNPJ, telefone, celular ou e-mail) · `status`
 
 **Resposta (200):**
 ```json

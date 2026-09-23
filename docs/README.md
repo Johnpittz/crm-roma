@@ -4,7 +4,7 @@
 
 O CRM ROMA é uma plataforma web completa para gestão de vendas e atendimento de empresas distribuidoras. Integra WhatsApp via **WAHA** (self-hosted, engine GOWS — a Evolution API ficou só como rollback), oferece quadros Kanban para gestão do funil de vendas, controle de clientes, tarefas, leads e dashboards gerenciais em tempo real.
 
-> **Status rápido (23/09/2026):** módulo **ATENDIMENTOS em produção** com WAHA (liberado para a equipe em 23/09) · **87 testes** (`npm test`) · **regra de carteira ativa:** a carteira é **dividida entre os gestores** — vendedor só vê os próprios, `gerente_comercial` vê a carteira da sua equipe, direção vê tudo (`lib/carteira.ts`) · organograma/base refaços hoje — ver `PROGRESSO.MD` (diário de bordo) e §12.5 (usuários atuais) · runbook de números: `runbook-waha-numeros.md` · handoff técnico: `HANDOFF-MIGRACAO-WAHA.md`.
+> **Status rápido (23/09/2026):** módulo **ATENDIMENTOS em produção** com WAHA (liberado para a equipe em 23/09) · **98 testes** (`npm test`) · **regra de carteira ativa:** a carteira é **dividida entre os gestores** — vendedor só vê os próprios, `gerente_comercial` vê a carteira da sua equipe, direção vê tudo (`lib/carteira.ts`) · organograma/base refaços hoje — ver `PROGRESSO.MD` (diário de bordo) e §12.5 (usuários atuais) · runbook de números: `runbook-waha-numeros.md` · handoff técnico: `HANDOFF-MIGRACAO-WAHA.md`.
 
 ---
 
@@ -62,6 +62,7 @@ O CRM ROMA foi projetado para equipes comerciais de distribuidoras, oferecendo:
 - Chat inline com envio de mensagens e mídia
 - Painel de contato com informações do cliente
 - Barra de métricas de atendimento (realizado vs meta)
+- Faixa inferior com **Top 20 vendedores (mock)** + card **CLIENTES da carteira com filtro** — busca por nome, CNPJ, telefone ou e-mail direto na tela de atendimento (servidor, com debounce), sem o vendedor precisar sair
 - Simulação de WhatsApp (para demonstração)
 - Sincronização automática via polling (a cada 15s)
 - Gestão de etiquetas e tarefas vinculadas a conversas

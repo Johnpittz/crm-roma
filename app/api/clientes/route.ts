@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, createClient as createServiceClient } from "@supabase/supabase-js";
 import { escopoCarteira, aplicarEscopoClientes, idsDaEquipe } from "@/lib/carteira";
+import { filtroBuscaClientes } from "@/lib/busca-clientes";
 
 const SUPABASE_URL = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").trim();
 const ANON_KEY = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "").trim();
@@ -44,10 +45,12 @@ export async function GET(request: NextRequest) {
     );
     const busca = searchParams.get("busca") || "";
     const status = searchParams.get("status") || "";
+    // Nome, CPF/CNPJ, telefone, celular ou e-mail (ver lib/busca-clientes.ts)
+    const filtroBusca = filtroBuscaClientes(busca);
 
     // Total do escopo (independente do limite) — alimenta contadores e métricas
     let countQuery = supabase.from("clientes").select("id", { count: "exact", head: true });
-    if (busca) countQuery = countQuery.ilike("nome_razao_social", `%${busca}%`);
+    if (filtroBusca) countQuery = countQuery.or(filtroBusca);
     if (status) countQuery = countQuery.eq("status", status);
     const { count, error: countError } = await aplicarEscopoClientes(
       countQuery,
@@ -62,7 +65,7 @@ export async function GET(request: NextRequest) {
 
     // Lista do escopo (com limite — o card do atendimento não carrega 3 mil linhas)
     let listQuery = supabase.from("clientes").select(COLUNAS_LISTA);
-    if (busca) listQuery = listQuery.ilike("nome_razao_social", `%${busca}%`);
+    if (filtroBusca) listQuery = listQuery.or(filtroBusca);
     if (status) listQuery = listQuery.eq("status", status);
     const { data: clientes, error } = await aplicarEscopoClientes(
       listQuery,
