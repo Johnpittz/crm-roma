@@ -49,7 +49,10 @@ export function parseEventoWaha(body: unknown): EventoWaha {
   const payload = b.payload || {}
 
   if (b.event === 'message' || b.event === 'message.any') {
-    const rawFrom: string = payload.fromMe ? payload.to || '' : payload.from || ''
+    // O CHAT está SEMPRE em `from` (interlocutor ou grupo); `to` é sempre o
+    // próprio usuário — trocar por `to` quando fromMe virava "eu" como cliente
+    // (bug 23/09: grupo aparecia como Cliente 556234165014).
+    const rawFrom: string = payload.from || payload.to || ''
     const media = payload.media || null
     return {
       evento: 'message',

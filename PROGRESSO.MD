@@ -575,6 +575,19 @@ EVOLUTION_API_KEY=e3186c32139f79c7566a1d6a3f5bc702fae199c725a313ce9b7f8ff035123b
 - ⚠️ Pendências: `ativo=false` **não bloqueia login** hoje (não há checagem no login) — se quiser, criar essa checagem + filtro `ativo` nas listagens; Valdean usa domínio `romadistribuicao` (diferente dos demais da equipe Murilo que são `romagyn`)
 - [x] **Conta "Murilo" renomeada para "GERENTE"** (a pessoa saiu): mesma conta (`gestorcomercial@romagyn.com.br`), cargo `gerente_comercial` e equipe intacta (Christyan, Dara, Ellen, Raquel, Valdean) — só mudou o `nome_completo`
 
+### 23/09/2026 (Bugfix: mensagens enviadas do celular não apareciam no CRM)
+- **Sintoma 1:** mensagens recebidas chegam; as que o vendedor manda direto no WhatsApp (celular) não atualizavam o chat do CRM.
+- **Causa raiz 1:** a sessão `ROMA_1` só assinava o evento `message`, que o WAHA dispara **apenas para recebidas**. Faltava `message.any` (cobre enviadas e recebidas — confirmado na issue oficial devlikeapro/waha#1689).
+- **Correção 1 (config, sem deploy):** `PUT /api/sessions/ROMA_1` → `events: ["message.any","message.ack","session.status"]`; sessão reiniciou `STARTING → WORKING` **sem novo QR** (runbook §4). Verificado por GET na API.
+- **Sintoma 2 (após correção 1):** mensagem de GRUPO aparecia no CRM como conversa "Cliente 556234165014" (o próprio número do bot!).
+- **Causa raiz 2:** parser `lib/waha-webhook.ts` fazia `fromMe ? to : from` — mas no payload WAHA **`to` é sempre o próprio usuário e `from` é o chat** (prova: recebida real `to=556234165014`; enviada no grupo também `to=556234165014`). Resultado: telefone = eu mesmo, `grupo` = false → o guard "Ignorar mensagens de GRUPO" (que já existia na rota, linhas 189-193) **nunca disparava**.
+- **Correção 2 (código):** `rawFrom = payload.from || payload.to` (chat sempre). RED→GREEN com 2 testes novos.
+- **Limpeza:** atendimento lixo `Cliente 556234165014` (f42e2298, 2 mensagens de teste, criado 12:04 local) apagado.
+- **Código (hardening):** resposta do **AI Sales** agora grava `whatsapp_message_id` no insert — sem isso o eco do `message.any` duplicaria a linha da IA (o envio manual do vendedor já gravava, dedup OK). AI Sales continua gateado por `remetente === "cliente"` → não dispara com mensagem nossa.
+- **Testes:** +3 casos em `lib/waha-webhook.test.ts` (fromMe usa `from`; grupo enviado → `grupo:true`; `message.any` recebido = `message`) — suíte **70/70**.
+- **Docs:** `runbook-waha-numeros.md` §4 atualizado com os alertas (`message.any` + regra `from`/`to`).
+- ⚠️ Risco monitorado: issues GOWS do WAHA (#2250/#2255, 09/2026) relatam webhook de `message.any` eventualmente não entregue em algumas versões — se privadas continuarem caindo, conferir `docker logs waha` (host) e atualizar a imagem.
+
 ### 22/09/2026
 - [x] Migração WhatsApp Evolution → WAHA (módulo ATENDIMENTOS): `docs/plano-implementacao-waha.md` (9 fases) + `docs/pesquisa-waha-atendimento.md` (13 fontes)
 - [x] Fase 1: fundação de testes (vitest — **34 testes**), `lib/telefone.ts` (fonte única de formatação, débito §8.5 quitado)

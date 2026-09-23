@@ -38,6 +38,55 @@ describe('parseEventoWaha', () => {
     expect(resultado.midia_erro).toBe('download error')
   })
 
+  it('reconhece evento message.any (mensagens ENVIADAS do celular — fromMe)', () => {
+    // REGRA REAL (prova em produção 23/09): em qualquer mensagem, `to` = EU,
+    // `from` = o CHAT (interlocutor ou grupo). fromMe só muda a direção.
+    const payload: any = { ...fixtures.message_text.payload }
+    const resultado = parseEventoWaha({
+      event: 'message.any',
+      payload: {
+        ...payload,
+        fromMe: true,
+        from: '5562999990000@c.us',
+        to: '556234165014@c.us',
+        id: 'true_556234165014@c.us_BEEF',
+        body: 'beleza',
+      },
+    }) as MensagemWaha
+    expect(resultado.evento).toBe('message')
+    expect(resultado.from_me).toBe(true)
+    // telefone vem do CHAT (from), NUNCA do `to` (que é o próprio usuário)
+    expect(resultado.telefone).toBe('5562999990000')
+    expect(resultado.conteudo).toBe('beleza')
+    expect(resultado.whatsapp_message_id).toBe('true_556234165014@c.us_BEEF')
+  })
+
+  it('mensagem ENVIADA em grupo: chat = grupo (from @g.us), não o próprio usuário', () => {
+    const resultado = parseEventoWaha({
+      event: 'message.any',
+      payload: {
+        ...fixtures.message_text.payload,
+        fromMe: true,
+        from: '1203630498458665@g.us',
+        to: '556234165014@c.us',
+        body: 'teste',
+      },
+    }) as MensagemWaha
+    expect(resultado.from_me).toBe(true)
+    expect(resultado.grupo).toBe(true)
+    expect(resultado.telefone).toBe('1203630498458665')
+    expect(resultado.telefone).not.toBe('556234165014')
+  })
+
+  it('message.any de recebimento parseia igual ao evento message', () => {
+    const payload: any = { ...fixtures.message_text.payload }
+    const resultado = parseEventoWaha({ event: 'message.any', payload }) as MensagemWaha
+    expect(resultado.evento).toBe('message')
+    expect(resultado.from_me).toBe(false)
+    expect(resultado.telefone).toBe('5562999990000')
+    expect(resultado.conteudo).toBe(payload.body)
+  })
+
   it('reconhece evento message.ack', () => {
     const resultado = parseEventoWaha(fixtures.message_ack_read) as AckWaha
 

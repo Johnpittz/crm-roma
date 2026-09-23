@@ -80,7 +80,13 @@ curl -s -H "X-Api-Key: $K" $GW/api/sessions/ROMA_N   # esperado: "status":"WORKI
 - O nome da sessão vira o valor de `WAHA_SESSION`/parâmetro `instance` no CRM.
 - A sessão deve ser criada (ou atualizada via **`PUT /api/sessions/{name}`**, ex.: `PUT /api/sessions/ROMA_1`) com o
   **webhook** apontando para `https://<app-vercel>/api/webhooks/waha`, eventos:
-  `message`, `message.ack`, `session.status` (ver `docs/plano-implementacao-waha.md` Fase 4).
+  `message.any`, `message.ack`, `session.status` (ver `docs/plano-implementacao-waha.md` Fase 4).
+  ⚠️ **`message.any` e não `message`**: o evento `message` só dispara para mensagens
+  **recebidas** — com ele, o que o vendedor manda pelo celular não aparecia no CRM (bug de23/09).
+  `message.any` cobre os dois sentidos; **`fromMe:true` indica só a direção — o CHAT está
+  SEMPRE em `from`** (`to` é sempre o próprio usuário; usar `to` fazia o grupo virar
+  "Cliente 556234165014", bug de 23/09, e o guard de grupo nunca disparava);
+  o dedup por `whatsapp_message_id` evita duplicar o que o próprio CRM enviou.
   Formato confirmado em produção: `{"config":{"engine":"GOWS","webhooks":[{"url":"...","events":[...]}]}}`
   — `config.webhooks` é **lista**; após o PUT a sessão vai `STARTING`→`WORKING` **sem novo QR** (login preservado).
 - Teste de envio manual:

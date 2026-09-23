@@ -529,12 +529,14 @@ async function chamarAISales(telefone: string, instanceName: string | null) {
     console.log(`[AI Sales] Resposta enviada para ${telefone}: ${resultado.success ? "OK" : "FALHOU: " + resultado.error}`);
 
     if (resultado.success) {
+      // grava o id do WAHA → dedup do webhook (message.any ecoa mensagens enviadas por nós)
       await getSupabase().from("atendimento_mensagens").insert({
         atendimento_id: atendimento.id,
         remetente: "vendedor",
         conteudo: `[IA] ${textoResposta}`,
         enviada_por: null,
         tipo_midia: "texto",
+        whatsapp_message_id: (resultado as { message_id?: string }).message_id || null,
         created_at: new Date().toISOString(),
       });
 
