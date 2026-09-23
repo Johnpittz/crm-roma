@@ -57,15 +57,15 @@ Eventos: `message`, `message.ack`, `session.status`.
 | Envio de documento (PDF/DOCX), inclusive ~4,8 MB | ✅ funcionando (E2E real) |
 | Envio de áudio (PTT) | ✅ funcionando (E2E real) |
 | Recebimento de texto | ✅ funcionando (E2E real) |
-| Recebimento de imagem/documento | ✅ com ressalva — ver §5 BUG-5 e §6 PENDÊNCIAS |
+| Recebimento de imagem/documento | ✅ fix implementado 23/09 (`b880ea2`) — **falta validação E2E** |
 | Checkmarks (✓/✓✓/azul) reais via `message.ack` | ✅ funcionando |
 | Nomes de contatos reais + resolução LID→número | ✅ funcionando |
 | Migração Evolution → WAHA (só módulo ATENDIMENTOS) | ✅ fechada |
 | F8 (apagar legado Evolution após 24–48h estáveis) | 🔄 pendente |
-| Lightbox de imagem (clique expande no CRM) | ❌ pendente — ver §6 |
-| Fix da URL `localhost` da mídia recebida | ❌ **em andamento** — ver §6 |
+| Lightbox de imagem (clique expande no CRM) | ✅ implementado 23/09 (`33bfcbc`) — expande em overlay no CRM (fecha com clique/Esc), não abre mais aba nova |
+| Fix da URL `localhost` da mídia recebida | ✅ **concluído** 23/09 (`b880ea2`) — falta validação E2E |
 
-**Testes: 43/43 verdes** no último GREEN verificado. Há 7 testes novos escritos e **ainda não rodados** (ver §6 e §12).
+**Testes: 61/61 verdes** (23/09/2026, `npx vitest run`).
 `npx tsc -p tsconfig.json --noEmit` limpo.
 `npm run lint` não tem ESLint configurado no projeto (fora de escopo).
 
@@ -97,7 +97,7 @@ Testado ao vivo em 22/09/2026, com conversas reais:
   - *Lição*: chaves do payload real são minúsculas; comparar com fixture real, não com doc.
 - **BUG-3 — arquivo não enviava/aparecia**: `{"error":"fetch failed"}` em POSTs Vercel→WAHA (GETs OK). Era **instabilidade de rede/cold-socket**, não código — resolveu sozinho. Adicionado `descreverErro()` com `err.cause?.code` para o próximo caso.
 - **BUG-4 — bolha do PDF enviada não aparecia no CRM**: insert com `tipo_midia='document'` rejeitado em silêncio pelo CHECK constraint (Postgres **23514**). Corrigido com `mapearTipoMidiaDb()` (fonte única, tolerante pt-BR/maiúsculas) + migração 068.
-- **BUG-5 — mídia RECEBIDA sem arquivo (as bolhas cinzas "Imagem recebida")**: o WAHA entrega a URL do arquivo como **`http://localhost:3000/api/files/{sess}/{hash}.{ext}`** — a Vercel tenta baixar `localhost` (ela mesma) e falha → `url_midia=NULL`. **CORREÇÃO EM ANDAMENTO — ver §6.**
+- **BUG-5 — mídia RECEBIDA sem arquivo (as bolhas cinzas "Imagem recebida")**: o WAHA entrega a URL do arquivo como **`http://localhost:3000/api/files/{sess}/{hash}.{ext}`** — a Vercel tenta baixar `localhost` (ela mesma) e falha → `url_midia=NULL`. **RESOLVIDO em 23/09 (`b880ea2`)**: `resolverUrlMidia()` normaliza a URL para a base pública (`montarUrlArquivo`) e, com `media.url` nulo, recupera via histórico (`buscarUrlMidiaHistoria`). **Falta validação E2E.**
   - *Lição*: mesma classe do `pushname` — só aparece ao vivo. O payload real veio de `GET /api/{session}/chats/{chatId}/messages?downloadMedia=true` (com `downloadMedia=false` a `media.url` vem **null**).
 - **BUG-6 — arquivos > ~3 MB não enviavam (`413 FUNCTION_PAYLOAD_TOO_LARGE`)**: limite de **4,5 MB** do corpo de requisição na Vercel; base64 infla 33% → arquivos ≳3,3 MB morriam. **RESOLVIDO**: cliente envia direto ao Supabase Storage por URL assinada (`POST /api/upload-url` → `uploadToSignedUrl`) e o WAHA baixa por `file:{url}` (`enviarMidia({ mediaUrl })`). Fallback base64 para arquivos pequenos.
   - *Lição*: "PDF do Chrome não funciona / do Adobe sim" era na verdade **tamanho** (4,8 MB vs menor). O rótulo "Chrome PDF Document" no Windows é só a associação de aplicativo, não o formato.
@@ -107,27 +107,18 @@ Testado ao vivo em 22/09/2026, com conversas reais:
 
 ## 6. ⚠️ PENDÊNCIAS ABERTAS (ler com atenção)
 
-### 6.1 Fix da mídia recebida — URL `localhost` (EM ANDAMENTO)
-**Status exato do código neste commit:**
-- ✅ Testes escritos em `lib/waha.test.ts` (describe `montarUrlArquivo` e `buscarUrlMidiaHistoria`, 7 `it`) — estavam em **RED**.
-- ✅ Funções **implementadas** em `lib/waha.ts`: `montarUrlArquivo(url, base)` (re-escreve `localhost`/`127.x`/IPs privados para a base pública; resolve relativas; preserva públicas) e `buscarUrlMidiaHistoria({telefone, messageId})` (fallback: recupera `media.url` no histórico do chat quando o evento traz `media.url` null).
-- ❌ **FALTA: plugar no webhook** `app/api/webhooks/waha/route.ts`, função `processarMidia()`. Hoje ela faz `fetch(m.url_midia)` direto. Deve passar a:
-  ```ts
-  let urlArquivo = montarUrlArquivo(m.url_midia, getWahaConfig().baseUrl);
-  if (!urlArquivo && m.whatsapp_message_id) {
-    urlArquivo = await buscarUrlMidiaHistoria({ telefone: m.telefone, messageId: m.whatsapp_message_id });
-  }
-  if (!urlArquivo) return null;
-  const resp = await fetch(urlArquivo, { ... });
-  ```
-  (importar `montarUrlArquivo, buscarUrlMidiaHistoria` de `@/lib/waha`.)
-- ❌ **FALTA: rodar `npx vitest run`** (esperado 50 testes) + `npx tsc -p tsconfig.json --noEmit` + commit + push.
-- ❌ **FALTA: validar E2E** — pedir para mandar uma imagem nova no WhatsApp e conferir que a bolha abre com a imagem (não "Imagem recebida").
+### 6.1 Fix da mídia recebida — URL `localhost` (✅ CONCLUÍDO 23/09 — `b880ea2`)
+Implementado com TDD (RED → GREEN):
+- `lib/waha.ts`: `montarUrlArquivo(url, base)` (re-escreve `localhost`/`127.x`/IPs privados para a base pública; resolve relativas `/...`; preserva públicas; **devolve `null` para entrada inválida** tipo `://errado`), `buscarUrlMidiaHistoria({telefone, messageId})` (fallback: recupera `media.url` no histórico do chat) e **`resolverUrlMidia({urlMidia, telefone, messageId})`** (composição usada pelo webhook: URL do evento normalizada → fallback por histórico → `null`).
+- `app/api/webhooks/waha/route.ts`, `processarMidia()`: pluggado — usa `resolverUrlMidia()` antes do `fetch`; `media.url` nulo agora cai no fallback (antes retornava `null` direto).
+- Testes: 4 de `resolverUrlMidia` + correção de `montarUrlArquivo` p/ URL inválida. **61/61 verdes + tsc limpo.**
+- ❌ **FALTA apenas: validar E2E** — pedir para mandar uma imagem nova no WhatsApp e conferir que a bolha abre com a imagem (não "Imagem recebida").
 
-### 6.2 Lightbox de imagem (NÃO COMEÇADO)
-Em `components/features/atendimento/chat-inline.tsx`, `renderMidia()`, `case "image"` (~linha 565):
-`onClick={() => window.open(resolvedUrl!, "_blank")}` → abrir em **aba nova**. Mudar para um lightbox dentro do CRM (overlay com a imagem, clique/Esc fecha).
-Bônus no mesmo trecho (~linha 572): a legenda `[image]` aparece dentro da imagem porque a comparação falha (conteúdo é `[image]` mas o tipo é `imagem`). Trocar a condição por um teste de placeholder, ex.: `msg.conteudo && !/^\[[a-zÀ-ú_ ]+\]$/i.test(msg.conteudo)`.
+### 6.2 Lightbox de imagem (✅ CONCLUÍDO 23/09 — `33bfcbc`)
+- `components/features/atendimento/lightbox.tsx`: componente `Lightbox` (overlay `fixed inset-0`, fecha com clique no fundo ou Esc; clique na imagem não fecha). Clique na imagem do chat agora expande **dentro do CRM** — `window.open` (aba nova) foi removido.
+- Legenda `[image]` duplicada: `ehPlaceholderConteudo()` em `lib/waha-webhook.ts` (lista de tokens: image/imagem, audio, ptt, video, document/documento, sticker/figurinha, gif — normaliza caixa/acentos/espaços). **Desvio do regex sugerido**: o regex genérico `^\[...\]$` engolia legenda real tipo "[risos] que demais"; com token-list, texto real nunca some.
+- Testes: 5 do `Lightbox` (jsdom + `@testing-library/react`) + 2 de `ehPlaceholderConteudo`. `vitest.config.ts` criado (transform automático de JSX — tsconfig do Next usa `jsx: "preserve"`).
+- ❌ **FALTA apenas: validar E2E** (clique na imagem abre o lightbox no CRM).
 
 ### 6.3 F8 — remover legado Evolution (baixa prioridade)
 `lib/evolution-api.ts` e `app/api/webhooks/evolution/route.ts` estão `@deprecated` e intactos como **rollback por 1 release**. Apagar só depois de 24–48h estáveis. Env `EVOLUTION_*` no Vercel também ficaram de reserva.
@@ -137,8 +128,8 @@ Bônus no mesmo trecho (~linha 572): a legenda `[image]` aparece dentro da image
 ## 7. Mapa de arquivos (o que é o quê)
 
 **Núcleo WAHA:**
-- `lib/waha.ts` — adapter WAHA: `getWahaConfig`, `postWaha`, `descreverErro`, `formatarChatId`, `enviarTexto` (`/api/sendText`), `enviarMidia` (`ENDPOINT_MIDIA`: image→`sendImage`, video→`sendVideo`, document/audio→`sendFile`, sticker→`sendSticker`; aceita `media` (base64) **ou** `mediaUrl`), `enviarAudio` (`/api/sendVoice`, opus), `enviarLido` (`/api/sendSeen`), `verificarSessao`, `checkNumbers`, `findContacts`, `resolverLid`, `buscarNomeContato`, `montarUrlArquivo`, `buscarUrlMidiaHistoria`.
-- `lib/waha-webhook.ts` — `parseEventoWaha` (eventos `message`/`message.any`/`message.ack`/`session.status`), tipos `MensagemWaha`, `mapearCheckmark`, `mapearTipoMidiaDb` (**fonte única** de `tipo_midia` para o banco), `montarConteudo`, `MAPA_TIPO_DB` (image→imagem, audio→audio, video→video, document→documento).
+- `lib/waha.ts` — adapter WAHA: `getWahaConfig`, `postWaha`, `descreverErro`, `formatarChatId`, `enviarTexto` (`/api/sendText`), `enviarMidia` (`ENDPOINT_MIDIA`: image→`sendImage`, video→`sendVideo`, document/audio→`sendFile`, sticker→`sendSticker`; aceita `media` (base64) **ou** `mediaUrl`), `enviarAudio` (`/api/sendVoice`, opus), `enviarLido` (`/api/sendSeen`), `verificarSessao`, `checkNumbers`, `findContacts`, `resolverLid`, `buscarNomeContato`, `montarUrlArquivo`, `buscarUrlMidiaHistoria`, `resolverUrlMidia` (composição usada pelo webhook).
+- `lib/waha-webhook.ts` — `parseEventoWaha` (eventos `message`/`message.any`/`message.ack`/`session.status`), tipos `MensagemWaha`, `mapearCheckmark`, `mapearTipoMidiaDb` (**fonte única** de `tipo_midia` para o banco), `montarConteudo`, `ehPlaceholderConteudo` (legenda placeholder não é renderizada na mídia), `MAPA_TIPO_DB` (image→imagem, audio→audio, video→video, document→documento).
 - `lib/__fixtures__/waha-webhook.json` — fixtures reais dos eventos.
 
 **Rotas (API):**
@@ -152,7 +143,7 @@ Bônus no mesmo trecho (~linha 572): a legenda `[image]` aparece dentro da image
 - `app/api/ai-sales/test/route.ts` — health check WAHA.
 
 **Frontend:**
-- `components/features/atendimento/chat-inline.tsx` — chat estilo WhatsApp: `renderMidia`, `renderCheckmark`, envio de arquivo (fluxo `media_url` + fallback base64), gravador de áudio, `sendSeen` ao abrir conversa. **Aqui entra o lightbox do §6.2.**
+- `components/features/atendimento/chat-inline.tsx` — chat estilo WhatsApp: `renderMidia`, `renderCheckmark`, envio de arquivo (fluxo `media_url` + fallback base64), gravador de áudio, `sendSeen` ao abrir conversa. Usa `Lightbox` (`components/features/atendimento/lightbox.tsx`) e `ehPlaceholderConteudo` (§6.2 — feito).
 
 **Banco (migrations em `supabase/migrations/`):**
 - `067_ack_status_mensagens.sql` — coluna `ack_status` (aplicada ✅).
@@ -231,10 +222,10 @@ Comportamento do webhook em produção: POST `{}` → 400 `Payload inválido: ev
 
 ## 12. Testes (TDD é obrigatório aqui)
 
-- Framework: **vitest** (`npm test` / `npx vitest run`).
-- Arquivos: `lib/telefone.test.ts`, `lib/waha.test.ts`, `lib/waha-webhook.test.ts`.
+- Framework: **vitest** (`npm test` / `npx vitest run`). `vitest.config.ts` define transform automático de JSX (tsconfig do Next usa `jsx: "preserve"`); testes de componente usam `// @vitest-environment jsdom` no topo do arquivo.
+- Arquivos: `lib/telefone.test.ts`, `lib/waha.test.ts`, `lib/waha-webhook.test.ts`, `components/features/atendimento/lightbox.test.tsx`.
 - **Regra combinada com o usuário: TDD estrito — RED → GREEN mínimo → REFACTOR. A especificação (teste) manda; o código se ajusta.**
-- Estado: 43/43 verdes no último GREEN verificado. Os 7 testes novos de `montarUrlArquivo`/`buscarUrlMidiaHistoria` estão escritos e **ainda não rodados** junto com o plug do §6.1.
+- Estado: **61/61 verdes** (23/09/2026).
 - Cuidado: testes de `lib/waha.ts` usam `FetchImpl`/`WahaOptions` injetáveis (`fakeFetch` + `CONFIG` no topo de `lib/waha.test.ts`).
 
 ---
@@ -264,12 +255,15 @@ Comportamento do webhook em produção: POST `{}` → 400 `Payload inválido: ev
 - `28efa8f` — fix mídia enviada (`mapearTipoMidiaDb` + migração 068).
 - `0bf86e2` — envio de arquivos grandes (upload assinado + `mediaUrl` no WAHA).
 - `bda3595` — migrations 068 e 069 versionadas.
+- `93c51df` — handoff completo (este documento).
+- `b880ea2` — **fix mídia recebida** (BUG-5): `resolverUrlMidia` + plug no webhook (§6.1).
+- `33bfcbc` — **lightbox no CRM + legenda `[image]`** (§6.2) + `vitest.config.ts` + devDeps jsdom/testing-library.
 
 ---
 
 ## 15. Próximos passos sugeridos (ordem)
 
-1. **§6.1** — plug do `montarUrlArquivo`/`buscarUrlMidiaHistoria` no webhook + rodar testes + push + validar com uma imagem nova recebida. *(é o que impede mídia nova de se perder)*
-2. **§6.2** — lightbox de imagem + corrigir legenda `[image]`.
+1. ~~**§6.1** — plug do `montarUrlArquivo`/`buscarUrlMidiaHistoria` no webhook~~ ✅ **feito 23/09 (`b880ea2`)**. Resta a **validação E2E**: receber uma imagem nova e conferir a bolha.
+2. ~~**§6.2** — lightbox de imagem + corrigir legenda `[image]`~~ ✅ **feito 23/09 (`33bfcbc`)**. Resta o teste E2E do lightbox no navegador.
 3. Varredura de todos os tipos de mídia (imagem, áudio, vídeo, documento, sticker) × (enviado, recebido) — pedido explícito do usuário: *"importante ver tudo de media pra ver se vai funcionar"*. **Testar vídeo/sticker recebidos de verdade** — nunca foram testados ao vivo.
 4. **§6.3** — F8: apagar legado Evolution depois de 24–48h estáveis.

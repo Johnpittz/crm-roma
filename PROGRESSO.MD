@@ -1,7 +1,7 @@
 # CRM ROMA - Progresso do Projeto
 
 > **Arquivo de contexto para agentes IA**
-> **Última atualização:** 22/09/2026 (migração WhatsApp para WAHA — Fase 8)
+> **Última atualização:** 23/09/2026 (migração WAHA — fix mídia recebida + lightbox de imagem)
 > **Deploy atual:** https://crm-roma-romadistribuicao.vercel.app
 > **Conta Vercel:** roma-6489 (romadistribuicao) — plano Hobby/Free
 > **Conversa atual:** Migração WhatsApp Evolution API → WAHA — módulo ATENDIMENTOS (`docs/plano-implementacao-waha.md`)
@@ -28,7 +28,7 @@ CRM desenvolvido para a empresa ROMA (distribuidora de materiais elétricos). Si
 | Auth | Supabase Auth (JWT Bearer token) |
 | Deploy | Vercel (production) — conta roma-6489 (romadistribuicao) |
 | ERP Integration | Millennium ERP (NTLM auth, rede interna) |
-| WhatsApp API | **Evolution API v2.3.7** (Baileys) — porta 8082 |
+| WhatsApp API | **WAHA (engine GOWS)** — porta 3000, sessão `ROMA_1` (substituiu a Evolution API v2.3.7 em 22/09/2026) |
 
 ---
 
@@ -548,6 +548,15 @@ EVOLUTION_API_KEY=e3186c32139f79c7566a1d6a3f5bc702fae199c725a313ce9b7f8ff035123b
 ---
 
 ## 14. Histórico de Commits Importantes
+
+### 23/09/2026
+- [x] Fix mídia recebida (BUG-5 — URL `localhost` do WAHA): `resolverUrlMidia()` (normalização + fallback por histórico) plugada no `processarMidia()` do webhook — commit `b880ea2` (TDD: 5 testes novos)
+- [x] Lightbox de imagem: clique expande dentro do CRM (fecha com clique/Esc), sem aba nova — `components/features/atendimento/lightbox.tsx`, commit `33bfcbc` (5 testes jsdom)
+- [x] Legenda `[image]` duplicada corrigida (`ehPlaceholderConteudo` em `lib/waha-webhook.ts`, 2 testes)
+- [x] `vitest.config.ts` (transform de JSX nos testes) + devDeps jsdom/@testing-library — suíte em **61/61 verdes** + tsc limpo
+- [x] `docs/HANDOFF-MIGRACAO-WAHA.md` atualizado (estado, bugs resolvidos, pendências)
+- [ ] Validação E2E: imagem nova recebida aparece no chat + lightbox no navegador
+- [ ] Varredura de mídia (todos os tipos × enviado/recebido — vídeo/sticker recebidos nunca testados ao vivo)
 
 ### 22/09/2026
 - [x] Migração WhatsApp Evolution → WAHA (módulo ATENDIMENTOS): `docs/plano-implementacao-waha.md` (9 fases) + `docs/pesquisa-waha-atendimento.md` (13 fontes)
