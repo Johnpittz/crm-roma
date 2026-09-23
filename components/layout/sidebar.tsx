@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { logout } from "@/app/(dashboard)/actions";
+import { NotificacoesBell } from "@/components/notificacoes-bell";
 
 interface SidebarProps {
   user: {
@@ -115,6 +116,9 @@ export function Sidebar({ user }: SidebarProps) {
         <Link href="/atendimento" className="flex-1 flex items-center justify-center h-full overflow-hidden px-0.5 py-0.5">
           <img src="/logo-icon.png" alt="CRM ROMA" className="w-full h-full object-contain" />
         </Link>
+        {/* Notificações — saiu do header (removido) e veio pro topo da sidebar,
+            onde o dropdown abre para baixo com espaço de sobra */}
+        <NotificacoesBell className="text-white/60 hover:text-white hover:bg-[#14919B]/20 h-8 w-8 shrink-0" />
         <button
           onClick={() => setIsOpen(!isOpen)}
           className="rounded-lg p-1.5 text-white/60 hover:bg-[#14919B]/20 hover:text-white transition-colors shrink-0"

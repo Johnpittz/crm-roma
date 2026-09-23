@@ -4,7 +4,7 @@
 
 O CRM ROMA é uma plataforma web completa para gestão de vendas e atendimento de empresas distribuidoras. Integra WhatsApp via **WAHA** (self-hosted, engine GOWS — a Evolution API ficou só como rollback), oferece quadros Kanban para gestão do funil de vendas, controle de clientes, tarefas, leads e dashboards gerenciais em tempo real.
 
-> **Status rápido (23/09/2026):** módulo **ATENDIMENTOS em produção** com WAHA (liberado para a equipe em 23/09) · **98 testes** (`npm test`) · **regra de carteira ativa:** a carteira é **dividida entre os gestores** — vendedor só vê os próprios, `gerente_comercial` vê a carteira da sua equipe, direção vê tudo (`lib/carteira.ts`) · organograma/base refaços hoje — ver `PROGRESSO.MD` (diário de bordo) e §12.5 (usuários atuais) · runbook de números: `runbook-waha-numeros.md` · handoff técnico: `HANDOFF-MIGRACAO-WAHA.md`.
+> **Status rápido (23/09/2026):** módulo **ATENDIMENTOS em produção** com WAHA (liberado para a equipe em 23/09) · **101 testes** (`npm test`) · **regra de carteira ativa:** a carteira é **dividida entre os gestores** — vendedor só vê os próprios, `gerente_comercial` vê a carteira da sua equipe, direção vê tudo (`lib/carteira.ts`) · organograma/base refaços hoje — ver `PROGRESSO.MD` (diário de bordo) e §12.5 (usuários atuais) · runbook de números: `runbook-waha-numeros.md` · handoff técnico: `HANDOFF-MIGRACAO-WAHA.md`.
 
 ---
 
@@ -110,7 +110,7 @@ crm-roma/
 ├── app/
 │   ├── (auth)/                    # Rotas de autenticação
 │   ├── (dashboard)/               # Rotas autenticadas (Dashboard)
-│   │   ├── layout.tsx             # Layout do dashboard (sidebar + header)
+│   │   ├── layout.tsx             # Layout do dashboard (só sidebar — sem header superior)
 │   │   ├── actions.ts             # Server actions (logout)
 │   │   ├── atendimento/           # Página de atendimento WhatsApp
 │   │   ├── kanban/                # Kanban de tarefas e funil
@@ -177,8 +177,7 @@ crm-roma/
 │   │   ├── configuracoes/         # Componentes de configurações
 │   │   └── ajuda/                 # Conteúdos da central de ajuda
 │   ├── layout/                    # Componentes de layout
-│   │   ├── sidebar.tsx            # Sidebar de navegação
-│   │   └── header.tsx             # Header da aplicação
+│   │   └── sidebar.tsx            # Sidebar de navegação (sininho de notificações no topo)
 │   └── ui/                        # Componentes shadcn/ui
 ├── lib/
 │   ├── supabase/                  # Configurações do Supabase

@@ -1,6 +1,5 @@
 import { redirect } from "next/navigation";
 import { Sidebar } from "@/components/layout/sidebar";
-import { Header } from "@/components/layout/header";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils/cn";
 
@@ -8,7 +7,9 @@ import { cn } from "@/lib/utils/cn";
  * Layout do Dashboard (Rotas Autenticadas)
  *
  * Este layout envolve todas as páginas que requerem autenticação.
- * Inclui a sidebar de navegação e o header com título da página.
+ * Inclui a sidebar de navegação. **Sem header superior** — removido em 23/09
+ * para devolver altura ao conteúdo (prioridade: a área de chat do Atendimento);
+ * o sininho de notificações foi para o topo da sidebar.
  */
 
 export default async function DashboardLayout({
@@ -60,7 +61,6 @@ function DashboardShell({
     <div className="h-screen overflow-hidden bg-slate-50">
       <Sidebar user={user} />
       <main className="h-full flex flex-col transition-all duration-300 ease-in-out ml-64">
-        <Header />
         <div className="flex-1 min-h-0 overflow-hidden p-6">{children}</div>
       </main>
     </div>

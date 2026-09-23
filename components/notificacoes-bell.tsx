@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { createClient } from "@/lib/supabase/client";
+import { cn } from "@/lib/utils/cn";
 
 interface Notificacao {
   id: string;
@@ -43,7 +44,13 @@ const coresPorTipo: Record<string, string> = {
   meta_alcancada: "bg-emerald-100 text-emerald-700",
 };
 
-export function NotificacoesBell() {
+/**
+ * Sininho de notificações. Saiu do header do layout (removido em 23/09 para
+ * ganhar altura na tela de Atendimento) e passou a ser posicionado pelo chamador
+ * — hoje no topo da sidebar. `className` existe justamente para a sidebar escura.
+ * Mantém polling, toast e som: é dele que as notificações chegam.
+ */
+export function NotificacoesBell({ className }: { className?: string } = {}) {
   const [aberto, setAberto] = useState(false);
   const [notificacoes, setNotificacoes] = useState<Notificacao[]>([]);
   const [naoLidas, setNaoLidas] = useState(0);
@@ -278,10 +285,11 @@ export function NotificacoesBell() {
       <Button
         variant="ghost"
         size="icon"
-        className="relative"
+        title="Notificações"
+        className={cn("relative", className)}
         onClick={() => setAberto(!aberto)}
       >
-        <Bell className="h-5 w-5 text-slate-600" />
+        <Bell className="h-5 w-5 text-current" />
         {naoLidas > 0 && (
           <span className="absolute -top-0.5 -right-0.5 h-5 w-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white">
             {naoLidas > 9 ? "9+" : naoLidas}
