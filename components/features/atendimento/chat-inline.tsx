@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { ehPlaceholderConteudo } from "@/lib/waha-webhook";
 import { Lightbox } from "@/components/features/atendimento/lightbox";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
@@ -324,9 +325,14 @@ export function ChatInline({ atendimento, onMarcarResolvido, onMensagemEnviada, 
         setNovaMensagem("");
         fetchMensagens();
         onMensagemEnviada?.();
+      } else {
+        const data = await res.json().catch(() => null);
+        console.error("[Chat] Erro ao enviar mensagem:", res.status, data);
+        toast.error("Não foi possível enviar a mensagem. Tente novamente.");
       }
     } catch (err) {
       console.error(err);
+      toast.error("Falha de conexão ao enviar a mensagem.");
     } finally {
       setEnviando(false);
     }

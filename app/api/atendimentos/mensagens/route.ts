@@ -41,11 +41,19 @@ export async function GET(request: NextRequest) {
 
 // POST /api/atendimentos/mensagens
 export async function POST(request: NextRequest) {
-  const supabase = await createClient();
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  const supabaseUser = await createClient();
+  const { data: { user }, error: authError } = await supabaseUser.auth.getUser();
   if (authError || !user) {
     return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
   }
+
+  // Escrita via service role: a policy RLS de atendimento_mensagens só deixa o vendedor
+  // dono do atendimento escrever — gestores que respondem qualquer chat eram bloqueados
+  // com 500 (bug 23/09). A autenticação acima é a fronteira de segurança (igual ao GET).
+  const supabase = createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
 
   const body = await request.json();
   const {
