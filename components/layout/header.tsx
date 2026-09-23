@@ -31,15 +31,15 @@ export function Header() {
   };
 
   return (
-    <header className="sticky top-0 z-30 border-b bg-white/80 backdrop-blur-md px-6 py-4">
+    <header className="sticky top-0 z-30 border-b bg-white/80 backdrop-blur-md px-6 py-2">
       <div className="flex items-center justify-between">
         {/* Title */}
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">
+          <h1 className="text-xl font-bold text-slate-900">
             {routeInfo.title}
           </h1>
           {routeInfo.subtitle && (
-            <p className="text-sm text-slate-500">{routeInfo.subtitle}</p>
+            <p className="text-xs text-slate-500">{routeInfo.subtitle}</p>
           )}
         </div>
 

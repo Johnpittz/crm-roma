@@ -96,9 +96,9 @@ export function BarraMetricasAtendimento() {
     return (
       <div className="grid grid-cols-5 gap-3 mb-3">
         {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="h-24 bg-slate-100 rounded-lg animate-pulse" />
+          <div key={i} className="h-[60px] bg-slate-100 rounded-lg animate-pulse" />
         ))}
-        <div className="h-24 bg-slate-100 rounded-lg animate-pulse" />
+        <div className="h-[60px] bg-slate-100 rounded-lg animate-pulse" />
       </div>
     );
   }
@@ -114,8 +114,8 @@ export function BarraMetricasAtendimento() {
   return (
     <div className="grid grid-cols-5 gap-3 mb-3 shrink-0">
       {/* 1. Positivação */}
-      <div className="bg-white border border-slate-200 rounded-lg px-4 py-3 flex items-center gap-3">
-        <div className="p-2.5 bg-blue-50 rounded-lg shrink-0">
+      <div className="bg-white border border-slate-200 rounded-lg px-3 py-2 flex items-center gap-3">
+        <div className="p-2 bg-blue-50 rounded-lg shrink-0">
           <Percent className="h-6 w-6 text-blue-600" />
         </div>
         <div className="min-w-0">
@@ -128,8 +128,8 @@ export function BarraMetricasAtendimento() {
       </div>
 
       {/* 2. Vendas Ganhas vs Perdidas */}
-      <div className="bg-white border border-slate-200 rounded-lg px-4 py-3 flex items-center gap-3">
-        <div className="p-2.5 bg-emerald-50 rounded-lg shrink-0">
+      <div className="bg-white border border-slate-200 rounded-lg px-3 py-2 flex items-center gap-3">
+        <div className="p-2 bg-emerald-50 rounded-lg shrink-0">
           <Activity className="h-6 w-6 text-emerald-600" />
         </div>
         <div className="min-w-0">
@@ -146,8 +146,8 @@ export function BarraMetricasAtendimento() {
       </div>
 
       {/* 3. Meta x Tendência */}
-      <div className="bg-white border border-slate-200 rounded-lg px-4 py-3 flex items-center gap-3">
-        <div className="p-2.5 bg-amber-50 rounded-lg shrink-0">
+      <div className="bg-white border border-slate-200 rounded-lg px-3 py-2 flex items-center gap-3">
+        <div className="p-2 bg-amber-50 rounded-lg shrink-0">
           <Target className="h-6 w-6 text-amber-600" />
         </div>
         <div className="min-w-0">
@@ -167,8 +167,8 @@ export function BarraMetricasAtendimento() {
       </div>
 
       {/* 4. Margem Líquida */}
-      <div className="bg-white border border-slate-200 rounded-lg px-4 py-3 flex items-center gap-3">
-        <div className="p-2.5 bg-violet-50 rounded-lg shrink-0">
+      <div className="bg-white border border-slate-200 rounded-lg px-3 py-2 flex items-center gap-3">
+        <div className="p-2 bg-violet-50 rounded-lg shrink-0">
           <DollarSign className="h-6 w-6 text-violet-600" />
         </div>
         <div className="min-w-0">
@@ -181,9 +181,8 @@ export function BarraMetricasAtendimento() {
       </div>
 
       {/* 5. Gauge Realizado vs Meta Acumulada */}
-      <div className="bg-white border border-slate-200 rounded-lg px-4 py-3 flex flex-col items-center justify-center">
-        <p className="text-[10px] text-slate-500 uppercase tracking-wide mb-1">Realizado vs Meta</p>
-        <div className="relative w-[180px] h-[95px]">
+      <div className="bg-white border border-slate-200 rounded-lg px-3 py-2 flex items-center gap-2.5">
+        <div className="relative w-[84px] h-[44px] shrink-0">
           <svg viewBox="0 0 180 95" className="w-full h-full">
             <path
               d="M 12 88 A 78 78 0 0 1 168 88"
@@ -211,18 +210,21 @@ export function BarraMetricasAtendimento() {
             />
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-end pb-0">
-            <p className="text-xs text-slate-400 leading-tight">META</p>
-            <p className="text-lg font-bold text-red-500 leading-tight">{metricas.metaMensal.toLocaleString("pt-BR")}</p>
+            <p className="text-[8px] text-slate-400 leading-none">META</p>
+            <p className="text-xs font-bold text-red-500 leading-none mt-0.5">{metricas.metaMensal.toLocaleString("pt-BR")}</p>
           </div>
         </div>
-        <div className="flex justify-between w-full mt-1.5">
-          <div className="text-center">
-            <p className="text-[9px] text-slate-400">REALIZADO</p>
-            <p className="text-sm font-bold text-blue-600">{metricas.realizadoMes.toLocaleString("pt-BR")}</p>
-          </div>
-          <div className="text-center">
-            <p className="text-[9px] text-slate-400">LIMITE</p>
-            <p className="text-sm font-bold text-slate-500">{gaugeMax.toLocaleString("pt-BR")}</p>
+        <div className="min-w-0 flex-1">
+          <p className="text-[9px] text-slate-500 uppercase tracking-wide leading-tight">Realizado vs Meta</p>
+          <div className="flex items-baseline gap-3 mt-0.5">
+            <div className="min-w-0">
+              <p className="text-[8px] text-slate-400 leading-tight">REALIZADO</p>
+              <p className="text-xs font-bold text-blue-600 leading-tight truncate">{metricas.realizadoMes.toLocaleString("pt-BR")}</p>
+            </div>
+            <div className="min-w-0">
+              <p className="text-[8px] text-slate-400 leading-tight">LIMITE</p>
+              <p className="text-xs font-bold text-slate-500 leading-tight truncate">{gaugeMax.toLocaleString("pt-BR")}</p>
+            </div>
           </div>
         </div>
       </div>
