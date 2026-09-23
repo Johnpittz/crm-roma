@@ -133,7 +133,7 @@ Implementado com TDD (RED → GREEN):
 
 **Núcleo WAHA:**
 - `lib/waha.ts` — adapter WAHA: `getWahaConfig`, `postWaha`, `descreverErro`, `formatarChatId`, `enviarTexto` (`/api/sendText`), `enviarMidia` (`ENDPOINT_MIDIA`: image→`sendImage`, video→`sendVideo`, document/audio→`sendFile`, sticker→`sendSticker`; aceita `media` (base64) **ou** `mediaUrl`), `enviarAudio` (`/api/sendVoice`, opus), `enviarLido` (`/api/sendSeen`), `verificarSessao`, `checkNumbers`, `findContacts`, `resolverLid`, `buscarNomeContato`, `montarUrlArquivo`, `buscarUrlMidiaHistoria`, `resolverUrlMidia` (composição usada pelo webhook).
-- `lib/waha-webhook.ts` — `parseEventoWaha` (eventos `message`/`message.any`/`message.ack`/`session.status`), tipos `MensagemWaha`, `mapearCheckmark`, `mapearTipoMidiaDb` (**fonte única** de `tipo_midia` para o banco), `montarConteudo`, `ehPlaceholderConteudo` (legenda placeholder não é renderizada na mídia), `MAPA_TIPO_DB` (image→imagem, audio→audio, video→video, document→documento).
+- `lib/waha-webhook.ts` — `parseEventoWaha` (eventos `message.any`/`message.ack`/`session.status` — **o webhook registra `message.any`, nunca `message`**; ver §16), tipos `MensagemWaha`, `mapearCheckmark`, `mapearTipoMidiaDb` (**fonte única** de `tipo_midia` para o banco), `montarConteudo`, `ehPlaceholderConteudo` (legenda placeholder não é renderizada na mídia), `MAPA_TIPO_DB` (image→imagem, audio→audio, video→video, document→documento).
 - `lib/__fixtures__/waha-webhook.json` — fixtures reais dos eventos.
 
 **Rotas (API):**
@@ -216,7 +216,9 @@ GET    /api/{session}/contacts/{id}        campos: pushname, name
 GET    /api/{session}/lids/{lid}           → {lid, pn}  ← SEM /api/sessions/
 GET    /api/{session}/chats/{chatId}/messages?limit=N[&downloadMedia=true]
 ```
-Eventos do webhook: `message`, `message.ack` (`ackName`: ERROR/PENDING/SERVER/DEVICE/READ/PLAYED), `session.status`.
+Eventos do webhook (config da sessão `ROMA_1`): **`message.any`** (enviadas E recebidas; `message` só dispara para recebidas — nunca assinar), `message.ack` (`ackName`: ERROR/PENDING/SERVER/DEVICE/READ/PLAYED), `session.status`.
+
+**Regra de payload (prova em produção 23/09):** em qualquer mensagem, **`from` = o CHAT** (interlocutor `@c.us`/`@lid` ou grupo `@g.us`) e **`to` = o próprio usuário** — `fromMe:true` indica só a direção. Usar `to` quando `fromMe` fazia o usuário virar "cliente" (grupo aparecia como `Cliente 556234165014`).
 
 Comportamento do webhook em produção: POST `{}` → 400 `Payload inválido: event é obrigatório`; evento desconhecido → 200 `ignored_event`; replay da mesma mensagem → `dedup_skipped`.
 
@@ -229,7 +231,7 @@ Comportamento do webhook em produção: POST `{}` → 400 `Payload inválido: ev
 - Framework: **vitest** (`npm test` / `npx vitest run`). `vitest.config.ts` define transform automático de JSX (tsconfig do Next usa `jsx: "preserve"`); testes de componente usam `// @vitest-environment jsdom` no topo do arquivo.
 - Arquivos: `lib/telefone.test.ts`, `lib/waha.test.ts`, `lib/waha-webhook.test.ts`, `components/features/atendimento/lightbox.test.tsx`.
 - **Regra combinada com o usuário: TDD estrito — RED → GREEN mínimo → REFACTOR. A especificação (teste) manda; o código se ajusta.**
-- Estado: **61/61 verdes** (23/09/2026).
+- Estado: **70/70 verdes** (23/09/2026 — inclui parser `message.any`/`fromMe`/grupo).
 - Smoke E2E de envio: `scripts/smoke-envio-mensagens.sh [atendimento_id]` — cria usuário de teste não-dono, faz POST real na rota de produção autenticado por cookie e limpa. RED esperado sem o fix `1fe771d`: 500 RLS; GREEN: 200 + entrega no WhatsApp.
 - Cuidado: testes de `lib/waha.ts` usam `FetchImpl`/`WahaOptions` injetáveis (`fakeFetch` + `CONFIG` no topo de `lib/waha.test.ts`).
 
@@ -265,6 +267,18 @@ Comportamento do webhook em produção: POST `{}` → 400 `Payload inválido: ev
 - `33bfcbc` — **lightbox no CRM + legenda `[image]`** (§6.2) + `vitest.config.ts` + devDeps jsdom/testing-library.
 - `1f894c7` — docs (handoff + progresso).
 - `1fe771d` — **fix envio de mensagem do CRM (500 RLS — BUG-7)**: escrita via service role no POST de mensagens + toast de erro no cliente + `scripts/smoke-envio-mensagens.sh`.
+- `c2b460f` — **fix mensagens enviadas + grupo como cliente (§16)**: webhook → `message.any`, parser chat=`from`, dedup id na IA, +3 testes (70/70).
+
+---
+
+## 16. Ocorrências 23/09/2026 (eventos e payload)
+
+- **Sintoma 1:** o que o vendedor mandava pelo celular não aparecia no CRM. **Causa:** sessão assinava só `message` (só recebidas). **Fix:** `PUT /api/sessions/ROMA_1` → `events: ["message.any","message.ack","session.status"]` (sem novo QR).
+- **Sintoma 2:** mensagem de GRUPO aparecia como conversa `Cliente 556234165014` (número do próprio bot). **Causa:** parser usava `to` quando `fromMe` (`to` = eu mesmo) → `grupo` ficava false e o guard de grupo da rota nunca disparava. **Fix:** `rawFrom = payload.from || payload.to` (chat sempre).
+- **Validado:** envio privado via API (`source:api`) processado ponta-a-ponta ✅; envio privado **do celular** (`source:app`) — aguardando teste do usuário.
+- **Pendência:** replay de sessão (restart/PUT) re-emite a mesma mensagem com id em forma `lid` (`true_<me>@lid_…` ≠ `true_<chat>@c.us_…`) → dedup por id não pega e a linha duplica. Mitigação futura: dedup por conteúdo + janela para `from_me`.
+- **Rede:** 2º webhook para URL interna de container (`172.16.1.x`) **não recebe** — isolamento de rede do Docker; webhook só por URL pública. Logs do container: `docker logs waha` só no **host** (hPanel), não há docker no container do code-server.
+- **Versão em produção:** WAHA `2026.9.1` CORE / engine GOWS. Issues relacionadas (monitorar): devlikeapro/waha #2255 (message.any gerado mas webhook não sai), #2250, #1717.
 
 ---
 

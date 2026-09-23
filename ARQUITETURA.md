@@ -4,66 +4,48 @@
 
 ```
 crm-roma/
-├── app/                           # App Router (Next.js 14)
-│   ├── (auth)/                    # Grupo de rotas públicas
-│   │   ├── login/
-│   │   │   └── page.tsx           # Página de login
-│   │   └── layout.tsx             # Layout sem sidebar
-│   │
-│   ├── (dashboard)/               # Grupo de rotas autenticadas
-│   │   ├── layout.tsx             # Layout com sidebar
-│   │   ├── page.tsx               # Redirect para atendimento
-│   │   ├── atendimento/
-│   │   │   └── page.tsx           # Tela do vendedor
-│   │   ├── clientes/
-│   │   │   └── page.tsx           # Gestão de clientes
-│   │   ├── vendas/
-│   │   │   └── page.tsx           # Histórico de vendas
-│   │   ├── campanhas/
-│   │   │   └── page.tsx           # Incentivos e metas
-│   │   └── configuracoes/
-│   │       └── page.tsx           # Preferências do sistema
-│   │
-│   ├── globals.css                # Estilos globais
-│   ├── layout.tsx                 # Root layout
-│   └── page.tsx                   # Redirect inicial
-│
+├── app/
+│   ├── (auth)/                    # Rotas de autenticação (login)
+│   │   └── login/
+│   ├── (dashboard)/               # Rotas autenticadas (sidebar)
+│   │   ├── layout.tsx             # Layout com sidebar + perfil do usuário
+│   │   ├── atendimento/           # Tela do vendedor (WhatsApp)
+│   │   ├── kanban/                # Tarefas e funil
+│   │   ├── leads/                 # Pipeline de leads
+│   │   ├── clientes/              # Gestão de clientes
+│   │   ├── produtos/              # Catálogo de produtos
+│   │   ├── vendas/                # Histórico de vendas
+│   │   ├── campanhas/             # Incentivos e metas (MVP)
+│   │   ├── dashboard/             # Visão gerencial (⚠️ dados mockados)
+│   │   ├── equipes/               # Gestão de equipes (só gestor)
+│   │   ├── configuracoes/         # Perfil + gestão de vendedores
+│   │   └── ajuda/                 # Central de ajuda
+│   ├── api/                       # Rotas de API (server-side)
+│   │   ├── atendimentos/          # Atendimentos + mensagens
+│   │   ├── webhooks/waha/         # ⭐ Webhook principal WhatsApp
+│   │   ├── webhooks/evolution/    # Legado (rollback)
+│   │   └── ...                    # tarefas, clientes, leads, vendas, etc.
+│   ├── globals.css
+│   ├── layout.tsx
+│   └── page.tsx
 ├── components/
-│   ├── ui/                        # Componentes base (shadcn/ui)
-│   │   ├── button.tsx
-│   │   ├── card.tsx
-│   │   ├── input.tsx
-│   │   └── ...
-│   │
-│   ├── layout/                    # Componentes de layout
-│   │   ├── sidebar.tsx            # Navegação lateral
-│   │   └── header.tsx             # Cabeçalho das páginas
-│   │
-│   └── features/                  # Componentes por funcionalidade
-│       ├── atendimento/           # Componentes da tela de atendimento
-│       │   ├── performance-realtime.tsx
-│       │   ├── kanban-tarefas.tsx
-│       │   ├── agenda-dia.tsx
-│       │   ├── motor-oportunidades.tsx
-│       │   ├── toggle-presenca.tsx
-│       │   └── painel-incentivos.tsx
-│       │
-│       ├── clientes/              # (reservado)
-│       ├── vendas/                # (reservado)
-│       ├── campanhas/             # (reservado)
-│       └── configuracoes/         # (reservado)
-│
-├── lib/                           # Utilitários e dados
-│   ├── utils/
-│   │   └── cn.ts                  # Helper de classes
-│   └── data/
-│       └── mock.ts                # Dados mockados
-│
-├── public/                        # Arquivos estáticos
-├── next.config.js                 # Config do Next.js
-├── tailwind.config.ts             # Config do Tailwind
-├── tsconfig.json                  # Config do TypeScript
-└── package.json                   # Dependências
+│   ├── features/                  # Componentes por feature
+│   ├── layout/                    # sidebar.tsx, header.tsx
+│   └── ui/                        # shadcn/ui
+├── lib/
+│   ├── supabase/                  # clientes browser/server/admin
+│   ├── waha.ts                    # Adapter WAHA (envio/sessão/contatos)
+│   ├── waha-webhook.ts            # Parser de eventos (testado)
+│   ├── telefone.ts                # Formatação unificada de telefone
+│   ├── roteamento.ts              # Roteamento de conversas novas
+│   ├── evolution-api.ts           # Legado/rollback
+│   └── data/mock.ts               # Dados mockados
+├── scripts/                       # utilitários (importação, diagnóstico)
+│   └── rebase-base-clientes.js    # rebase da base + organograma (5 fases)
+├── supabase/migrations/           # migrations SQL (009–069)
+├── docs/                          # documentação (ver docs/README.md)
+├── PROGRESSO.MD                   # diário de bordo
+└── ...
 ```
 
 ## Convenções de Nomenclatura
@@ -148,14 +130,21 @@ export default function NomeDaPaginaPage() {
 |------|-----------|-------|
 | `/login` | Tela de autenticação | `(auth)` |
 | `/atendimento` | Área de trabalho do vendedor | `(dashboard)` |
+| `/kanban` | Tarefas e funil | `(dashboard)` |
+| `/leads` | Pipeline de leads | `(dashboard)` |
 | `/clientes` | Gestão de clientes | `(dashboard)` |
+| `/produtos` | Catálogo de produtos | `(dashboard)` |
 | `/vendas` | Histórico de vendas | `(dashboard)` |
-| `/campanhas` | Campanhas e incentivos | `(dashboard)` |
-| `/configuracoes` | Preferências do sistema | `(dashboard)` |
+| `/campanhas` | Campanhas e incentivos (MVP) | `(dashboard)` |
+| `/dashboard` | Visão gerencial (⚠️ mock) | `(dashboard)` |
+| `/equipes` | Gestão de equipes (só gestor) | `(dashboard)` |
+| `/configuracoes` | Preferências + vendedores | `(dashboard)` |
+| `/ajuda` | Central de ajuda | `(dashboard)` |
 
-## Próximos Passos (Integração Supabase)
+## Estado Atual (23/09/2026)
 
-1. Substituir `lib/data/mock.ts` por queries reais
-2. Implementar autenticação no `(auth)`
-3. Adicionar proteção de rotas no `(dashboard)`
-4. Criar hooks customizados para cada feature
+1. ✅ Supabase em produção — migrations `009`–`069` aplicadas; RLS parcial (pendente: Fase 3 da auditoria)
+2. ✅ Autenticação e proteção de rotas ativas no `(dashboard)`
+3. ✅ WhatsApp via **WAHA** em produção (`lib/waha.ts` + webhook `message.any`)
+4. ⚠️ `/dashboard` ainda usa dados mockados
+5. Próximos passos: unificar permissões gestor/vendedor (hoje duplicadas por rota) e RLS completo

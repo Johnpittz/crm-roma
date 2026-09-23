@@ -1556,7 +1556,8 @@ O projeto utiliza dois clientes Supabase:
 
 ### Webhooks
 
-Os webhooks não exigem autenticação do usuário (exceto Millennium). Eles são chamados por serviços externos:
-- **Evolution API** → WhatsApp via Evolution
+Os webhooks não exigem autenticação do usuário (exceto Millennium e token opcional `WAHA_WEBHOOK_TOKEN`). Eles são chamados por serviços externos:
+- **WAHA** → `POST /api/webhooks/waha` — **principal**: eventos `message.any` (enviadas + recebidas), `message.ack`, `session.status`
 - **BotConversa** → WhatsApp via BotConversa
+- **Evolution API** → apenas legado/rollback (webhook `evolution` mantido)
 - **Millennium** → ERP integrado (requer secret no header)

@@ -66,6 +66,7 @@ Adapter novo com o mesmo formato de retorno do `lib/evolution-api.ts` (as rotas 
 - [x] Teste RED do parser de payload WAHA (fixtures da Fase 1): extrai telefone (`@c.us`/`@s.whatsapp.net`), nome, texto, `hasMedia`/`media.url`/`mimetype`/`filename`, `replyTo`[8] — **10 testes em `lib/waha-webhook.test.ts`**
 - [x] Rota reutiliza o fluxo do `webhooks/evolution/route.ts`: rate limit → dedup por `whatsapp_message_id` → upload de mídia (baixar de `media.url`) → busca/cria atendimento → roteamento para vendedor padrão (`MIGRATE_ROTEAMENTO.md`) → insert na mensagem → gatilho AI Sales (texto do cliente) — **`app/api/webhooks/waha/route.ts`**
 - [x] Tratar eventos: `message`/`message.any` (ingestão), `message.ack` (status — best-effort até a coluna `ack_status` da Fase 7), `session.status` (log/alerta de desconexão)
+  - ⚠️ **23/09:** a sessão em produção registra **`message.any`** (e não `message`) — `message` só dispara para recebidas e o envio do celular sumia; chat extraído SEMPRE de `from` (`to` = eu mesmo). Ver `runbook-waha-numeros.md` §4 e `HANDOFF-MIGRACAO-WAHA.md` §16.
 - [x] Validação de autenticação do webhook *(adaptado: token opcional `WAHA_WEBHOOK_TOKEN` via header `X-Webhook-Token`)*[8]
 - [x] Ignorar grupos (`@g.us`) como hoje
 

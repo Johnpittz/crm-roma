@@ -2,6 +2,11 @@
 
 Sistema de gestão comercial para vendedores físicos e diretoria.
 
+> **Estado (23/09/2026):** em produção na Vercel + Supabase. WhatsApp via **WAHA**
+> (Evolution = rollback). Organograma: contas GERENTE (5 vendedores) e Jackson
+> (Brennda). Base: 3.073 clientes. Testes: `npm test` (70). Diário: `PROGRESSO.MD`.
+> Documentação completa: `docs/README.md`.
+
 ## 🚀 Tecnologias
 
 - Next.js 14+ (App Router)
@@ -63,7 +68,7 @@ Acesse: http://localhost:3000
 - Painel de incentivos
 
 ### Tela de Dashboard (Gestão)
-- `/dashboard` - Visão gerencial
+- `/dashboard` - Visão gerencial (⚠️ **ainda com dados mockados**)
 - Ranking de vendas
 - Evolução mensal (12 meses)
 - CAC por canal
@@ -71,16 +76,17 @@ Acesse: http://localhost:3000
 - Ticket médio protegido
 - Mapa de calor
 
-## 🗄️ Próximos Passos (Supabase)
+## 🗄️ Banco de Dados (Supabase)
 
-1. Criar projeto no Supabase
-2. Rodar o migration: `supabase/migrations/001_initial_schema.sql`
-3. Configurar autenticação
-4. Substituir dados mock pelas queries reais
+- Projeto ativo em produção — migrations em `supabase/migrations/` (009–069)
+- Autenticação ativa; proteção de rotas no `(dashboard)`
+- WhatsApp: webhook principal `POST /api/webhooks/waha` (eventos `message.any`/`message.ack`/`session.status`)
+- Rebase de dados: `node scripts/rebase-base-clientes.js <backup|wipe|perfis|import|verify>`
 
 ## 📝 Notas
 
-- Dados são mockados (fictícios) para demonstração
+- `/dashboard` e o ranking "Top 20" usam dados mockados (mantido propositalmente por enquanto)
+- O restante do atendimento usa dados reais (Supabase + WAHA)
 - Projeção matemática calcula tendência baseada em dias úteis
 - Kanban permite arrastar tarefas entre colunas
-- Toggle de presença simula transbordo de WhatsApp
+- Testes automatizados: `npm test` (vitest, 70 testes)

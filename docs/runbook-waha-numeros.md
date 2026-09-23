@@ -11,6 +11,7 @@
 | Servidor | VPS Hostinger `srv1745477.hstgr.cloud` (2.25.192.248) |
 | Container | `waha` (Docker do host — NÃO é o container `john_hermes` do code-server) |
 | Engine | `GOWS` (WebSocket Go, sem navegador) |
+| Versão | `2026.9.1` CORE (consultar `GET /api/version`) |
 | API pública | `http://srv1745477.hstgr.cloud:3000` (usada pelo Vercel e pelo dashboard) |
 | API interna | `http://172.16.1.1:3000` (**usar esta de dentro do container do code-server!**) |
 | Dashboard | `http://srv1745477.hstgr.cloud:3000/dashboard` (user `admin`) |
@@ -74,6 +75,9 @@ curl -s -H "X-Api-Key: $K" $GW/api/sessions/ROMA_N   # esperado: "status":"WORKI
 | Sessão `WORKING` depois do scan | Não mexer mais — ela se mantém sozinha; `session.status` reporta desconexões. |
 | Vários números | Só repetir o processo com `ROMA_2`, `ROMA_3`… (WAHA Core é ilimitado desde 2026.6.1). |
 | Escanear pelo dashboard | Também funciona (Sessions → linha da sessão → ícone de câmera), mas o QR por chat/curl renova sob demanda. |
+| Evento errado no webhook | Só `message.any` (nunca `message` — só recebidas e o envio do celular some). E o chat está SEMPRE em `from` (`to` = eu mesmo). Detalhes: `HANDOFF-MIGRACAO-WAHA.md` §11/§16. |
+| Webhook para URL interna de container (`172.16.1.x`) | **Não recebe** — isolamento de rede do Docker. Só URL pública (Vercel/webhook.site). |
+| Logs do container | `docker logs --tail 100 waha` só no **host** (hPanel → Web console) — não existe docker no container do code-server. |
 
 ## 4. Registro no CRM (Fase 4 em diante)
 

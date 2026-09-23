@@ -2,7 +2,9 @@
 
 **Sistema de Gestão Comercial para Distribuidoras**
 
-O CRM ROMA é uma plataforma web completa para gestão de vendas e atendimento de empresas distribuidoras. Integra WhatsApp via Evolution API, oferece quadros Kanban para gestão do funil de vendas, controle de clientes, tarefas, leads e dashboards gerenciais em tempo real.
+O CRM ROMA é uma plataforma web completa para gestão de vendas e atendimento de empresas distribuidoras. Integra WhatsApp via **WAHA** (self-hosted, engine GOWS — a Evolution API ficou só como rollback), oferece quadros Kanban para gestão do funil de vendas, controle de clientes, tarefas, leads e dashboards gerenciais em tempo real.
+
+> **Status rápido (23/09/2026):** módulo **ATENDIMENTOS em produção** com WAHA (liberado para a equipe em 23/09) · **70 testes** (`npm test`) · organograma/base refaços hoje — ver `PROGRESSO.MD` (diário de bordo) e §12.5 (usuários atuais) · runbook de números: `runbook-waha-numeros.md` · handoff técnico: `HANDOFF-MIGRACAO-WAHA.md`.
 
 ---
 
@@ -47,7 +49,7 @@ O CRM ROMA foi projetado para equipes comerciais de distribuidoras, oferecendo:
 | **Gráficos** | Recharts |
 | **DnD (Drag and Drop)** | @hello-pangea/dnd |
 | **Toasts** | Sonner |
-| **WhatsApp API** | Evolution API |
+| **WhatsApp API** | [WAHA](https://waha.devlike.pro/) self-hosted (engine GOWS, sessão `ROMA_1`) — Evolution API apenas como rollback |
 | **Exportação** | xlsx (planilhas Excel) |
 
 ---
@@ -67,7 +69,7 @@ O CRM ROMA foi projetado para equipes comerciais de distribuidoras, oferecendo:
   - Componente `buscar-contatos-whatsapp.tsx` (modal de busca)
   - Endpoint `GET /api/whatsapp/contacts` — Lista contatos da instância WhatsApp
   - Endpoint `POST /api/whatsapp/check-number` — Verifica se números existem no WhatsApp
-  - Integração com Evolution API (`findContacts` e `checkWhatsAppNumbers`)
+  - Integração com WAHA (`findContacts` e `contacts/check-exists` — ver `docs/busca-contatos-whatsapp.md`)
 
 ### 📋 Kanban
 - **Visão Principal** (Dashboard): painel gerencial com métricas consolidadas
@@ -142,8 +144,9 @@ crm-roma/
 │   │   ├── notificacoes/          # API de notificações
 │   │   ├── ai-sales/              # IA para vendas
 │   │   ├── webhooks/              # Webhooks externos
-│   │   │   ├── evolution/         # Webhook da Evolution API (WhatsApp)
-│   │   │   ├── whatsapp/          # Webhook WhatsApp
+│   │   │   ├── waha/              # ⭐ Webhook PRINCIPAL do WhatsApp (WAHA)
+│   │   │   ├── evolution/         # Webhook legado Evolution (rollback)
+│   │   │   ├── whatsapp/          # Webhook WhatsApp alternativo
 │   │   │   └── millennium/        # Webhook do ERP Millennium
 │   │   ├── media-download/        # Download de mídia
 │   │   ├── send/media/            # Envio de mídia
@@ -182,7 +185,9 @@ crm-roma/
 │   │   ├── admin.ts               # Cliente Supabase (admin)
 │   │   ├── admin-server.ts        # Cliente admin server
 │   │   └── middleware.ts          # Middleware de auth
-│   ├── evolution-api.ts           # Integração Evolution API
+│   ├── waha.ts                    # Adapter WAHA (envio, sessão, contatos)
+│   ├── waha-webhook.ts            # Parser dos eventos do webhook WAHA
+│   ├── evolution-api.ts           # Legado/rollback (substituído por waha.ts)
 │   ├── integrations/
 │   │   └── millennium-api.ts      # Integração ERP Millennium
 │   ├── ai-sales-prompts/          # Prompts da IA
@@ -206,7 +211,7 @@ crm-roma/
 - Node.js 18+
 - npm ou yarn
 - Conta no [Supabase](https://supabase.com/)
-- Evolution API (para integração WhatsApp)
+- WAHA self-hosted (credenciais em `.env.local` — ver `docs/runbook-waha-numeros.md`)
 
 ### Clonar e instalar
 
@@ -254,7 +259,11 @@ NEXT_PUBLIC_SUPABASE_URL=https://seu-projeto.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=sua-anon-key
 SUPABASE_SERVICE_ROLE_KEY=sua-service-role-key
 
-# Evolution API (WhatsApp)
+# WhatsApp — WAHA (principal)
+WAHA_API_URL=http://srv1745477.hstgr.cloud:3000
+WAHA_API_KEY=sua-api-key
+WAHA_SESSION=ROMA_1
+# Evolution API — mantida apenas como rollback
 EVOLUTION_API_URL=https://sua-evolution-api.com
 EVOLUTION_API_KEY=sua-api-key
 
@@ -264,7 +273,7 @@ MILLENNIUM_USER=usuario
 MILLENNIUM_PASS=senha
 
 # AI Sales
-AI_SALES_ENABLED=true
+GEMINI_API_KEY=sua-gemini-key
 ```
 
 ---
@@ -277,7 +286,7 @@ O CRM ROMA é otimizado para deploy na [Vercel](https://vercel.com/):
 
 1. Acesse [vercel.com](https://vercel.com/) e importe o repositório
 2. Configure as variáveis de ambiente no painel da Vercel
-3. O deploy será feito automaticamente a cada push na branch `main`
+3. O deploy será feito automaticamente a cada push na branch `master`
 
 **Repositório GitHub:** [Johnpittz/crm-roma](https://github.com/Johnpittz/crm-roma)
 
@@ -296,8 +305,8 @@ npm run start
 - `POST /api/auth/cadastro` — Cadastro de novos usuários
 
 ### WhatsApp
-- `GET /api/whatsapp/contacts` — Lista contatos da instância WhatsApp via Evolution API
-- `POST /api/whatsapp/check-number` — Verifica se números existem no WhatsApp
+- `GET /api/whatsapp/contacts` — Lista contatos da agenda via WAHA (`findContacts`)
+- `POST /api/whatsapp/check-number` — Verifica se números existem no WhatsApp (`check-exists`)
 
 ### Atendimentos
 - `GET /api/atendimentos` — Lista atendimentos
@@ -334,7 +343,8 @@ npm run start
 - `GET/POST /api/ai-sales` — IA para vendas
 
 ### Webhooks
-- `POST /api/webhooks/evolution` — Recebe mensagens do WhatsApp (Evolution API)
+- `POST /api/webhooks/waha` — ⭐ **Principal**: eventos `message.any` / `message.ack` / `session.status` da WAHA (mensagens enviadas E recebidas; grupos ignorados; dedup por `whatsapp_message_id`)
+- `POST /api/webhooks/evolution` — Legado/rollback (Evolution API)
 - `POST /api/webhooks/whatsapp` — Webhook WhatsApp alternativo
 - `POST /api/webhooks/millennium` — Dados do ERP Millennium
 

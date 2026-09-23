@@ -587,6 +587,9 @@ EVOLUTION_API_KEY=e3186c32139f79c7566a1d6a3f5bc702fae199c725a313ce9b7f8ff035123b
 - **Testes:** +3 casos em `lib/waha-webhook.test.ts` (fromMe usa `from`; grupo enviado → `grupo:true`; `message.any` recebido = `message`) — suíte **70/70**.
 - **Docs:** `runbook-waha-numeros.md` §4 atualizado com os alertas (`message.any` + regra `from`/`to`).
 - ⚠️ Risco monitorado: issues GOWS do WAHA (#2250/#2255, 09/2026) relatam webhook de `message.any` eventualmente não entregue em algumas versões — se privadas continuarem caindo, conferir `docker logs waha` (host) e atualizar a imagem.
+- **Validação pós-deploy (`c2b460f`):** envio PRIVADO via API (`source:api`) → `message.any` entregue e processado ✅ (o teste anterior, sob o parser antigo, foi rejeitado — payload privado não tinha `to` utilizável; parser novo usa `from`). **Envio privado do CELULAR (`source:app`) pendente de teste real com o João.**
+- ⚠️ **Replay de sessão duplica linha:** no restore do webhook, o GOWS re-emitiu a mesma mensagem com id em forma **lid** (`true_190126021943368@lid_…` ≠ `true_556234165014@c.us_…`) → dedup por id não pegou. Pendência: dedup por conteúdo+ janela de N minutos para `from_me`, ou imunizar em restarts.
+- 🧪 Capturador local (2º webhook em `172.16.1.2:9099`) **não recebeu nada** — isolamento de rede entre containers Docker do host; webhooks só funcionam por URL pública. Config restaurada (1 webhook), listener encerrado.
 
 ### 22/09/2026
 - [x] Migração WhatsApp Evolution → WAHA (módulo ATENDIMENTOS): `docs/plano-implementacao-waha.md` (9 fases) + `docs/pesquisa-waha-atendimento.md` (13 fontes)
