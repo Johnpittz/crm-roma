@@ -2,7 +2,7 @@
 
 > **Arquivo de contexto para agentes IA**
 > **Última atualização:** 23/09/2026 (migração WAHA — fix mídia recebida + lightbox de imagem)
-> **Deploy atual:** https://crm-roma-romadistribuicao.vercel.app
+> **Deploy atual:** https://crm-roma-ten.vercel.app (alias: crm-roma-romadistribuicao.vercel.app — mesmo build)
 > **Conta Vercel:** roma-6489 (romadistribuicao) — plano Hobby/Free
 > **Conversa atual:** Migração WhatsApp Evolution API → WAHA — módulo ATENDIMENTOS (`docs/plano-implementacao-waha.md`)
 
@@ -555,6 +555,8 @@ EVOLUTION_API_KEY=e3186c32139f79c7566a1d6a3f5bc702fae199c725a313ce9b7f8ff035123b
 - [x] Legenda `[image]` duplicada corrigida (`ehPlaceholderConteudo` em `lib/waha-webhook.ts`, 2 testes)
 - [x] `vitest.config.ts` (transform de JSX nos testes) + devDeps jsdom/@testing-library — suíte em **61/61 verdes** + tsc limpo
 - [x] `docs/HANDOFF-MIGRACAO-WAHA.md` atualizado (estado, bugs resolvidos, pendências)
+- [x] Bug do envio do CRM (**500 RLS — BUG-7**): POST `/api/atendimentos/mensagens` passou a escrever via service role (a policy só deixava o vendedor dono do atendimento escrever; quebrou quando o roteamento atribuiu `vendedor_id`) — commit `1fe771d`, verificado RED→GREEN com `scripts/smoke-envio-mensagens.sh` + entrega real no WhatsApp
+- [x] Toast de erro no envio de mensagem (falha não fica mais em silêncio no cliente)
 - [ ] Validação E2E: imagem nova recebida aparece no chat + lightbox no navegador
 - [ ] Varredura de mídia (todos os tipos × enviado/recebido — vídeo/sticker recebidos nunca testados ao vivo)
 

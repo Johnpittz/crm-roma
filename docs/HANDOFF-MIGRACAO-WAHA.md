@@ -36,7 +36,7 @@ Migrar a integração WhatsApp da aba **ATENDIMENTOS** do CRM ROMA (um *simulado
   - Engine: **GOWS** (`GOWS (2026.9.1 CORE)`).
   - Sessão única: **`ROMA_1`** (número 556234165014), estado `WORKING`.
   - **Grátis desde a versão 2026.6.1** (sem mais limitação de sessões).
-- **CRM** deployado na **Vercel**: `https://crm-roma-romadistribuicao.vercel.app` (conta `roma-6489 / romadistribuicao`, plano Hobby).
+- **CRM** deployado na **Vercel**: **`https://crm-roma-ten.vercel.app`** (domínio de acesso da equipe; o alias `crm-roma-romadistribuicao.vercel.app` também resolve para o mesmo build — conta `roma-6489 / romadistribuicao`, plano Hobby).
 - **Banco/Storage**: Supabase (projeto `otmkukicneotcpkemvcq`).
 - **Não rodar o app localmente** — desenvolvimento é só edição de código (code-server); deploy automático via push no GitHub (`Johnpittz/crm-roma`, branch `master`).
 
@@ -56,6 +56,7 @@ Eventos: `message`, `message.ack`, `session.status`.
 | Envio de texto | ✅ funcionando (E2E real) |
 | Envio de documento (PDF/DOCX), inclusive ~4,8 MB | ✅ funcionando (E2E real) |
 | Envio de áudio (PTT) | ✅ funcionando (E2E real) |
+| Envio de texto/mídia por **gestor ou não-dono** do atendimento | ✅ corrigido 23/09 (`1fe771d`) — era 500 RLS (BUG-7) |
 | Recebimento de texto | ✅ funcionando (E2E real) |
 | Recebimento de imagem/documento | ✅ fix implementado 23/09 (`b880ea2`) — **falta validação E2E** |
 | Checkmarks (✓/✓✓/azul) reais via `message.ack` | ✅ funcionando |
@@ -101,6 +102,8 @@ Testado ao vivo em 22/09/2026, com conversas reais:
   - *Lição*: mesma classe do `pushname` — só aparece ao vivo. O payload real veio de `GET /api/{session}/chats/{chatId}/messages?downloadMedia=true` (com `downloadMedia=false` a `media.url` vem **null**).
 - **BUG-6 — arquivos > ~3 MB não enviavam (`413 FUNCTION_PAYLOAD_TOO_LARGE`)**: limite de **4,5 MB** do corpo de requisição na Vercel; base64 infla 33% → arquivos ≳3,3 MB morriam. **RESOLVIDO**: cliente envia direto ao Supabase Storage por URL assinada (`POST /api/upload-url` → `uploadToSignedUrl`) e o WAHA baixa por `file:{url}` (`enviarMidia({ mediaUrl })`). Fallback base64 para arquivos pequenos.
   - *Lição*: "PDF do Chrome não funciona / do Adobe sim" era na verdade **tamanho** (4,8 MB vs menor). O rótulo "Chrome PDF Document" no Windows é só a associação de aplicativo, não o formato.
+- **BUG-7 — envio de mensagem do CRM dava `500 {"error":"new row violates row-level security policy"}` para quem não era o vendedor dono do atendimento (23/09)**: a policy RLS `vendedor_ve_mensagens_proprio_atendimento` (migration 010) só permite INSERT se `atendimentos.vendedor_id = auth.uid() OR vendedor_id IS NULL`. O atendimento nascia com `vendedor_id` NULL (qualquer um escrevia); quando o webhook recebia mensagem nova, o roteamento **atribuía o vendedor padrão** (linha `vendedorUpdate` do `app/api/webhooks/waha/route.ts`) → a partir daí só esse vendedor enviava e o gestor (Murilo) era bloqueado no insert — o cliente engolia o erro em silêncio. **RESOLVIDO (`1fe771d`)**: o POST `/api/atendimentos/mensagens` escreve via **service role** (autenticação por `getUser()` mantida — mesmo padrão do GET, que já lia por service role); `chat-inline.tsx` agora mostra toast de erro em vez de falha silenciosa. Verificado RED→GREEN com `scripts/smoke-envio-mensagens.sh` (POST real em produção com usuário de teste não-dono: 500 antes → 200 depois, mensagem entregue no WhatsApp, ack=2).
+  - *Lição*: GET usava service role e POST usava o cliente do usuário — RLS "só o vendedor dono" é incompatível com o produto (gestor responde qualquer chat). **Testar sempre com usuário NÃO-dono do atendimento.** O RLS da tabela continua estrito para acesso direto via PostgREST — endurecimento futuro: migration com bypass gestor/admin (ver BUG-7 no PROGRESSO).
   - *Lição*: upload assinado **com JWT de usuário logado passa sem policy extra** (a policy `069` é opcional/idempotente). Teste com chave de serviço dá falso negativo por causa do RLS.
 
 ---
@@ -226,6 +229,7 @@ Comportamento do webhook em produção: POST `{}` → 400 `Payload inválido: ev
 - Arquivos: `lib/telefone.test.ts`, `lib/waha.test.ts`, `lib/waha-webhook.test.ts`, `components/features/atendimento/lightbox.test.tsx`.
 - **Regra combinada com o usuário: TDD estrito — RED → GREEN mínimo → REFACTOR. A especificação (teste) manda; o código se ajusta.**
 - Estado: **61/61 verdes** (23/09/2026).
+- Smoke E2E de envio: `scripts/smoke-envio-mensagens.sh [atendimento_id]` — cria usuário de teste não-dono, faz POST real na rota de produção autenticado por cookie e limpa. RED esperado sem o fix `1fe771d`: 500 RLS; GREEN: 200 + entrega no WhatsApp.
 - Cuidado: testes de `lib/waha.ts` usam `FetchImpl`/`WahaOptions` injetáveis (`fakeFetch` + `CONFIG` no topo de `lib/waha.test.ts`).
 
 ---
@@ -258,6 +262,8 @@ Comportamento do webhook em produção: POST `{}` → 400 `Payload inválido: ev
 - `93c51df` — handoff completo (este documento).
 - `b880ea2` — **fix mídia recebida** (BUG-5): `resolverUrlMidia` + plug no webhook (§6.1).
 - `33bfcbc` — **lightbox no CRM + legenda `[image]`** (§6.2) + `vitest.config.ts` + devDeps jsdom/testing-library.
+- `1f894c7` — docs (handoff + progresso).
+- `1fe771d` — **fix envio de mensagem do CRM (500 RLS — BUG-7)**: escrita via service role no POST de mensagens + toast de erro no cliente + `scripts/smoke-envio-mensagens.sh`.
 
 ---
 
