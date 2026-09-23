@@ -58,13 +58,13 @@ Eventos: `message`, `message.ack`, `session.status`.
 | Envio de áudio (PTT) | ✅ funcionando (E2E real) |
 | Envio de texto/mídia por **gestor ou não-dono** do atendimento | ✅ corrigido 23/09 (`1fe771d`) — era 500 RLS (BUG-7) |
 | Recebimento de texto | ✅ funcionando (E2E real) |
-| Recebimento de imagem/documento | ✅ fix implementado 23/09 (`b880ea2`) — **falta validação E2E** |
+| Recebimento de imagem/documento | ✅ corrigido 23/09 (`b880ea2`) — **validado E2E pelo usuário** |
 | Checkmarks (✓/✓✓/azul) reais via `message.ack` | ✅ funcionando |
 | Nomes de contatos reais + resolução LID→número | ✅ funcionando |
 | Migração Evolution → WAHA (só módulo ATENDIMENTOS) | ✅ fechada |
 | F8 (apagar legado Evolution após 24–48h estáveis) | 🔄 pendente |
-| Lightbox de imagem (clique expande no CRM) | ✅ implementado 23/09 (`33bfcbc`) — expande em overlay no CRM (fecha com clique/Esc), não abre mais aba nova |
-| Fix da URL `localhost` da mídia recebida | ✅ **concluído** 23/09 (`b880ea2`) — falta validação E2E |
+| Lightbox de imagem (clique expande no CRM) | ✅ implementado 23/09 (`33bfcbc`) — overlay no CRM (fecha com clique/Esc) — **validado E2E pelo usuário** |
+| Fix da URL `localhost` da mídia recebida | ✅ **concluído** 23/09 (`b880ea2`) — **validado E2E pelo usuário** |
 
 **Testes: 61/61 verdes** (23/09/2026, `npx vitest run`).
 `npx tsc -p tsconfig.json --noEmit` limpo.
@@ -115,13 +115,13 @@ Implementado com TDD (RED → GREEN):
 - `lib/waha.ts`: `montarUrlArquivo(url, base)` (re-escreve `localhost`/`127.x`/IPs privados para a base pública; resolve relativas `/...`; preserva públicas; **devolve `null` para entrada inválida** tipo `://errado`), `buscarUrlMidiaHistoria({telefone, messageId})` (fallback: recupera `media.url` no histórico do chat) e **`resolverUrlMidia({urlMidia, telefone, messageId})`** (composição usada pelo webhook: URL do evento normalizada → fallback por histórico → `null`).
 - `app/api/webhooks/waha/route.ts`, `processarMidia()`: pluggado — usa `resolverUrlMidia()` antes do `fetch`; `media.url` nulo agora cai no fallback (antes retornava `null` direto).
 - Testes: 4 de `resolverUrlMidia` + correção de `montarUrlArquivo` p/ URL inválida. **61/61 verdes + tsc limpo.**
-- ❌ **FALTA apenas: validar E2E** — pedir para mandar uma imagem nova no WhatsApp e conferir que a bolha abre com a imagem (não "Imagem recebida").
+- ✅ **Validado E2E pelo usuário em 23/09** (imagem nova chega e abre no chat, sem bolha cinza).
 
 ### 6.2 Lightbox de imagem (✅ CONCLUÍDO 23/09 — `33bfcbc`)
 - `components/features/atendimento/lightbox.tsx`: componente `Lightbox` (overlay `fixed inset-0`, fecha com clique no fundo ou Esc; clique na imagem não fecha). Clique na imagem do chat agora expande **dentro do CRM** — `window.open` (aba nova) foi removido.
 - Legenda `[image]` duplicada: `ehPlaceholderConteudo()` em `lib/waha-webhook.ts` (lista de tokens: image/imagem, audio, ptt, video, document/documento, sticker/figurinha, gif — normaliza caixa/acentos/espaços). **Desvio do regex sugerido**: o regex genérico `^\[...\]$` engolia legenda real tipo "[risos] que demais"; com token-list, texto real nunca some.
 - Testes: 5 do `Lightbox` (jsdom + `@testing-library/react`) + 2 de `ehPlaceholderConteudo`. `vitest.config.ts` criado (transform automático de JSX — tsconfig do Next usa `jsx: "preserve"`).
-- ❌ **FALTA apenas: validar E2E** (clique na imagem abre o lightbox no CRM).
+- ✅ **Validado E2E pelo usuário em 23/09** (clique na imagem abre o lightbox dentro do CRM).
 
 ### 6.3 F8 — remover legado Evolution (baixa prioridade)
 `lib/evolution-api.ts` e `app/api/webhooks/evolution/route.ts` estão `@deprecated` e intactos como **rollback por 1 release**. Apagar só depois de 24–48h estáveis. Env `EVOLUTION_*` no Vercel também ficaram de reserva.
@@ -269,7 +269,7 @@ Comportamento do webhook em produção: POST `{}` → 400 `Payload inválido: ev
 
 ## 15. Próximos passos sugeridos (ordem)
 
-1. ~~**§6.1** — plug do `montarUrlArquivo`/`buscarUrlMidiaHistoria` no webhook~~ ✅ **feito 23/09 (`b880ea2`)**. Resta a **validação E2E**: receber uma imagem nova e conferir a bolha.
-2. ~~**§6.2** — lightbox de imagem + corrigir legenda `[image]`~~ ✅ **feito 23/09 (`33bfcbc`)**. Resta o teste E2E do lightbox no navegador.
+1. ~~**§6.1** — plug do `montarUrlArquivo`/`buscarUrlMidiaHistoria` no webhook~~ ✅ **feito e validado E2E 23/09 (`b880ea2`)**.
+2. ~~**§6.2** — lightbox de imagem + corrigir legenda `[image]`~~ ✅ **feito e validado E2E 23/09 (`33bfcbc`)**.
 3. Varredura de todos os tipos de mídia (imagem, áudio, vídeo, documento, sticker) × (enviado, recebido) — pedido explícito do usuário: *"importante ver tudo de media pra ver se vai funcionar"*. **Testar vídeo/sticker recebidos de verdade** — nunca foram testados ao vivo.
 4. **§6.3** — F8: apagar legado Evolution depois de 24–48h estáveis.
