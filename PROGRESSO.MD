@@ -573,6 +573,7 @@ EVOLUTION_API_KEY=e3186c32139f79c7566a1d6a3f5bc702fae199c725a313ce9b7f8ff035123b
 - [x] Desativados (`ativo=false`): **Gabriel** (saiu da gestão), **Keila** (fora do novo organograma), **djfhsujdhfjsdhf** (perfil de teste ecommerce@)
 - [x] Verificação final: total 3.073 ✅, soma por vendedor bate ✅, organograma impresso ✅
 - ⚠️ Pendências: `ativo=false` **não bloqueia login** hoje (não há checagem no login) — se quiser, criar essa checagem + filtro `ativo` nas listagens; Valdean usa domínio `romadistribuicao` (diferente dos demais da equipe Murilo que são `romagyn`)
+- [x] **Conta "Murilo" renomeada para "GERENTE"** (a pessoa saiu): mesma conta (`gestorcomercial@romagyn.com.br`), cargo `gerente_comercial` e equipe intacta (Christyan, Dara, Ellen, Raquel, Valdean) — só mudou o `nome_completo`
 
 ### 22/09/2026
 - [x] Migração WhatsApp Evolution → WAHA (módulo ATENDIMENTOS): `docs/plano-implementacao-waha.md` (9 fases) + `docs/pesquisa-waha-atendimento.md` (13 fontes)
