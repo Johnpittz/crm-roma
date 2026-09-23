@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { formatarTelefone, extrairTelefoneJid, urlWaMe } from './telefone'
+import { formatarTelefone, extrairTelefoneJid, urlWaMe, telefoneInternacional, telefoneParaJid } from './telefone'
 
 describe('formatarTelefone', () => {
   it('remove caracteres não numéricos de formatos brasileiros', () => {
@@ -53,5 +53,24 @@ describe('urlWaMe', () => {
     expect(urlWaMe('')).toBe('')
     expect(urlWaMe(null)).toBe('')
     expect(urlWaMe('abc')).toBe('')
+  })
+})
+
+describe('telefoneInternacional / telefoneParaJid', () => {
+  it('normaliza para DDI 55 por comprimento', () => {
+    expect(telefoneInternacional('(62) 98888-7777')).toBe('5562988887777')
+    expect(telefoneInternacional('5562988887777')).toBe('5562988887777')
+    expect(telefoneInternacional('6234165014')).toBe('556234165014')
+    expect(telefoneInternacional('')).toBe('')
+    expect(telefoneInternacional(null)).toBe('')
+  })
+
+  it('monta JID que sobrevive ao round-trip com extrairTelefoneJid', () => {
+    const jid = telefoneParaJid('(62) 98888-7777')
+    expect(jid).toBe('5562988887777@c.us')
+    expect(extrairTelefoneJid(jid)).toBe('5562988887777')
+    expect(telefoneParaJid('5562988887777')).toBe('5562988887777@c.us')
+    expect(telefoneParaJid('')).toBeNull()
+    expect(telefoneParaJid(null)).toBeNull()
   })
 })

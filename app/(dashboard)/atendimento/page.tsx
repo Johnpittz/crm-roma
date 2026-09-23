@@ -11,7 +11,7 @@ import { BuscarContatosWhatsApp, type WhatsAppContact } from "@/components/featu
 import { BarraMetricasAtendimento } from "@/components/features/atendimento/barra-metricas";
 import { PainelInferior } from "@/components/features/atendimento/painel-inferior";
 import { createClient } from "@/lib/supabase/client";
-import { extrairTelefoneJid } from "@/lib/telefone";
+import { extrairTelefoneJid, telefoneParaJid } from "@/lib/telefone";
 import { toast } from "sonner";
 
 interface Atendimento {
@@ -252,6 +252,40 @@ export default function AtendimentoPage() {
     }
   }, [supabase, fetchAtendimentos]);
 
+  // Abre conversa no CRM a partir de um telefone — usado pelo botão do modal
+  // de detalhes do cliente (mesmo fluxo do "Buscar Contatos WhatsApp": cria/
+  // retorna atendimento via POST e abre o chat).
+  const abrirConversaPorTelefone = useCallback(
+    (telefone: string, nome?: string) => {
+      const jid = telefoneParaJid(telefone);
+      if (!jid) {
+        toast.error("Este cliente não tem telefone válido.");
+        return;
+      }
+      handleContatoSelecionado({
+        id: jid,
+        remoteJid: jid,
+        pushName: nome || "Cliente",
+        profilePicUrl: null,
+        isSaved: false,
+        isGroup: false,
+        type: "contact",
+      });
+    },
+    [handleContatoSelecionado]
+  );
+
+  // Chegando da página CLIENTES: /atendimento?telefone=...&nome=...
+  // Limpa a URL em seguida para o próximo clique funcionar igual.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tel = params.get("telefone");
+    if (!tel) return;
+    const nome = params.get("nome") || undefined;
+    window.history.replaceState(null, "", window.location.pathname);
+    abrirConversaPorTelefone(tel, nome);
+  }, [abrirConversaPorTelefone]);
+
   // Data de hoje formatada
   const hoje = new Date().toLocaleDateString("pt-BR", {
     weekday: "long",
@@ -268,7 +302,7 @@ export default function AtendimentoPage() {
 
       {/* Dois containers lado a lado (Top 20 vendedores + Clientes) — ocupam a
           faixa liberada pelo corte dos cards de métrica */}
-      <PainelInferior />
+      <PainelInferior onAbrirConversa={abrirConversaPorTelefone} />
 
       {/* WhatsApp Web 3 COLUNAS: Lista + Chat + Painel Contato */}
       <div className="flex-1 min-h-0 flex border border-slate-200 rounded-lg overflow-hidden bg-white">

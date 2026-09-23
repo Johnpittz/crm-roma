@@ -37,16 +37,34 @@ export function extrairTelefoneJid(jid: string | null | undefined): string | nul
 }
 
 /**
- * Monta a URL wa.me para abrir conversa com o número (com ou sem contato salvo).
- * Regra por COMPRIMENTO: até 11 dígitos = nacional (DDD+número) → prefixa 55;
- * 12+ = já internacional → não mexe. Corrige dois bugs latentes dos links
- * existentes: `55${...}` duplicava o DDI, e startsWith('55') confundia DDD 55
- * (Santa Maria/RS) com DDI. Retorna '' sem telefone (o botão não renderiza).
+ * Normaliza telefone para o padrão internacional (DDI por COMPRIMENTO):
+ * até 11 dígitos = nacional (DDD+número) → prefixa 55; 12+ = já internacional.
+ * '' quando não há telefone. Corrige dois bugs latentes dos links existentes:
+ * `55${...}` duplicava o DDI, e startsWith('55') confundia DDD 55 (Santa Maria/RS)
+ * com DDI.
  */
-export function urlWaMe(telefone: string | null | undefined): string {
+export function telefoneInternacional(telefone: string | null | undefined): string {
   if (!telefone) return ''
   const digits = telefoneParaDigitos(telefone)
   if (!digits) return ''
-  const intl = digits.length <= 11 ? '55' + digits : digits
-  return `https://wa.me/${intl}`
+  return digits.length <= 11 ? '55' + digits : digits
+}
+
+/**
+ * Monta a URL wa.me para abrir conversa com o número (com ou sem contato salvo).
+ * Retorna '' sem telefone (o botão não renderiza).
+ */
+export function urlWaMe(telefone: string | null | undefined): string {
+  const intl = telefoneInternacional(telefone)
+  return intl ? `https://wa.me/${intl}` : ''
+}
+
+/**
+ * JID sintético (@c.us) para iniciar conversa dentro do CRM a partir de um
+ * telefone — round-trip garantido com extrairTelefoneJid().
+ * null sem telefone (não há o que conversar).
+ */
+export function telefoneParaJid(telefone: string | null | undefined): string | null {
+  const intl = telefoneInternacional(telefone)
+  return intl ? `${intl}@c.us` : null
 }

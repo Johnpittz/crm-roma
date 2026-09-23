@@ -67,7 +67,12 @@ function iniciais(nome: string): string {
   return ((partes[0]?.[0] ?? "") + (partes[partes.length - 1]?.[0] ?? "")).toUpperCase();
 }
 
-export function PainelInferior() {
+interface PainelInferiorProps {
+  /** Abre a conversa dentro do CRM (fluxo do Buscar Contatos) */
+  onAbrirConversa: (telefone: string, nome?: string) => void;
+}
+
+export function PainelInferior({ onAbrirConversa }: PainelInferiorProps) {
   return (
     <div className="grid grid-cols-2 gap-3 mb-3 shrink-0 h-[165px]">
       {/* Esquerda: Top 20 melhores vendedores */}
@@ -122,7 +127,7 @@ export function PainelInferior() {
           </span>
         </div>
         <div className="flex-1 min-h-0 overflow-y-auto p-2">
-          <ClientList clientes={CLIENTES_MOCK} />
+          <ClientList clientes={CLIENTES_MOCK} onAbrirConversa={onAbrirConversa} />
         </div>
       </div>
     </div>

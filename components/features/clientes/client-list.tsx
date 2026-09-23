@@ -17,9 +17,11 @@ interface Cliente {
 
 interface ClientListProps {
   clientes: Cliente[];
+  /** Quando presente, o modal abre a conversa dentro do CRM em vez de navegar */
+  onAbrirConversa?: (telefone: string, nome?: string) => void;
 }
 
-export function ClientList({ clientes }: ClientListProps) {
+export function ClientList({ clientes, onAbrirConversa }: ClientListProps) {
   const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
 
@@ -46,6 +48,7 @@ export function ClientList({ clientes }: ClientListProps) {
         cliente={selectedCliente}
         open={modalOpen}
         onOpenChange={setModalOpen}
+        onAbrirConversa={onAbrirConversa}
       />
     </>
   );
