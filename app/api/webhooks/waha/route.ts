@@ -31,7 +31,7 @@ import {
   montarConteudo,
   type MensagemWaha,
 } from "@/lib/waha-webhook";
-import { enviarTexto, getWahaConfig, resolverLid, buscarNomeContato } from "@/lib/waha";
+import { enviarTexto, getWahaConfig, resolverLid, buscarNomeContato, resolverUrlMidia } from "@/lib/waha";
 
 export const dynamic = "force-dynamic";
 
@@ -89,14 +89,26 @@ async function uploadMediaToStorage(
 }
 
 /**
- * Baixa a mídia do WAHA (media.url) e faz upload para o Supabase Storage.
+ * Baixa a mídia do WAHA e faz upload para o Supabase Storage.
  * Sem o passo de decrypt da Evolution — o WAHA entrega o arquivo pronto.
+ * A URL é normalizada por resolverUrlMidia (media.url do evento pode vir nula/localhost);
+ * com media.url nulo, o fallback consulta o histórico do chat pelo whatsapp_message_id.
  */
 async function processarMidia(m: MensagemWaha): Promise<string | null> {
-  if (!m.tipo_midia || !m.url_midia) return null;
+  if (!m.tipo_midia) return null;
 
   try {
-    const resp = await fetch(m.url_midia, {
+    const urlArquivo = await resolverUrlMidia({
+      urlMidia: m.url_midia,
+      telefone: m.telefone,
+      messageId: m.whatsapp_message_id,
+    });
+    if (!urlArquivo) {
+      console.error("[Webhook WAHA] Mídia sem URL resolvível (evento sem media.url e histórico sem fallback)");
+      return null;
+    }
+
+    const resp = await fetch(urlArquivo, {
       headers: { "X-Api-Key": getWahaConfig().apiKey },
     });
     if (!resp.ok) {

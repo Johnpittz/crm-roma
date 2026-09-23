@@ -220,6 +220,95 @@ export async function enviarAudio(
   )
 }
 
+// ===== URL de mídia recebida (bug E2E: WAHA entrega http://localhost:3000/...) =====
+
+/** true para hosts internos (localhost, 127.x, 10.x, 172.16-31.x, 192.168.x, ::1). */
+function ehHostInterno(host: string): boolean {
+  const h = host.replace(/^\[|\]$/g, '')
+  if (h === 'localhost' || h === '0.0.0.0' || h === '::1') return true
+  if (h.startsWith('127.')) return true
+  const m = h.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/)
+  if (m) {
+    const a = Number(m[1])
+    const b = Number(m[2])
+    if (a === 10) return true
+    if (a === 172 && b >= 16 && b <= 31) return true
+    if (a === 192 && b === 168) return true
+    if (a === 169 && b === 254) return true
+  }
+  return false
+}
+
+/**
+ * Normaliza a URL de um arquivo do WAHA para algo alcançável pela Vercel.
+ * O WAHA serve os arquivos em http://localhost:3000/api/files/... (ou IP privado) —
+ * fora da VPS isso não resolve; reescreve o host/porta para a base pública da API.
+ * URLs relativas são resolvidas contra a base; URLs públicas passam intactas.
+ */
+export function montarUrlArquivo(url: string | null | undefined, base: string): string | null {
+  if (!url) return null
+  // Entrada inválida (ex.: '://errado') não pode virar caminho relativo lixo —
+  // só aceitamos URL absoluta com scheme ou caminho começando com '/'.
+  if (!/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(url) && !url.startsWith('/')) return null
+  try {
+    const absoluta = new URL(url, base)
+    if (ehHostInterno(absoluta.hostname)) {
+      const b = new URL(base)
+      absoluta.protocol = b.protocol
+      absoluta.host = b.host
+    }
+    return absoluta.toString()
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Fallback de mídia recebida: quando o evento traz media.url nulo, recupera a URL
+ * no histórico do chat (GET /api/{session}/chats/{chatId}/messages) e normaliza.
+ */
+export async function buscarUrlMidiaHistoria(
+  params: { telefone: string; messageId: string; session?: string },
+  options: WahaOptions = {}
+): Promise<string | null> {
+  const config = options.config || getWahaConfig()
+  const fetchImpl = options.fetchImpl || fetch
+  const session = params.session || config.session
+  try {
+    const response = await fetchImpl(
+      `${config.baseUrl}/api/${session}/chats/${formatarChatId(params.telefone)}/messages?limit=100`,
+      { headers: { 'X-Api-Key': config.apiKey } }
+    )
+    if (!response.ok) return null
+    const data = await response.json().catch(() => null)
+    const lista: any[] = Array.isArray(data) ? data : data?.messages || []
+    const alvo = lista.find((item: any) => (item?.payload?.id || item?.id) === params.messageId)
+    const urlMidia = alvo?.payload?.media?.url || alvo?.media?.url || null
+    return montarUrlArquivo(urlMidia, config.baseUrl)
+  } catch {
+    return null
+  }
+}
+
+/**
+ * URL final de mídia para um evento recebido: usa media.url normalizada;
+ * se vier nula/inválida, recupera no histórico do chat pelo whatsapp_message_id.
+ * Sem messageId (ou sem mídia no histórico) devolve null.
+ */
+export async function resolverUrlMidia(
+  params: { urlMidia: string | null; telefone: string; messageId?: string | null; session?: string },
+  options: WahaOptions = {}
+): Promise<string | null> {
+  const config = options.config || getWahaConfig()
+  const direta = montarUrlArquivo(params.urlMidia, config.baseUrl)
+  if (direta) return direta
+  if (!params.messageId) return null
+  return buscarUrlMidiaHistoria(
+    { telefone: params.telefone, messageId: params.messageId, session: params.session },
+    options
+  )
+}
+
 // ===== Ciclo 3 (stub RED) =====
 
 /**

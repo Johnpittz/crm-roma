@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { enviarTexto, enviarMidia, enviarAudio, enviarLido, verificarSessao, checkNumbers, findContacts, resolverLid, buscarNomeContato, type FetchImpl, type Mediatype } from './waha'
+import { enviarTexto, enviarMidia, enviarAudio, enviarLido, verificarSessao, checkNumbers, findContacts, resolverLid, buscarNomeContato, montarUrlArquivo, buscarUrlMidiaHistoria, resolverUrlMidia, type FetchImpl, type Mediatype } from './waha'
 
 function fakeFetch(status: number, body: unknown) {
   const calls: Array<{ url: string; init: RequestInit }> = []
@@ -103,6 +103,126 @@ describe('enviarMidia', () => {
       )
       expect(calls[0].url).toBe(`http://waha.test:3000${endpoint}`)
     }
+  })
+})
+
+describe('montarUrlArquivo (URL de mídia do WAHA)', () => {
+  it('reescreve localhost para a base pública — a Vercel não alcança localhost (bug E2E)', () => {
+    expect(
+      montarUrlArquivo('http://localhost:3000/api/files/ROMA_1/x.jpeg', 'http://waha.test:3000')
+    ).toBe('http://waha.test:3000/api/files/ROMA_1/x.jpeg')
+  })
+
+  it('reescreve 127.0.0.1 e IPs privados (10.x, 172.16-31.x, 192.168.x)', () => {
+    expect(montarUrlArquivo('http://127.0.0.1:3000/a.bin', 'http://waha.test:3000')).toBe('http://waha.test:3000/a.bin')
+    expect(montarUrlArquivo('http://10.0.0.5:3000/a.bin', 'http://waha.test:3000')).toBe('http://waha.test:3000/a.bin')
+    expect(montarUrlArquivo('http://172.16.1.1:3000/a.bin', 'http://waha.test:3000')).toBe('http://waha.test:3000/a.bin')
+    expect(montarUrlArquivo('http://192.168.0.10:3000/a.bin', 'http://waha.test:3000')).toBe('http://waha.test:3000/a.bin')
+  })
+
+  it('resolve URL relativa contra a base', () => {
+    expect(montarUrlArquivo('/api/files/ROMA_1/x.pdf', 'http://waha.test:3000')).toBe(
+      'http://waha.test:3000/api/files/ROMA_1/x.pdf'
+    )
+  })
+
+  it('mantém URLs públicas intactas e devolve null para ausente/inválida', () => {
+    expect(montarUrlArquivo('https://files.example.com/x.pdf', 'http://waha.test:3000')).toBe(
+      'https://files.example.com/x.pdf'
+    )
+    expect(montarUrlArquivo(null, 'http://waha.test:3000')).toBeNull()
+    expect(montarUrlArquivo('://errado', 'http://waha.test:3000')).toBeNull()
+  })
+})
+
+describe('buscarUrlMidiaHistoria (fallback p/ evento com media.url nulo)', () => {
+  it('busca no histórico do chat e devolve a URL normalizada', async () => {
+    const { impl, calls } = fakeFetch(200, {
+      messages: [
+        { payload: { id: 'OUTRA', media: { url: 'http://localhost:3000/api/files/S/outra.jpeg' } } },
+        { payload: { id: 'QUERO', media: { url: 'http://localhost:3000/api/files/S/quer.jpeg' } } },
+      ],
+    })
+
+    const url = await buscarUrlMidiaHistoria(
+      { telefone: '5562999990000', messageId: 'QUERO' },
+      { fetchImpl: impl, config: CONFIG }
+    )
+
+    expect(url).toBe('http://waha.test:3000/api/files/S/quer.jpeg')
+    expect(calls[0].url).toContain('/api/ROMA_1/chats/5562999990000@c.us/messages')
+  })
+
+  it('devolve null quando a mensagem não tem mídia ou não existe', async () => {
+    const semMidia = fakeFetch(200, { messages: [{ payload: { id: 'QUERO', body: 'oi' } }] })
+    expect(
+      await buscarUrlMidiaHistoria({ telefone: '5562999990000', messageId: 'QUERO' }, { fetchImpl: semMidia.impl, config: CONFIG })
+    ).toBeNull()
+
+    const vazio = fakeFetch(200, { messages: [] })
+    expect(
+      await buscarUrlMidiaHistoria({ telefone: '5562999990000', messageId: 'QUERO' }, { fetchImpl: vazio.impl, config: CONFIG })
+    ).toBeNull()
+  })
+
+  it('devolve null quando a API falha', async () => {
+    const erro = fakeFetch(500, { error: 'boom' })
+    expect(
+      await buscarUrlMidiaHistoria({ telefone: '5562999990000', messageId: 'QUERO' }, { fetchImpl: erro.impl, config: CONFIG })
+    ).toBeNull()
+  })
+})
+
+describe('resolverUrlMidia (URL final de mídia do evento)', () => {
+  it('usa a URL do evento, normalizada para a base pública, sem consultar o histórico', async () => {
+    const { impl, calls } = fakeFetch(200, {})
+
+    const url = await resolverUrlMidia(
+      { urlMidia: 'http://localhost:3000/api/files/ROMA_1/x.jpeg', telefone: '5562999990000', messageId: 'MSG1' },
+      { fetchImpl: impl, config: CONFIG }
+    )
+
+    expect(url).toBe('http://waha.test:3000/api/files/ROMA_1/x.jpeg')
+    expect(calls).toHaveLength(0)
+  })
+
+  it('sem URL no evento (media.url nulo), recupera no histórico pelo whatsapp_message_id', async () => {
+    const { impl, calls } = fakeFetch(200, {
+      messages: [{ payload: { id: 'MSG1', media: { url: 'http://localhost:3000/api/files/ROMA_1/y.pdf' } } }],
+    })
+
+    const url = await resolverUrlMidia(
+      { urlMidia: null, telefone: '5562999990000', messageId: 'MSG1' },
+      { fetchImpl: impl, config: CONFIG }
+    )
+
+    expect(url).toBe('http://waha.test:3000/api/files/ROMA_1/y.pdf')
+    expect(calls[0].url).toContain('/api/ROMA_1/chats/5562999990000@c.us/messages')
+  })
+
+  it('URL inválida no evento também cai no fallback do histórico', async () => {
+    const { impl } = fakeFetch(200, {
+      messages: [{ payload: { id: 'MSG1', media: { url: '/api/files/ROMA_1/z.mp4' } } }],
+    })
+
+    const url = await resolverUrlMidia(
+      { urlMidia: '://errado', telefone: '5562999990000', messageId: 'MSG1' },
+      { fetchImpl: impl, config: CONFIG }
+    )
+
+    expect(url).toBe('http://waha.test:3000/api/files/ROMA_1/z.mp4')
+  })
+
+  it('sem URL e sem messageId devolve null sem consultar o WAHA', async () => {
+    const { impl, calls } = fakeFetch(200, {})
+
+    const url = await resolverUrlMidia(
+      { urlMidia: null, telefone: '5562999990000' },
+      { fetchImpl: impl, config: CONFIG }
+    )
+
+    expect(url).toBeNull()
+    expect(calls).toHaveLength(0)
   })
 })
 
