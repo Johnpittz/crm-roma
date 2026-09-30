@@ -110,13 +110,17 @@ export function NovaTarefaModal({ onSuccess }: NovaTarefaModalProps) {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="titulo">Título *</Label>
-            <Input
-              id="titulo"
-              placeholder="Ex: Follow up proposta"
-              value={titulo}
-              onChange={(e) => setTitulo(e.target.value)}
-              required
-            />
+            {/* Sem texto livre: as ações de rotina viraram opções fixas */}
+            <Select value={titulo} onValueChange={setTitulo}>
+              <SelectTrigger id="titulo">
+                <SelectValue placeholder="Selecione a ação…" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ENTRAR EM CONTATO">ENTRAR EM CONTATO</SelectItem>
+                <SelectItem value="MANDAR ORÇAMENTO">MANDAR ORÇAMENTO</SelectItem>
+                <SelectItem value="FINANCEIRO">FINANCEIRO</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2">

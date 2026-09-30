@@ -7,6 +7,10 @@ import { PainelInferior, type ClienteCard } from './painel-inferior'
  * Card CLIENTES do atendimento: o vendedor filtra a carteira sem sair da tela.
  * A busca vai para o servidor (GET /api/clientes?busca=) com debounce —
  * filtrar só os 300 carregados mentiria para ele.
+ *
+ * REGRA do Top 20: o ranking de clientes (os que mais compraram) é separado
+ * (GET /api/clientes/top) e o card CLIENTES pede excluir_top20=1 — quem está
+ * no ranking não pode aparecer na listagem ao lado.
  */
 
 vi.mock('@/lib/supabase/client', () => ({
@@ -36,15 +40,36 @@ function cliente(nome: string): ClienteCard {
   }
 }
 
+interface TopClienteTeste {
+  id: string
+  nome: string
+  documento: string | null
+  pedidos: number
+  valor: number
+}
+
 interface Payload {
   clientes: ClienteCard[]
   total: number
+  top?: TopClienteTeste[]
 }
 
+/** Fetch roteado por URL: /api/clientes/top (ranking) e /api/clientes (listagem). */
 function mockFetch(payload: Payload) {
-  const fn = vi.fn(async () => ({ ok: true, json: async () => ({ ...payload, escopo: 'equipe', limite: 300 }) }))
+  const fn = vi.fn(async (url: RequestInfo | URL) => {
+    const alvo = String(url)
+    if (alvo.includes('/api/clientes/top')) {
+      return { ok: true, json: async () => ({ clientes: payload.top ?? [], limite: 20, escopo: 'equipe' }) }
+    }
+    return { ok: true, json: async () => ({ ...payload, escopo: 'equipe', limite: 300 }) }
+  })
   vi.stubGlobal('fetch', fn)
   return fn
+}
+
+/** Chamadas de fetch que batem no padrão informado (por URL). */
+function chamadas(fetchMock: ReturnType<typeof vi.fn>, padrao: string) {
+  return fetchMock.mock.calls.filter(([url]) => String(url).includes(padrao))
 }
 
 /** Descarrega timers agendados + microtarefas (fetch promissado). */
@@ -69,9 +94,9 @@ describe('PainelInferior — card CLIENTES com filtro', () => {
     await descarregar()
 
     expect(document.body.textContent).toContain('Distribuidora Rio Verde LTDA')
-    expect(fetchMock).toHaveBeenCalledTimes(1)
-    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, { headers: Record<string, string> }]
-    expect(url).toContain('/api/clientes?')
+    const listagem = chamadas(fetchMock, '/api/clientes?')
+    expect(listagem).toHaveLength(1)
+    const [url, init] = listagem[0] as unknown as [string, { headers: Record<string, string> }]
     expect(url).toContain('limite=300')
     expect(url).not.toContain('busca=')
     expect(init.headers.Authorization).toBe('Bearer token-teste')
@@ -83,18 +108,19 @@ describe('PainelInferior — card CLIENTES com filtro', () => {
 
     render(<PainelInferior onAbrirConversa={() => {}} />)
     await descarregar()
-    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(chamadas(fetchMock, '/api/clientes?')).toHaveLength(1)
 
     fireEvent.change(screen.getByPlaceholderText(/Filtrar por/i), {
       target: { value: 'rio verde' },
     })
     // debounce de 300ms: nada deve disparar antes
     await descarregar(100)
-    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(chamadas(fetchMock, '/api/clientes?')).toHaveLength(1)
 
     await descarregar(300)
-    expect(fetchMock).toHaveBeenCalledTimes(2)
-    const [url] = fetchMock.mock.calls[1] as unknown as [string]
+    const listagem = chamadas(fetchMock, '/api/clientes?')
+    expect(listagem).toHaveLength(2)
+    const [url] = listagem[1] as unknown as [string]
     expect(url).toContain('busca=rio+verde')
   })
 
@@ -123,5 +149,69 @@ describe('PainelInferior — card CLIENTES com filtro', () => {
 
     expect(document.body.textContent).toContain('Nenhum cliente encontrado para')
     expect(document.body.textContent).not.toContain('Nenhum cliente na sua carteira')
+  })
+
+  it('a listagem CLIENTES pede ao servidor para excluir o Top 20 (regra)', async () => {
+    vi.useFakeTimers()
+    const fetchMock = mockFetch({ clientes: [], total: 1908 })
+
+    render(<PainelInferior onAbrirConversa={() => {}} />)
+    await descarregar()
+
+    const listagem = chamadas(fetchMock, '/api/clientes?')
+    expect(listagem).toHaveLength(1)
+    const [url] = listagem[0] as unknown as [string]
+    expect(url).toContain('excluir_top20=1')
+  })
+})
+
+describe('PainelInferior — Top 20 clientes (os que mais compraram)', () => {
+  it('renderiza o ranking vindo do servidor, sem dado de exemplo', async () => {
+    vi.useFakeTimers()
+    mockFetch({
+      clientes: [],
+      total: 1928,
+      top: [
+        { id: 'c1', nome: 'Distribuidora Rio Verde LTDA', documento: '123', pedidos: 48, valor: 187400 },
+        { id: 'c2', nome: 'Comércio São João ME', documento: null, pedidos: 45, valor: 176950 },
+      ],
+    })
+
+    render(<PainelInferior onAbrirConversa={() => {}} />)
+    await descarregar()
+
+    expect(document.body.textContent).toContain('Top 20 clientes')
+    expect(document.body.textContent).toContain('Distribuidora Rio Verde LTDA')
+    expect(document.body.textContent).toContain('48 compras')
+    expect(document.body.textContent).toContain('R$ 187.400')
+    expect(document.body.textContent).not.toContain('dados de exemplo')
+    expect(document.body.textContent).not.toContain('melhores vendedores')
+  })
+
+  it('sem histórico de vendas mostra aviso (o card não pode fingir que tem dados)', async () => {
+    vi.useFakeTimers()
+    mockFetch({ clientes: [], total: 1928, top: [] })
+
+    render(<PainelInferior onAbrirConversa={() => {}} />)
+    await descarregar()
+
+    expect(document.body.textContent).toContain('Sem histórico de vendas')
+    expect(document.body.textContent).not.toContain('dados de exemplo')
+  })
+
+  it('busca o ranking uma única vez na carga inicial', async () => {
+    vi.useFakeTimers()
+    const fetchMock = mockFetch({ clientes: [], total: 1928, top: [] })
+
+    render(<PainelInferior onAbrirConversa={() => {}} />)
+    await descarregar()
+
+    expect(chamadas(fetchMock, '/api/clientes/top')).toHaveLength(1)
+
+    fireEvent.change(screen.getByPlaceholderText(/Filtrar por/i), { target: { value: 'rio' } })
+    await descarregar(400)
+
+    expect(chamadas(fetchMock, '/api/clientes/top')).toHaveLength(1)
+    expect(chamadas(fetchMock, '/api/clientes?')).toHaveLength(2)
   })
 })

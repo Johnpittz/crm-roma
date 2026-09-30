@@ -552,6 +552,15 @@ EVOLUTION_API_KEY=e3186c32139f79c7566a1d6a3f5bc702fae199c725a313ce9b7f8ff035123b
 
 ## 14. Histórico de Commits Importantes
 
+### 30/09/2026 (Top 20 CLIENTES + dropdown fixo no Criar Tarefa)
+- [x] **Card do atendimento deixou de ser "Top 20 vendedores (mock)"** (`painel-inferior.tsx`): agora é **TOP 20 CLIENTES — os que mais compraram**, vindo de `GET /api/clientes/top` (novo, `app/api/clientes/top/route.ts`), ranking por **valor total comprado** com desempate por nº de pedidos, **dentro do escopo de carteira** do logado (mesma régua `lib/carteira.ts`)
+- [x] **REGRA:** quem aparece no Top 20 **não aparece na listagem CLIENTES** ao lado — o card chama `GET /api/clientes?excluir_top20=1` e o corte é feito **no servidor** (lista **e** contador, e vale também na busca por nome/CNPJ). Resposta ganhou `excluidos_top20`
+- [x] **`lib/top-clientes.ts`**: agrega `vendas` por `cliente_id` (paginação 1000/teto 20 mil linhas, join `clientes!inner(vendedor_responsavel_id)` para respeitar o escopo, descarta `status = cancelada`, `valor_final ?? valor_total`), cache em memória de 2 min por escopo. Funções puras testadas em `lib/top-clientes.test.ts` (3 testes)
+- [x] **Estado vazio honesto:** a tabela `vendas` está **zerada em produção** (0 linhas; `oportunidades` também) — o card mostra "Sem histórico de vendas ainda — o ranking aparece quando as compras forem sincronizadas", **sem dado fictício**. Enquanto não houver vendas, o corte do Top 20 é de 0 clientes (nada some da listagem)
+- [x] **CRIAR TAREFA sem input livre:** Título virou **dropdown fixo** com `ENTRAR EM CONTATO` / `MANDAR ORÇAMENTO` / `FINANCEIRO` (placeholder "Selecione a ação…", botão fica desabilitado até escolher) — no painel de contato (`painel-contato.tsx`) e também no modal "Nova Tarefa" do kanban (`nova-tarefa-modal.tsx`), que usa os mesmos Radix `Select`
+- [x] TDD RED→GREEN: `lib/top-clientes.test.ts` (3), `painel-inferior.test.tsx` (+4, mock de fetch agora roteia `/api/clientes/top` e valida `excluir_top20=1`), novo `painel-contato.test.tsx` (2) — suíte **115/115**, `tsc --noEmit` e `next build` limpos
+- [ ] Pendência de dados: para o ranking encher, o histórico de compras precisa entrar em `vendas` (sync Millennium — scripts em `scripts/sync-millennium*`, credenciais não estão no repo)
+
 ### 23/09/2026 (Escopo de carteira: vendedor só vê os próprios clientes)
 - [x] **Regra aplicada nos 5 pontos que leem a base de clientes** (página `/clientes`, `GET /api/clientes`, card CLIENTES do atendimento, dropdown da Nova Venda, `GET /api/promocoes/clientes`): `vendedor` → só `vendedor_responsavel_id = ele`; `gerente_comercial`/`diretor`/`admin` → carteira toda (**visão provisória**, troca quando isso sumir do produto); `demonstracao` → própria, mesmo vazia (a sidebar já oculta `/clientes` para demo: "não deve ver clientes reais")
 - [x] Régua única **`lib/carteira.ts`** (`escopoCarteira(cargo)`, `ehGestor(cargo)`, `aplicarEscopoClientes(query, escopo, userId)`) — TDD RED→GREEN com `lib/carteira.test.ts` (13 testes), suíte **83/83**, `tsc --noEmit` e `next build` limpos

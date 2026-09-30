@@ -85,8 +85,8 @@ Acesse: http://localhost:3000
 
 ## 📝 Notas
 
-- `/dashboard` e o ranking "Top 20" usam dados mockados (mantido propositalmente por enquanto)
+- `/dashboard` ainda usa dados mockados (mantido propositalmente por enquanto); o ranking do atendimento virou **TOP 20 CLIENTES** real (fonte: tabela `vendas`)
 - O restante do atendimento usa dados reais (Supabase + WAHA)
 - Projeção matemática calcula tendência baseada em dias úteis
 - Kanban permite arrastar tarefas entre colunas
-- Testes automatizados: `npm test` (vitest, 101 testes)
+- Testes automatizados: `npm test` (vitest, 115 testes)

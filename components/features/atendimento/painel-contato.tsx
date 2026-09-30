@@ -427,7 +427,14 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
           <div className="space-y-2">
             <div>
               <label className="text-[10px] text-slate-500 uppercase tracking-wide">Título *</label>
-              <Input placeholder="Ex: Follow up proposta" value={tarefaTitulo} onChange={(e) => setTarefaTitulo(e.target.value)} className="h-8 text-xs mt-1" />
+              {/* Sem texto livre: as ações de rotina viraram opções fixas */}
+              <select value={tarefaTitulo} onChange={(e) => setTarefaTitulo(e.target.value)}
+                className="w-full h-8 text-xs mt-1 px-2 border border-slate-200 rounded-md bg-white text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                <option value="" disabled>Selecione a ação…</option>
+                <option value="ENTRAR EM CONTATO">ENTRAR EM CONTATO</option>
+                <option value="MANDAR ORÇAMENTO">MANDAR ORÇAMENTO</option>
+                <option value="FINANCEIRO">FINANCEIRO</option>
+              </select>
             </div>
             <div>
               <label className="text-[10px] text-slate-500 uppercase tracking-wide">Etapa no Kanban</label>

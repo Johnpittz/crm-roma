@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient, createClient as createServiceClient } from "@supabase/supabase-js";
 import { escopoCarteira, aplicarEscopoClientes, idsDaEquipe } from "@/lib/carteira";
 import { filtroBuscaClientes } from "@/lib/busca-clientes";
+import { idsTopClientes, TOP_CLIENTES_LIMITE } from "@/lib/top-clientes";
 
 const SUPABASE_URL = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").trim();
 const ANON_KEY = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "").trim();
@@ -45,18 +46,38 @@ export async function GET(request: NextRequest) {
     );
     const busca = searchParams.get("busca") || "";
     const status = searchParams.get("status") || "";
+    // REGRA do card de atendimento: o Top 20 (os que mais compraram) não pode
+    // aparecer na listagem CLIENTES ao lado. O card pede com excluir_top20=1 e
+    // o corte acontece AQUI, no servidor, para lista e contador saírem iguais.
+    const excluirTop20 = ["1", "true", "sim"].includes(
+      (searchParams.get("excluir_top20") || "").toLowerCase()
+    );
     // Nome, CPF/CNPJ, telefone, celular ou e-mail (ver lib/busca-clientes.ts)
     const filtroBusca = filtroBuscaClientes(busca);
+
+    // Ids do Top 20 no mesmo escopo da listagem (falha => não corta nada)
+    const idsExcluidos = excluirTop20
+      ? await idsTopClientes(supabase, {
+          escopo,
+          userId: userData.user.id,
+          equipeIds: equipe,
+          limite: TOP_CLIENTES_LIMITE,
+        })
+      : [];
+    const semTop20 = (q: any) =>
+      idsExcluidos.length ? q.not("id", "in", `(${idsExcluidos.join(",")})`) : q;
 
     // Total do escopo (independente do limite) — alimenta contadores e métricas
     let countQuery = supabase.from("clientes").select("id", { count: "exact", head: true });
     if (filtroBusca) countQuery = countQuery.or(filtroBusca);
     if (status) countQuery = countQuery.eq("status", status);
-    const { count, error: countError } = await aplicarEscopoClientes(
-      countQuery,
-      escopo,
-      userData.user.id,
-      equipe
+    const { count, error: countError } = await semTop20(
+      aplicarEscopoClientes(
+        countQuery,
+        escopo,
+        userData.user.id,
+        equipe
+      )
     );
 
     if (countError) {
@@ -67,11 +88,13 @@ export async function GET(request: NextRequest) {
     let listQuery = supabase.from("clientes").select(COLUNAS_LISTA);
     if (filtroBusca) listQuery = listQuery.or(filtroBusca);
     if (status) listQuery = listQuery.eq("status", status);
-    const { data: clientes, error } = await aplicarEscopoClientes(
-      listQuery,
-      escopo,
-      userData.user.id,
-      equipe
+    const { data: clientes, error } = await semTop20(
+      aplicarEscopoClientes(
+        listQuery,
+        escopo,
+        userData.user.id,
+        equipe
+      )
     )
       .order("nome_razao_social", { ascending: true })
       .limit(limite);
@@ -85,6 +108,8 @@ export async function GET(request: NextRequest) {
       total: count ?? 0,
       escopo,
       limite,
+      // Quantos do Top 20 saíram desta listagem (0 quando não pediu o corte)
+      excluidos_top20: idsExcluidos.length,
     });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || "Erro interno" }, { status: 500 });
