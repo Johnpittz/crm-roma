@@ -85,7 +85,13 @@ describe('Criar Tarefa — dropdown fixo de ações', () => {
     const opcaoAcao = within(secao).getByRole('option', { name: 'ENTRAR EM CONTATO' })
     const selectAcao = opcaoAcao.closest('select') as HTMLSelectElement
     const opcoes = Array.from(selectAcao.querySelectorAll('option')).map((o) => o.textContent?.trim())
-    expect(opcoes).toEqual(['Selecione a ação…', 'ENTRAR EM CONTATO', 'MANDAR ORÇAMENTO', 'FINANCEIRO'])
+    expect(opcoes).toEqual([
+      'Selecione a ação…',
+      'ENTRAR EM CONTATO',
+      'MANDAR ORÇAMENTO',
+      'FINANCEIRO',
+      'ESTOQUE',
+    ])
     expect(within(selectAcao).queryByRole('option', { name: /Baixa|Média|WhatsApp|A Fazer/ })).toBeNull()
   })
 
@@ -113,6 +119,10 @@ describe('Criar Tarefa — dropdown fixo de ações', () => {
       ([url, init]) => String(url).includes('/api/tarefas') && init?.method === 'POST'
     ) as unknown as [string, RequestInit] | undefined
     expect(post).toBeTruthy()
-    expect(JSON.parse(String(post![1].body)).titulo).toBe('MANDAR ORÇAMENTO')
+    const corpo = JSON.parse(String(post![1].body))
+    expect(corpo.titulo).toBe('MANDAR ORÇAMENTO')
+    // o telefone do WhatsApp acompanha a tarefa para o servidor poder
+    // cadastrar o cliente que ainda não existe na base
+    expect(corpo.telefone).toBe('556234165030')
   })
 })

@@ -4,7 +4,7 @@
 
 O CRM ROMA é uma plataforma web completa para gestão de vendas e atendimento de empresas distribuidoras. Integra WhatsApp via **WAHA** (self-hosted, engine GOWS — a Evolution API ficou só como rollback), oferece quadros Kanban para gestão do funil de vendas, controle de clientes, tarefas, leads e dashboards gerenciais em tempo real.
 
-> **Status rápido (30/09/2026):** módulo **ATENDIMENTOS em produção** com WAHA · **115 testes** (`npm test`) · **regra de carteira ativa:** a carteira é **dividida entre os gestores** — vendedor só vê os próprios, `gerente_comercial` vê a carteira da sua equipe, direção vê tudo (`lib/carteira.ts`) · **Top 20 do atendimento = TOP 20 CLIENTES (os que mais compraram)** e quem está nele some da listagem CLIENTES (`lib/top-clientes.ts` + `GET /api/clientes?excluir_top20=1`) · runbook de números: `runbook-waha-numeros.md` · handoff técnico: `HANDOFF-MIGRACAO-WAHA.md` · diário de bordo: `PROGRESSO.MD`.
+> **Status rápido (30/09/2026):** módulo **ATENDIMENTOS em produção** com WAHA · **132 testes** (`npm test`) · **regra de carteira ativa:** a carteira é **dividida entre os gestores** — vendedor só vê os próprios, `gerente_comercial` vê a carteira da sua equipe, direção vê tudo (`lib/carteira.ts`) · **Top 20 do atendimento = TOP 20 CLIENTES (os que mais compraram)** — fontes `vendas` (integração) + vendas concluídas no **TAREFAS/KANBAN** — e quem está nele some da listagem CLIENTES (`lib/top-clientes.ts` + `GET /api/clientes?excluir_top20=1`); tarefa de contato novo cadastra o cliente automático (`POST /api/tarefas`) · runbook de números: `runbook-waha-numeros.md` · handoff técnico: `HANDOFF-MIGRACAO-WAHA.md` · diário de bordo: `PROGRESSO.MD`.
 
 ---
 
@@ -62,7 +62,7 @@ O CRM ROMA foi projetado para equipes comerciais de distribuidoras, oferecendo:
 - Chat inline com envio de mensagens e mídia
 - Painel de contato com informações do cliente
 - Barra de métricas de atendimento (realizado vs meta)
-- Faixa inferior com **TOP 20 CLIENTES (os que mais compraram, `GET /api/clientes/top`)** + card **CLIENTES da carteira com filtro** — busca por nome, CNPJ, telefone ou e-mail direto na tela de atendimento (servidor, com debounce), sem o vendedor precisar sair. **Regra:** o Top 20 some da listagem CLIENTES (`excluir_top20=1`, corte no servidor, lista + contador + busca)
+- Faixa inferior com **TOP 20 CLIENTES (os que mais compraram, `GET /api/clientes/top`)** + card **CLIENTES da carteira com filtro** — busca por nome, CNPJ, telefone ou e-mail direto na tela de atendimento (servidor, com debounce), sem o vendedor precisar sair. **Regra:** o Top 20 some da listagem CLIENTES (`excluir_top20=1`, corte no servidor, lista + contador + busca). Ranking somando `vendas` + vendas do **kanban** (`tarefas.valor_venda` com `resultado=sucesso`); contato sem cadastro vira cliente automático na tarefa
 - Simulação de WhatsApp (para demonstração)
 - Sincronização automática via polling (a cada 15s)
 - Gestão de etiquetas e tarefas vinculadas a conversas

@@ -147,8 +147,8 @@ export function PainelInferior({ onAbrirConversa }: PainelInferiorProps) {
             <p className="text-xs text-slate-400 px-3 py-2">Carregando ranking…</p>
           ) : topClientes.length === 0 ? (
             <p className="text-xs text-slate-400 px-3 py-2">
-              Sem histórico de vendas ainda — o ranking aparece quando as compras
-              forem sincronizadas.
+              Sem vendas ainda — conclua tarefas no kanban (com valor) para
+              começar o ranking.
             </p>
           ) : (
             topClientes.map((c, i) => (

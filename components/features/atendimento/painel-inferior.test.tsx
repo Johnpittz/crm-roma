@@ -195,8 +195,27 @@ describe('PainelInferior — Top 20 clientes (os que mais compraram)', () => {
     render(<PainelInferior onAbrirConversa={() => {}} />)
     await descarregar()
 
-    expect(document.body.textContent).toContain('Sem histórico de vendas')
+    expect(document.body.textContent).toContain('Sem vendas ainda')
+    expect(document.body.textContent).toContain('conclua tarefas no kanban')
     expect(document.body.textContent).not.toContain('dados de exemplo')
+  })
+
+  it('mostra a venda registrada no kanban para cliente sem cadastro', async () => {
+    vi.useFakeTimers()
+    mockFetch({
+      clientes: [],
+      total: 0,
+      top: [
+        { id: 'sem-cadastro:e-commerce', nome: 'E-commerce', documento: null, pedidos: 2, valor: 1500 },
+      ],
+    })
+
+    render(<PainelInferior onAbrirConversa={() => {}} />)
+    await descarregar()
+
+    expect(document.body.textContent).toContain('E-commerce')
+    expect(document.body.textContent).toContain('2 compras')
+    expect(document.body.textContent).toContain('R$ 1.500')
   })
 
   it('busca o ranking uma única vez na carga inicial', async () => {

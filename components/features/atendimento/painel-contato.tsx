@@ -215,6 +215,9 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
           titulo: tarefaTitulo.trim(),
           cliente_nome: nome,
           cliente_id: atendimento.cliente_id || null,
+          // telefone do WhatsApp: com ele o servidor cadastra o cliente
+          // que ainda não existe na base (ver POST /api/tarefas)
+          telefone: telefone || null,
           tipo: tarefaTipo,
           prioridade: tarefaPrioridade,
           data_inicio: tarefaData || null,
@@ -434,6 +437,7 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
                 <option value="ENTRAR EM CONTATO">ENTRAR EM CONTATO</option>
                 <option value="MANDAR ORÇAMENTO">MANDAR ORÇAMENTO</option>
                 <option value="FINANCEIRO">FINANCEIRO</option>
+                <option value="ESTOQUE">ESTOQUE</option>
               </select>
             </div>
             <div>

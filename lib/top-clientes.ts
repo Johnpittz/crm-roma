@@ -7,25 +7,40 @@
  *    o card manda `excluir_top20=1` para GET /api/clientes, que aplica o mesmo
  *    corte aqui.
  *
- * Fonte: tabela `vendas` (cliente_id + valor_final/valor_total), sincronizada
- * do Millennium. Sem histórico de vendas o ranking volta vazio — o card mostra
- * o aviso, nunca dado inventado.
+ * FONTES (as duas somam no mesmo ranking):
+ *  1. `vendas` — integração Millennium (hoje zerada; cliente_id + valor_final);
+ *  2. `tarefas` — o que o time registra no TAREFAS/KANBAN ao concluir com
+ *     resultado=sucesso e valor_venda > 0. Tarefa sem cliente vinculado entra
+ *     pelo `cliente_nome` e, quando esse nome casa com um cliente da base, o
+ *     valor é somado no cliente real (ver aplicarResolucaoDeNomes).
+ *
+ * Item que continua sem cadastro aparece no ranking com id sintético
+ * `sem-cadastro:<nome>` — ele NUNCA vai para o filtro de exclusão (só uuid).
  */
 
 import type { EscopoCarteira } from "./carteira";
+import { normalizarNome } from "./nome-cliente";
 
 /** Tamanho do ranking. */
 export const TOP_CLIENTES_LIMITE = 20;
 
-/** Teto de linhas de `vendas` lidas por cálculo (proteção contra base gigante). */
-const MAX_LINHAS_VENDAS = 20_000;
+/** Teto de linhas lidas por fonte (proteção contra base gigante). */
+const MAX_LINHAS = 20_000;
 /** Páginas de 1.000 linhas (limite padrão do PostgREST). */
 const PAGINA = 1000;
 /** Cache em memória por instância (o card do atendimento chama 2x por tela). */
 const CACHE_TTL_MS = 2 * 60_000;
+/** Máximo de nomes casados por consulta por cálculo. */
+const MAX_RESOLUCOES_NOME = 30;
+/** Chaves de item que ainda não têm cliente cadastrado. */
+const PREFIXO_NOME = "nome:";
+/** Id sintético do ranking para quem nunca foi cadastrado. */
+const PREFIXO_SEM_CADASTRO = "sem-cadastro:";
+/** uuid v4 — o único formato que pode ir para o filtro SQL de exclusão. */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export interface TopCliente {
-  id: string;
+  id: string; // uuid do cliente ou `sem-cadastro:<nome normalizado>`
   nome: string;
   documento: string | null;
   pedidos: number;
@@ -40,6 +55,14 @@ export interface VendaRankingLinha {
   status?: string | null;
 }
 
+/** Uma linha de `tarefas` considerada venda (sucesso + valor). */
+export interface TarefaVendaLinha {
+  cliente_id?: string | null;
+  cliente_nome?: string | null;
+  valor_venda?: number | null;
+  resultado?: string | null;
+}
+
 /** Linha de `clientes` usada para rotular o ranking. */
 export interface ClienteRanking {
   id: string;
@@ -47,14 +70,29 @@ export interface ClienteRanking {
   cpf_cnpj?: string | null;
 }
 
-/** O que um cliente comprou, segundo as linhas de `vendas` informadas. */
+/** O que um cliente comprou, somando as fontes. */
 export interface AgregadoCliente {
   pedidos: number;
   valor: number;
+  /** Nome original quando a chave veio de um nome sem cliente vinculado. */
+  nome?: string;
 }
 
 /**
- * Agrega vendas por cliente: nº de pedidos + valor comprado.
+ * Chave de agregação: o id do cliente quando existe; na falta, o nome
+ * normalizado (`nome:<nome em minúsculo>`). Sem id e sem nome => null (não conta).
+ */
+export function chaveDoCliente(
+  clienteId?: string | null,
+  clienteNome?: string | null
+): string | null {
+  if (clienteId) return clienteId;
+  const nome = normalizarNome(clienteNome);
+  return nome ? `${PREFIXO_NOME}${nome}` : null;
+}
+
+/**
+ * Agrega vendas do ERP por cliente: nº de pedidos + valor comprado.
  * Regras: sem cliente vinculado não conta; venda cancelada não conta;
  * valor = valor_final, caindo para valor_total quando o final vem zerado.
  */
@@ -78,7 +116,95 @@ export function agregarVendasPorCliente(
 }
 
 /**
- * Ids na ordem do ranking: valor comprado ↓, empate por nº de pedidos ↓,
+ * Agrega as vendas registradas no TAREFAS/KANBAN.
+ * Só conta o que é venda de verdade: resultado `sucesso` + valor_venda > 0
+ * (mesma régua do /api/tarefas/resumo). Sem cliente vinculado a chave é o nome.
+ */
+export function agregarTarefasPorCliente(
+  linhas: TarefaVendaLinha[]
+): Map<string, AgregadoCliente> {
+  const agregado = new Map<string, AgregadoCliente>();
+
+  for (const linha of linhas || []) {
+    const valor = Number(linha?.valor_venda) || 0;
+    if (linha?.resultado !== "sucesso" || valor <= 0) continue;
+
+    const chave = chaveDoCliente(linha.cliente_id, linha.cliente_nome);
+    if (!chave) continue;
+
+    const atual = agregado.get(chave) || { pedidos: 0, valor: 0 };
+    atual.pedidos += 1;
+    atual.valor += valor;
+    if (!atual.nome && !linha.cliente_id && linha.cliente_nome) {
+      atual.nome = linha.cliente_nome.trim().replace(/\s+/g, " ");
+    }
+    agregado.set(chave, atual);
+  }
+
+  return agregado;
+}
+
+/** Soma dois agregados (ERP + kanban) sem perder a contagem de ninguém. */
+export function mesclarAcumulos(
+  a: Map<string, AgregadoCliente>,
+  b: Map<string, AgregadoCliente>
+): Map<string, AgregadoCliente> {
+  const merged = new Map<string, AgregadoCliente>();
+  for (const [chave, valor] of Array.from(a.entries())) merged.set(chave, { ...valor });
+  for (const [chave, valor] of Array.from(b.entries())) {
+    const atual = merged.get(chave);
+    if (!atual) {
+      merged.set(chave, { ...valor });
+      continue;
+    }
+    atual.pedidos += valor.pedidos;
+    atual.valor += valor.valor;
+    if (!atual.nome && valor.nome) atual.nome = valor.nome;
+  }
+  return merged;
+}
+
+/**
+ * Aplica o resultado da busca de nomes sem cadastro: quando o nome bateu com
+ * um cliente da base, some as duas contas no id real e apaga a chave de nome.
+ * `null` = não achou cliente, a chave de nome segue no ranking como está.
+ */
+export function aplicarResolucaoDeNomes(
+  agregado: Map<string, AgregadoCliente>,
+  resolucao: Record<string, string | null>
+): Map<string, AgregadoCliente> {
+  const saida = new Map<string, AgregadoCliente>();
+  for (const [chave, valor] of Array.from(agregado.entries())) saida.set(chave, { ...valor });
+
+  for (const [chaveNome, idReal] of Object.entries(resolucao || {})) {
+    const origem = saida.get(chaveNome);
+    if (!origem || !idReal) continue;
+
+    saida.delete(chaveNome);
+    const destino = saida.get(idReal);
+    if (destino) {
+      destino.pedidos += origem.pedidos;
+      destino.valor += origem.valor;
+      delete destino.nome;
+    } else {
+      saida.set(idReal, { pedidos: origem.pedidos, valor: origem.valor });
+    }
+  }
+
+  return saida;
+}
+
+/**
+ * Ids reais (uuid) do ranking — é o que pode ir para o `.not("id","in",...)`
+ * de GET /api/clientes. Item `sem-cadastro:` fica de fora: filtrar por um id
+ * que não existe no banco machucaria o SQL sem tirar ninguém da lista.
+ */
+export function idsReaisParaExcluir(itens: TopCliente[]): string[] {
+  return (itens || []).map((i) => i?.id).filter((id): id is string => !!id && UUID_RE.test(id));
+}
+
+/**
+ * Chaves na ordem do ranking: valor comprado ↓, empate por nº de pedidos ↓,
  * cortado no limite.
  */
 export function ordenarIdsRanking(
@@ -92,8 +218,9 @@ export function ordenarIdsRanking(
 }
 
 /**
- * Monta a lista final na ordem do ranking. Id sem linha de cliente é pulado
- * (a ligação é inner join, mas não pode quebrar o card por 1 linha faltando).
+ * Monta a lista final na ordem do ranking.
+ * - chave de id: usa a linha do cliente (sem linha => pulado, não pode quebrar o card);
+ * - chave de nome (`sem-cadastro:`): mostra o nome original, sem documento.
  */
 export function montarRanking(
   ids: string[],
@@ -104,9 +231,23 @@ export function montarRanking(
 
   const ranking: TopCliente[] = [];
   for (const id of ids) {
-    const cliente = porId.get(id);
     const contagem = agregado.get(id);
-    if (!cliente || !contagem) continue;
+    if (!contagem) continue;
+
+    if (id.startsWith(PREFIXO_NOME)) {
+      const nomeChave = id.slice(PREFIXO_NOME.length);
+      ranking.push({
+        id: `${PREFIXO_SEM_CADASTRO}${nomeChave}`,
+        nome: contagem.nome || nomeChave,
+        documento: null,
+        pedidos: contagem.pedidos,
+        valor: Math.round(contagem.valor * 100) / 100,
+      });
+      continue;
+    }
+
+    const cliente = porId.get(id);
+    if (!cliente) continue;
     ranking.push({
       id,
       nome: cliente.nome_razao_social || "Sem nome",
@@ -127,7 +268,7 @@ async function carregarVendas(
 ): Promise<VendaRankingLinha[]> {
   const linhas: VendaRankingLinha[] = [];
 
-  for (let pagina = 0; linhas.length < MAX_LINHAS_VENDAS; pagina++) {
+  for (let pagina = 0; linhas.length < MAX_LINHAS; pagina++) {
     const inicio = pagina * PAGINA;
     let query = db
       .from("vendas")
@@ -155,6 +296,81 @@ async function carregarVendas(
   return linhas;
 }
 
+/** Consulta paginada das tarefas concluídas como venda (fonte do kanban). */
+async function carregarTarefasVendidas(
+  db: { from: (tabela: string) => any },
+  escopo: EscopoCarteira,
+  userId: string,
+  equipeIds: string[]
+): Promise<TarefaVendaLinha[]> {
+  const linhas: TarefaVendaLinha[] = [];
+
+  for (let pagina = 0; linhas.length < MAX_LINHAS; pagina++) {
+    const inicio = pagina * PAGINA;
+    let query = db
+      .from("tarefas")
+      .select("cliente_id, cliente_nome, valor_venda, resultado")
+      .eq("resultado", "sucesso")
+      .gt("valor_venda", 0);
+
+    // mesma régua de carteira: tarefa é do vendedor que a executou
+    if (escopo === "proprio") {
+      query = query.eq("vendedor_id", userId);
+    } else if (escopo === "equipe") {
+      const ids = Array.from(new Set([userId, ...(equipeIds || [])])).filter(Boolean);
+      query = query.in("vendedor_id", ids.length ? ids : [userId]);
+    }
+
+    const { data, error } = await query
+      .order("created_at", { ascending: false })
+      .range(inicio, inicio + PAGINA - 1);
+
+    if (error) throw new Error(error.message);
+
+    const lote = (data || []) as TarefaVendaLinha[];
+    linhas.push(...lote);
+    if (lote.length < PAGINA) break;
+  }
+
+  return linhas;
+}
+
+/** Escapa curingas do LIKE para casar o nome EXATO (só diferencia maiúscula). */
+function padraoNomeExato(nome: string): string {
+  return nome.replace(/[\\%_]/g, (c) => `\\${c}`);
+}
+
+/**
+ * Tenta ligar as chaves de nome aos clientes da base (ilike exato).
+ * Devolve o mapa `{ "nome:<x>": uuid | null }` para aplicarResolucaoDeNomes.
+ */
+async function buscarClientesPorNome(
+  db: { from: (tabela: string) => any },
+  agregado: Map<string, AgregadoCliente>
+): Promise<Record<string, string | null>> {
+  const chaves = Array.from(agregado.keys())
+    .filter((chave) => chave.startsWith(PREFIXO_NOME))
+    .slice(0, MAX_RESOLUCOES_NOME);
+
+  const resolucao: Record<string, string | null> = {};
+  await Promise.all(
+    chaves.map(async (chave) => {
+      try {
+        const nome = agregado.get(chave)?.nome || chave.slice(PREFIXO_NOME.length);
+        const { data } = await db
+          .from("clientes")
+          .select("id")
+          .ilike("nome_razao_social", padraoNomeExato(nome))
+          .limit(1);
+        resolucao[chave] = data?.[0]?.id || null;
+      } catch {
+        resolucao[chave] = null;
+      }
+    })
+  );
+  return resolucao;
+}
+
 interface ChaveCache {
   escopo: EscopoCarteira;
   userId: string;
@@ -169,7 +385,8 @@ function chaveDoCache({ escopo, userId, equipeIds, limite }: ChaveCache): string
 }
 
 /**
- * Ranking completo (nome + pedidos + valor) para o escopo informado.
+ * Ranking completo (nome + pedidos + valor) para o escopo informado,
+ * somando ERP (`vendas`) e kanban (`tarefas`).
  * Erro de banco devolve lista vazia (fail-open): o card mostra o aviso e a
  * listagem CLIENTES continua completa em vez de quebrar a tela.
  */
@@ -182,18 +399,30 @@ export async function topClientes(
   if (guardado && guardado.expira > Date.now()) return guardado.itens;
 
   try {
-    const linhas = await carregarVendas(db, escopo, userId, equipeIds);
-    const agregado = agregarVendasPorCliente(linhas);
-    const ids = ordenarIdsRanking(agregado, limite);
+    const [vendas, tarefas] = await Promise.all([
+      carregarVendas(db, escopo, userId, equipeIds),
+      carregarTarefasVendidas(db, escopo, userId, equipeIds),
+    ]);
+
+    let agregado = mesclarAcumulos(
+      agregarVendasPorCliente(vendas),
+      agregarTarefasPorCliente(tarefas)
+    );
+    agregado = aplicarResolucaoDeNomes(agregado, await buscarClientesPorNome(db, agregado));
+
+    const chaves = ordenarIdsRanking(agregado, limite);
     let itens: TopCliente[] = [];
 
-    if (ids.length) {
-      const { data: clientes, error } = await db
-        .from("clientes")
-        .select("id, nome_razao_social, cpf_cnpj")
-        .in("id", ids);
+    if (chaves.length) {
+      const idsReais = chaves.filter((id) => UUID_RE.test(id));
+      const { data: clientes, error } = idsReais.length
+        ? await db
+            .from("clientes")
+            .select("id, nome_razao_social, cpf_cnpj")
+            .in("id", idsReais)
+        : { data: [], error: null };
       if (error) throw new Error(error.message);
-      itens = montarRanking(ids, (clientes || []) as ClienteRanking[], agregado);
+      itens = montarRanking(chaves, (clientes || []) as ClienteRanking[], agregado);
     }
 
     cache.set(chave, { expira: Date.now() + CACHE_TTL_MS, itens });
@@ -204,11 +433,11 @@ export async function topClientes(
   }
 }
 
-/** Só os ids — é o que GET /api/clientes usa para tirar o Top 20 da listagem. */
+/** Só os ids reais — é o que GET /api/clientes usa para tirar o Top 20 da lista. */
 export async function idsTopClientes(
   db: { from: (tabela: string) => any },
   opts: ChaveCache
 ): Promise<string[]> {
   const ranking = await topClientes(db, opts);
-  return ranking.map((c) => c.id).filter(Boolean);
+  return idsReaisParaExcluir(ranking);
 }

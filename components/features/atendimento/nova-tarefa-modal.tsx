@@ -119,6 +119,7 @@ export function NovaTarefaModal({ onSuccess }: NovaTarefaModalProps) {
                 <SelectItem value="ENTRAR EM CONTATO">ENTRAR EM CONTATO</SelectItem>
                 <SelectItem value="MANDAR ORÇAMENTO">MANDAR ORÇAMENTO</SelectItem>
                 <SelectItem value="FINANCEIRO">FINANCEIRO</SelectItem>
+                <SelectItem value="ESTOQUE">ESTOQUE</SelectItem>
               </SelectContent>
             </Select>
           </div>

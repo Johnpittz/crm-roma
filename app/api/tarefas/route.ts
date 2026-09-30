@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
+import { payloadNovoCliente } from "@/lib/nome-cliente";
 
 export const dynamic = "force-dynamic";
 
@@ -72,6 +73,7 @@ export async function POST(request: NextRequest) {
     resultado,
     observacao_resultado,
     origem_lead,
+    telefone,
   } = body;
 
   if (!titulo || !tipo) {
@@ -102,6 +104,18 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  // REGRA: tarefa sem cliente vinculado -> casa o cliente pelo nome; não
+  // achando, cadastra um novo com o que veio do WhatsApp (nome + telefone).
+  // Assim a venda registrada aqui cai no ranking de Top 20 clientes.
+  let clienteIdFinal: string | null = cliente_id || null;
+  if (!clienteIdFinal && cliente_nome) {
+    clienteIdFinal = await vincularOuCriarCliente({
+      nome: cliente_nome,
+      telefone: telefone || null,
+      vendedorId: targetVendedorId,
+    });
+  }
+
   // Pega a maior ordem da coluna
   const { data: ultimaOrdem } = await supabase
     .from("tarefas")
@@ -118,7 +132,7 @@ export async function POST(request: NextRequest) {
     .from("tarefas")
     .insert({
       vendedor_id: targetVendedorId,
-      cliente_id: cliente_id || null,
+      cliente_id: clienteIdFinal,
       cliente_nome: cliente_nome || null,
       titulo,
       descricao: descricao || null,
@@ -144,6 +158,52 @@ export async function POST(request: NextRequest) {
   }
 
   return NextResponse.json({ success: true, tarefa });
+}
+
+/**
+ * Casa o nome com um cliente da base (ilike exato, sem depender da RLS do
+ * usuário) e, se não existir, cadastra um novo com o que a gente tem.
+ * Qualquer falha devolve null: a tarefa é criada mesmo sem vínculo (a
+ * listagem e o ranking tratam o nome solto como "sem cadastro").
+ */
+async function vincularOuCriarCliente({
+  nome,
+  telefone,
+  vendedorId,
+}: {
+  nome: string;
+  telefone: string | null;
+  vendedorId: string;
+}): Promise<string | null> {
+  const nomeLimpo = (nome || "").trim().replace(/\s+/g, " ");
+  if (!nomeLimpo) return null;
+
+  try {
+    const admin = createServiceClient(
+      (process.env.NEXT_PUBLIC_SUPABASE_URL || "").trim(),
+      (process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim()
+    );
+
+    const padrao = nomeLimpo.replace(/[\\%_]/g, (c) => `\\${c}`);
+    const { data: existente, error: erroBusca } = await admin
+      .from("clientes")
+      .select("id")
+      .ilike("nome_razao_social", padrao)
+      .limit(1);
+    if (erroBusca) throw new Error(erroBusca.message);
+    if (existente?.[0]?.id) return existente[0].id;
+
+    const { data: novo, error: erroInsert } = await admin
+      .from("clientes")
+      .insert(payloadNovoCliente({ nome: nomeLimpo, telefone, vendedorId }))
+      .select("id")
+      .single();
+    if (erroInsert) throw new Error(erroInsert.message);
+    return novo?.id || null;
+  } catch (err) {
+    console.error("[api/tarefas] não deu para cadastrar o cliente:", err);
+    return null;
+  }
 }
 
 // PATCH /api/tarefas - atualiza tarefa (status, coluna, ordem, resultado)
