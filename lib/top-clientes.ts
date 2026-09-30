@@ -28,8 +28,19 @@ export const TOP_CLIENTES_LIMITE = 20;
 const MAX_LINHAS = 20_000;
 /** Páginas de 1.000 linhas (limite padrão do PostgREST). */
 const PAGINA = 1000;
-/** Cache em memória por instância (o card do atendimento chama 2x por tela). */
-const CACHE_TTL_MS = 2 * 60_000;
+/**
+ * Cache em memória, em DUAS camadas (cada instância serverless tem a sua):
+ *  - ranking completo: 5 s — só para coalescer a rajada de requests do
+ *    debounce/refresh. Precisa ser curto: apagar um card no kanban tem que
+ *    sumir do Top 20 (e voltar pra listagem CLIENTES) na hora. Foi o bug
+ *    reportado em 30/09/2026, com cache de 2 min;
+ *  - varredura de `vendas`: 5 min — tabela da integração, cresce com o tempo
+ *    e não muda de minuto a minuto.
+ */
+const CACHE_RANKING_TTL_MS = 5_000;
+const CACHE_VENDAS_TTL_MS = 5 * 60_000;
+const cacheRanking = new Map<string, { expira: number; itens: TopCliente[] }>();
+const cacheVendas = new Map<string, { expira: number; linhas: VendaRankingLinha[] }>();
 /** Máximo de nomes casados por consulta por cálculo. */
 const MAX_RESOLUCOES_NOME = 30;
 /** Chaves de item que ainda não têm cliente cadastrado. */
@@ -348,26 +359,55 @@ async function buscarClientesPorNome(
   db: { from: (tabela: string) => any },
   agregado: Map<string, AgregadoCliente>
 ): Promise<Record<string, string | null>> {
-  const chaves = Array.from(agregado.keys())
-    .filter((chave) => chave.startsWith(PREFIXO_NOME))
-    .slice(0, MAX_RESOLUCOES_NOME);
-
+  const chaves = Array.from(agregado.keys()).filter((chave) => chave.startsWith(PREFIXO_NOME));
   const resolucao: Record<string, string | null> = {};
+  if (!chaves.length) return resolucao;
+
+  const comNome = chaves.map((chave) => ({
+    chave,
+    nome: agregado.get(chave)?.nome || chave.slice(PREFIXO_NOME.length),
+  }));
+  // vírgula/aspas/parênteses quebram a lista `in.()` do PostgREST
+  const quebrados = /[,"'()\\]/;
+  const seguros = comNome.filter((n) => !quebrados.test(n.nome));
+  const encontrados = new Map<string, string>(); // nome normalizado -> uuid
+
+  // 1 consulta em lote para quase todo mundo
+  if (seguros.length) {
+    try {
+      const { data } = await db
+        .from("clientes")
+        .select("id, nome_razao_social")
+        .in("nome_razao_social", seguros.map((n) => n.nome));
+      for (const cliente of (data || []) as { id: string; nome_razao_social: string }[]) {
+        encontrados.set(normalizarNome(cliente.nome_razao_social), cliente.id);
+      }
+    } catch {
+      /* lote falhou: tudo cai no 1 a 1 abaixo */
+    }
+  }
+
+  // o lote é case-sensitive; o que não veio (caixa/espaço diferente ou nome
+  // com vírgula) tenta 1 a 1 com ilike — com teto, para não virar N queries
+  const aindaPendentes = comNome.filter((n) => !encontrados.has(normalizarNome(n.nome)));
   await Promise.all(
-    chaves.map(async (chave) => {
+    aindaPendentes.slice(0, MAX_RESOLUCOES_NOME).map(async (item) => {
       try {
-        const nome = agregado.get(chave)?.nome || chave.slice(PREFIXO_NOME.length);
         const { data } = await db
           .from("clientes")
           .select("id")
-          .ilike("nome_razao_social", padraoNomeExato(nome))
+          .ilike("nome_razao_social", padraoNomeExato(item.nome))
           .limit(1);
-        resolucao[chave] = data?.[0]?.id || null;
+        if (data?.[0]?.id) encontrados.set(normalizarNome(item.nome), data[0].id);
       } catch {
-        resolucao[chave] = null;
+        /* segue sem cadastro */
       }
     })
   );
+
+  for (const item of comNome) {
+    resolucao[item.chave] = encontrados.get(normalizarNome(item.nome)) || null;
+  }
   return resolucao;
 }
 
@@ -378,10 +418,29 @@ interface ChaveCache {
   limite: number;
 }
 
-const cache = new Map<string, { expira: number; itens: TopCliente[] }>();
-
 function chaveDoCache({ escopo, userId, equipeIds, limite }: ChaveCache): string {
   return `${escopo}|${userId}|${[...(equipeIds || [])].sort().join(",")}|${limite}`;
+}
+
+/**
+ * Varredura de `vendas` com cache próprio (5 min): a tabela vem da
+ * integração e só ela é cara de varrer. O resto do ranking (tarefas do
+ * kanban, nomes e a lista final) recalcula a cada chamada.
+ */
+async function carregarVendasCached(
+  db: { from: (tabela: string) => any },
+  escopo: EscopoCarteira,
+  userId: string,
+  equipeIds: string[],
+  chaveRanking: string
+): Promise<VendaRankingLinha[]> {
+  const agora = Date.now();
+  const guardado = cacheVendas.get(chaveRanking);
+  if (guardado && guardado.expira > agora) return guardado.linhas;
+
+  const linhas = await carregarVendas(db, escopo, userId, equipeIds);
+  cacheVendas.set(chaveRanking, { expira: agora + CACHE_VENDAS_TTL_MS, linhas });
+  return linhas;
 }
 
 /**
@@ -392,15 +451,25 @@ function chaveDoCache({ escopo, userId, equipeIds, limite }: ChaveCache): string
  */
 export async function topClientes(
   db: { from: (tabela: string) => any },
-  { escopo, userId, equipeIds = [], limite = TOP_CLIENTES_LIMITE }: ChaveCache
+  {
+    escopo,
+    userId,
+    equipeIds = [],
+    limite = TOP_CLIENTES_LIMITE,
+  }: ChaveCache
 ): Promise<TopCliente[]> {
-  const chave = chaveDoCache({ escopo, userId, equipeIds, limite });
-  const guardado = cache.get(chave);
+  const opts: ChaveCache = { escopo, userId, equipeIds, limite };
+  const chave = chaveDoCache(opts);
+
+  // Cache curto (5 s): só para não recalcular na rajada de requests.
+  // Passou dele, o ranking é refeito do zero — assim, apagar/criar um card
+  // no kanban reflete aqui em segundos, não em minutos.
+  const guardado = cacheRanking.get(chave);
   if (guardado && guardado.expira > Date.now()) return guardado.itens;
 
   try {
     const [vendas, tarefas] = await Promise.all([
-      carregarVendas(db, escopo, userId, equipeIds),
+      carregarVendasCached(db, escopo, userId, equipeIds, chave),
       carregarTarefasVendidas(db, escopo, userId, equipeIds),
     ]);
 
@@ -425,7 +494,7 @@ export async function topClientes(
       itens = montarRanking(chaves, (clientes || []) as ClienteRanking[], agregado);
     }
 
-    cache.set(chave, { expira: Date.now() + CACHE_TTL_MS, itens });
+    cacheRanking.set(chave, { expira: Date.now() + CACHE_RANKING_TTL_MS, itens });
     return itens;
   } catch (err) {
     console.error("[topClientes] falha ao montar o ranking:", err);

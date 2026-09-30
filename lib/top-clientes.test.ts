@@ -1,5 +1,6 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import {
+  topClientes,
   agregarVendasPorCliente,
   agregarTarefasPorCliente,
   mesclarAcumulos,
@@ -253,3 +254,93 @@ describe("montarRanking com venda vinda do kanban", () => {
     expect(ranking.map((r) => r.nome)).toEqual(["Kanban ME", "ERP Ltda"]);
   });
 });
+
+
+// ── Regressão (30/09/2026): card apagado no kanban sumia do Top 20 ──
+// Na época o ranking ficava 2 min em cache: o vendedor apagava o card e ele
+// continuava no Top 20 (e continuava cortado da listagem CLIENTES). Agora o
+// cache do ranking é curto (5 s) e a varredura de `vendas` tem a dela (5 min).
+
+const UUID_EDGAR = "e4804261-d8a9-4674-b1c8-cfc6aabe2689";
+
+/** PostgREST falso: devolve as linhas da tabela, ignorando os filtros. */
+function dbFake(banco: Record<string, unknown[]>, chamadas: Record<string, number>) {
+  return {
+    from(tabela: string) {
+      chamadas[tabela] = (chamadas[tabela] || 0) + 1;
+      const query: any = {
+        select: () => query,
+        eq: () => query,
+        gt: () => query,
+        in: () => query,
+        ilike: () => query,
+        order: () => query,
+        limit: () => query,
+        range: () => query,
+        then: (ok: any, erro: any) =>
+          Promise.resolve({ data: banco[tabela] || [], error: null }).then(ok, erro),
+      };
+      return query;
+    },
+  };
+}
+
+function opcoes(userId: string) {
+  return { escopo: "todos" as const, userId, equipeIds: [], limite: TOP_CLIENTES_LIMITE };
+}
+
+describe("topClientes — cache do ranking", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("recalcula depois do TTL: o card apagado no kanban some do Top 20", async () => {
+    vi.useFakeTimers();
+    const chamadas: Record<string, number> = {};
+    const banco: Record<string, unknown[]> = {
+      vendas: [],
+      clientes: [{ id: UUID_EDGAR, nome_razao_social: "03.064.950 EDGAR", cpf_cnpj: null }],
+      tarefas: [
+        { cliente_id: UUID_EDGAR, cliente_nome: "03.064.950 EDGAR", valor_venda: 1000, resultado: "sucesso" },
+      ],
+    };
+    const db = dbFake(banco, chamadas);
+
+    const antes = await topClientes(db, opcoes("u-cache-1"));
+    expect(antes.map((t) => t.nome)).toEqual(["03.064.950 EDGAR"]);
+
+    // vendedor apagou o card no kanban (DELETE /api/tarefas)
+    banco.tarefas = [];
+
+    const dentroDoCache = await topClientes(db, opcoes("u-cache-1"));
+    expect(dentroDoCache.map((t) => t.nome)).toEqual(["03.064.950 EDGAR"]);
+    const leiturasTarefas = chamadas.tarefas;
+
+    vi.advanceTimersByTime(6_000);
+
+    const depois = await topClientes(db, opcoes("u-cache-1"));
+    expect(depois).toEqual([]);
+    expect(chamadas.tarefas).toBeGreaterThan(leiturasTarefas);
+  });
+
+  it("a varredura de `vendas` continua em cache por 5 min (só o ranking é curto)", async () => {
+    vi.useFakeTimers();
+    const chamadas: Record<string, number> = {};
+    const banco: Record<string, unknown[]> = {
+      vendas: [{ cliente_id: UUID_EDGAR, valor_final: 500, valor_total: 500, status: "confirmada" }],
+      clientes: [{ id: UUID_EDGAR, nome_razao_social: "03.064.950 EDGAR", cpf_cnpj: null }],
+      tarefas: [],
+    };
+    const db = dbFake(banco, chamadas);
+
+    await topClientes(db, opcoes("u-cache-2"));
+    const varreduras = chamadas.vendas;
+
+    vi.advanceTimersByTime(6_000); // passa o TTL do ranking
+    const segundo = await topClientes(db, opcoes("u-cache-2"));
+
+    expect(segundo.map((t) => t.valor)).toEqual([500]);
+    expect(chamadas.vendas).toBe(varreduras); // não varreu `vendas` de novo
+  });
+});
+
