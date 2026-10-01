@@ -39,6 +39,53 @@ export interface ClienteCard {
   estado: string | null;
   status: string;
   tipo: string;
+  /** Vem do servidor quando o card pede `contato=`: atrasado | em_dia | realizado | sem_tarefa */
+  contato?: string;
+}
+
+/** Filtros do card: TODOS (padrão) · ATRASADOS (vermelho) · REALIZADOS (verde) */
+type ContatoFiltro = "todos" | "atrasados" | "realizados";
+
+interface ContagensContato {
+  todos: number;
+  atrasados: number;
+  realizados: number;
+}
+
+/** Chip do header — número em cada grupo (quando o servidor devolve) */
+function BotaoFiltroContato({
+  ativo,
+  rotulo,
+  contagem,
+  tom,
+  onClick,
+}: {
+  ativo: boolean;
+  rotulo: string;
+  contagem?: number;
+  tom: "cinza" | "vermelho" | "verde";
+  onClick: () => void;
+}) {
+  const cores = {
+    cinza: { parado: "bg-slate-100 text-slate-500 hover:bg-slate-200", ligado: "bg-slate-700 text-white" },
+    vermelho: { parado: "bg-red-50 text-red-500 hover:bg-red-100", ligado: "bg-red-600 text-white" },
+    verde: { parado: "bg-emerald-50 text-emerald-600 hover:bg-emerald-100", ligado: "bg-emerald-600 text-white" },
+  }[tom];
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={ativo}
+      title={rotulo}
+      className={`px-1.5 py-0.5 rounded text-[9px] font-semibold transition-colors ${
+        ativo ? cores.ligado : cores.parado
+      }`}
+    >
+      {rotulo}
+      {typeof contagem === "number" && <span className="ml-1 font-bold">{contagem}</span>}
+    </button>
+  );
 }
 
 function iniciais(nome: string): string {
@@ -56,6 +103,9 @@ export function PainelInferior({ onAbrirConversa }: PainelInferiorProps) {
   const [total, setTotal] = useState(0);
   const [busca, setBusca] = useState("");
   const [carregando, setCarregando] = useState(false);
+  // REGRA 30/09: ordem e cor vêm do servidor (lib/situacao-contato.ts)
+  const [contato, setContato] = useState<ContatoFiltro>("todos");
+  const [contagens, setContagens] = useState<ContagensContato | null>(null);
 
   // ── Top 20 clientes (os que mais compraram) ──
   const [topClientes, setTopClientes] = useState<TopCliente[]>([]);
@@ -87,7 +137,7 @@ export function PainelInferior({ onAbrirConversa }: PainelInferiorProps) {
     void buscarTop();
   }, [buscarTop]);
 
-  const buscar = useCallback(async (termo: string) => {
+  const buscar = useCallback(async (termo: string, filtroContato: ContatoFiltro) => {
     try {
       setCarregando(true);
       const {
@@ -96,6 +146,7 @@ export function PainelInferior({ onAbrirConversa }: PainelInferiorProps) {
       if (!session) return;
 
       const params = new URLSearchParams({ limite: LIMITE_CARTEIRA, excluir_top20: "1" });
+      params.set("contato", filtroContato);
       const termoLimpo = termo.trim();
       if (termoLimpo) params.set("busca", termoLimpo);
 
@@ -107,6 +158,7 @@ export function PainelInferior({ onAbrirConversa }: PainelInferiorProps) {
       const data = await res.json();
       setClientes(Array.isArray(data.clientes) ? data.clientes : []);
       setTotal(typeof data.total === "number" ? data.total : 0);
+      setContagens(data.contatos ?? null);
     } catch (err) {
       console.error("[PainelInferior] falha ao buscar clientes:", err);
     } finally {
@@ -119,15 +171,19 @@ export function PainelInferior({ onAbrirConversa }: PainelInferiorProps) {
   useEffect(() => {
     if (primeiraCarga.current) {
       primeiraCarga.current = false;
-      void buscar(busca);
+      void buscar(busca, contato);
       return;
     }
-    const timer = setTimeout(() => void buscar(busca), DEBOUNCE_BUSCA_MS);
+    const timer = setTimeout(() => void buscar(busca, contato), DEBOUNCE_BUSCA_MS);
     return () => clearTimeout(timer);
-  }, [busca, buscar]);
+  }, [busca, contato, buscar]);
 
   const termo = busca.trim();
   const truncado = !termo && total > clientes.length;
+
+  // Cor por linha: vermelho = atrasado (24h/prazo), verde = realizado
+  const contatoPorId: Record<string, string | undefined> = {};
+  for (const c of clientes) contatoPorId[c.id] = c.contato;
 
   return (
     <div className="grid grid-cols-2 gap-3 mb-3 shrink-0 h-[230px]">
@@ -188,11 +244,35 @@ export function PainelInferior({ onAbrirConversa }: PainelInferiorProps) {
           <span className="text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
             {total}
           </span>
+          {/* FILTROS DE CONTATO — atrasados em vermelho, realizados em verde */}
+          <div className="ml-auto flex items-center gap-1 shrink-0">
+            <BotaoFiltroContato
+              ativo={contato === "todos"}
+              rotulo="Todos"
+              tom="cinza"
+              contagem={contagens?.todos}
+              onClick={() => setContato("todos")}
+            />
+            <BotaoFiltroContato
+              ativo={contato === "atrasados"}
+              rotulo="Atrasados"
+              tom="vermelho"
+              contagem={contagens?.atrasados}
+              onClick={() => setContato("atrasados")}
+            />
+            <BotaoFiltroContato
+              ativo={contato === "realizados"}
+              rotulo="Realizados"
+              tom="verde"
+              contagem={contagens?.realizados}
+              onClick={() => setContato("realizados")}
+            />
+          </div>
           {carregando ? (
-            <span className="ml-auto text-[9px] text-slate-400">buscando…</span>
+            <span className="text-[9px] text-slate-400 shrink-0">buscando…</span>
           ) : (
             truncado && (
-              <span className="ml-auto text-[9px] text-slate-400">
+              <span className="text-[9px] text-slate-400 shrink-0">
                 mostrando {clientes.length} de {total}
               </span>
             )
@@ -218,7 +298,11 @@ export function PainelInferior({ onAbrirConversa }: PainelInferiorProps) {
           }`}
         >
           {clientes.length > 0 ? (
-            <ClientList clientes={clientes} onAbrirConversa={onAbrirConversa} />
+            <ClientList
+              clientes={clientes}
+              onAbrirConversa={onAbrirConversa}
+              contatoPorId={contatoPorId}
+            />
           ) : carregando ? null : termo ? (
             <p className="text-xs text-slate-400 py-1">
               Nenhum cliente encontrado para “{termo}”.

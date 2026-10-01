@@ -26,7 +26,7 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), prefetch: vi.fn() }),
 }))
 
-function cliente(nome: string): ClienteCard {
+function cliente(nome: string, contato?: 'atrasado' | 'realizado' | 'em_dia' | 'sem_tarefa'): ClienteCard {
   return {
     id: nome,
     nome_razao_social: nome,
@@ -37,6 +37,7 @@ function cliente(nome: string): ClienteCard {
     estado: null,
     status: 'ativo',
     tipo: 'pj',
+    ...(contato ? { contato } : {}),
   }
 }
 
@@ -48,10 +49,17 @@ interface TopClienteTeste {
   valor: number
 }
 
+interface Contagens {
+  todos: number
+  atrasados: number
+  realizados: number
+}
+
 interface Payload {
   clientes: ClienteCard[]
   total: number
   top?: TopClienteTeste[]
+  contatos?: Contagens
 }
 
 /** Fetch roteado por URL: /api/clientes/top (ranking) e /api/clientes (listagem). */
@@ -232,5 +240,82 @@ describe('PainelInferior — Top 20 clientes (os que mais compraram)', () => {
 
     expect(chamadas(fetchMock, '/api/clientes/top')).toHaveLength(1)
     expect(chamadas(fetchMock, '/api/clientes?')).toHaveLength(2)
+  })
+})
+
+describe('PainelInferior — filtros de contato (ATRASADOS vermelho / REALIZADOS verde)', () => {
+  it('mostra os três filtros e pede contato=todos na carga inicial', async () => {
+    vi.useFakeTimers()
+    const fetchMock = mockFetch({ clientes: [], total: 1928 })
+
+    render(<PainelInferior onAbrirConversa={() => {}} />)
+    await descarregar()
+
+    expect(screen.getByRole('button', { name: /Todos/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Atrasados/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Realizados/ })).toBeTruthy()
+
+    const listagem = chamadas(fetchMock, '/api/clientes?')
+    expect(listagem).toHaveLength(1)
+    const [url] = listagem[0] as unknown as [string]
+    expect(url).toContain('contato=todos')
+  })
+
+  it('clicar em Atrasados refaz a busca com contato=atrasados e pinta a linha de vermelho', async () => {
+    vi.useFakeTimers()
+    const fetchMock = mockFetch({
+      clientes: [cliente('Bia Atrasada', 'atrasado'), cliente('Zeca Também Atrasado', 'atrasado')],
+      total: 3,
+      contatos: { todos: 10, atrasados: 3, realizados: 4 },
+    })
+
+    render(<PainelInferior onAbrirConversa={() => {}} />)
+    await descarregar()
+
+    fireEvent.click(screen.getByRole('button', { name: /Atrasados/ }))
+    await descarregar(400)
+
+    const listagem = chamadas(fetchMock, '/api/clientes?')
+    expect(listagem).toHaveLength(2)
+    const [url] = listagem[1] as unknown as [string]
+    expect(url).toContain('contato=atrasados')
+
+    expect(screen.getByText('Bia Atrasada').className).toContain('text-red-600')
+    expect(screen.getByText('Zeca Também Atrasado').className).toContain('text-red-600')
+    // contagem do grupo aparece no próprio filtro
+    expect(screen.getByRole('button', { name: /Atrasados/ }).textContent).toContain('3')
+  })
+
+  it('clicar em Realizados pede contato=realizados e pinta a linha de verde', async () => {
+    vi.useFakeTimers()
+    const fetchMock = mockFetch({
+      clientes: [cliente('Davi Feito', 'realizado')],
+      total: 7,
+      contatos: { todos: 10, atrasados: 3, realizados: 7 },
+    })
+
+    render(<PainelInferior onAbrirConversa={() => {}} />)
+    await descarregar()
+
+    fireEvent.click(screen.getByRole('button', { name: /Realizados/ }))
+    await descarregar(400)
+
+    const listagem = chamadas(fetchMock, '/api/clientes?')
+    expect(listagem).toHaveLength(2)
+    const [url] = listagem[1] as unknown as [string]
+    expect(url).toContain('contato=realizados')
+    expect(screen.getByText('Davi Feito').className).toContain('text-emerald-600')
+  })
+
+  it('sem filtro o cliente sem tarefa fica na cor normal (nem vermelho nem verde)', async () => {
+    vi.useFakeTimers()
+    mockFetch({ clientes: [cliente('Ana Sem Tarefa', 'sem_tarefa')], total: 1928 })
+
+    render(<PainelInferior onAbrirConversa={() => {}} />)
+    await descarregar()
+
+    const linha = screen.getByText('Ana Sem Tarefa')
+    expect(linha.className).not.toContain('text-red-600')
+    expect(linha.className).not.toContain('text-emerald-600')
   })
 })

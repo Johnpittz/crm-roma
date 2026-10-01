@@ -579,6 +579,31 @@ EVOLUTION_API_KEY=e3186c32139f79c7566a1d6a3f5bc702fae199c725a313ce9b7f8ff035123b
   excluir devolvendo o id) — suíte **141/141**, `tsc --noEmit` e `next build` limpos
 - [ ] Pendência de dados: quando o histórico do Millennium entrar em `vendas`, as duas fontes somam sozinhas (scripts em `scripts/sync-millennium*`, credenciais não estão no repo)
 
+### 01/10/2026 — Listagem CLIENTES: prioridade de CONTATO (atrasados vermelho / realizados verde)
+
+- [x] **Regra combinada com o João** (confirmou as 4 definições): quem tem **tarefa aberta em dia DESCE para
+  o fim da lista** ("para o vendedor não se perder"), **ATRASADO = tarefa aberta há mais de 24h OU prazo
+  vencido** (qualquer dos dois), **REALIZADO = tarefa concluída de qualquer data**, e no modo TODOS as
+  linhas **continuam coloridas**. Ordem final: **atrasados → sem tarefa → com tarefa em dia → realizados**;
+  precedência: tarefa ABERTA vence o histórico concluído (pendência nunca aparece como "feito").
+- [x] Tudo em **`lib/situacao-contato.ts`** (puro: `situacaoDaTarefa`, `situacoesPorCliente`,
+  `ordenarPorContato`, `aplicarFiltroContato`, `situacoesDoEscopo`). Prazo = `data_fim` (cai para
+  `data_inicio`) + hora quando tem, sem hora vence 23:59; tarefa sem `cliente_id` casa pelo nome normalizado
+  (`lib/nome-cliente`); leitura das tarefas respeita **a mesma carteira da listagem** (`vendedor_id` do
+  vendedor/equipe — lib/carteira.ts). Falha de banco => mapa vazio e a lista continua alfabética (nunca
+  derruba o card).
+- [x] **`GET /api/clientes?contato=todos|atrasados|realizados`** (só o card do atendimento manda; a página
+  `/clientes` não manda e continua idêntica): pega ids+nomes de todo o escopo, monta a prioridade em memória
+  (o PostgREST não ordena por tarefa), corta o lote da página e traz as linhas completas **em lotes de 100**
+  (URL não estoura). Devolve `contato` por linha + `contatos: {todos, atrasados, realizados}` para os chips.
+- [x] **Card CLIENTES ganhou os 3 chips** no header (`Todos` · `Atrasados` · `Realizados`, com a contagem de
+  cada grupo) e as linhas pintam **vermelho** (`text-red-600`) / **verde** (`text-emerald-600`) via
+  `contatoPorId` no `ClientList` (prop opcional — `/clientes` continua neutro).
+- [x] TDD: novo `lib/situacao-contato.test.ts` (19 testes: regra das 24h, prazo com hora, precedência,
+  ordenação, filtro+contagem, escopo de carteira com PostgREST falso, erro de banco) + 4 testes no
+  `painel-inferior.test.tsx` (chips, `contato=` na URL, linha vermelha/verde, caso neutro) — suíte
+  **164/164**, `tsc --noEmit` e `next build` limpos
+
 ### 23/09/2026 (Escopo de carteira: vendedor só vê os próprios clientes)
 - [x] **Regra aplicada nos 5 pontos que leem a base de clientes** (página `/clientes`, `GET /api/clientes`, card CLIENTES do atendimento, dropdown da Nova Venda, `GET /api/promocoes/clientes`): `vendedor` → só `vendedor_responsavel_id = ele`; `gerente_comercial`/`diretor`/`admin` → carteira toda (**visão provisória**, troca quando isso sumir do produto); `demonstracao` → própria, mesmo vazia (a sidebar já oculta `/clientes` para demo: "não deve ver clientes reais")
 - [x] Régua única **`lib/carteira.ts`** (`escopoCarteira(cargo)`, `ehGestor(cargo)`, `aplicarEscopoClientes(query, escopo, userId)`) — TDD RED→GREEN com `lib/carteira.test.ts` (13 testes), suíte **83/83**, `tsc --noEmit` e `next build` limpos
