@@ -579,6 +579,20 @@ EVOLUTION_API_KEY=e3186c32139f79c7566a1d6a3f5bc702fae199c725a313ce9b7f8ff035123b
   excluir devolvendo o id) — suíte **141/141**, `tsc --noEmit` e `next build` limpos
 - [ ] Pendência de dados: quando o histórico do Millennium entrar em `vendas`, as duas fontes somam sozinhas (scripts em `scripts/sync-millennium*`, credenciais não estão no repo)
 
+### 01/10/2026 (4) — Linha do TOP 20 ficou clicável (mesmo modal da direita)
+- [x] **Pedido do João:** clicar numa linha do Top 20 abre o **mesmo `ModalDetalhesCliente`** que as
+  linhas da listagem CLIENTES abrem (nome, status/tipo, CPF/CNPJ, telefone, e-mail, cidade, botão de
+  conversa — reaproveita o `onAbrirConversa` do painel).
+- [x] Para isso o ranking passou a **entregar o cliente junto**: `TopCliente.cliente` (uuid) com
+  `telefone, email, cidade, estado, status, tipo` — o select de clientes do ranking foi alargado
+  (`lib/top-clientes.ts`). Item `sem-cadastro:` vem com `cliente: null` e o modal abre montado com o
+  nome + tipo deduzido do nome (`tipoClientePeloNome`), sem telefone.
+- [x] Linha do card virou `<button>` (`w-full text-left`, `hover:bg-slate-50`) com `title="Ver detalhes
+  do cliente"`; o modal fica em `painel-inferior.tsx` e fecha zerando o estado.
+- [x] TDD: +2 em `lib/top-clientes.test.ts` (cliente vem com telefone/status; sem cadastro = `null`) e
+  +2 no `painel-inferior.test.tsx` (clicar abre o dialog com CPF e telefone; item sem cadastro abre com
+  nome) — suíte **177/177**, `tsc --noEmit` e `next build` limpos.
+
 ### 01/10/2026 (3) — Pré-cadastro do cliente ao FECHAR tarefa (+ diagnóstico do dashboard)
 - [x] **Pedido do João:** fechar tarefa de cliente que não existe na base => criar o cliente automático
   ("pré-criado" com as info do WhatsApp, resto preenchido depois). Hoje só o `POST /api/tarefas` já fazia

@@ -21,6 +21,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Search, Trophy, Users } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { ClientList } from "@/components/features/clientes/client-list";
+import { ModalDetalhesCliente } from "@/components/features/clientes/modal-detalhes-cliente";
+import { tipoClientePeloNome } from "@/lib/nome-cliente";
 import { createClient } from "@/lib/supabase/client";
 import type { TopCliente } from "@/lib/top-clientes";
 
@@ -187,6 +189,24 @@ export function PainelInferior({ onAbrirConversa }: PainelInferiorProps) {
     return () => clearTimeout(timer);
   }, [busca, contato, buscar]);
 
+  // ── Detalhes do cliente: a linha do Top 20 abre o MESMO modal da lista da direita ──
+  const [clienteTop, setClienteTop] = useState<ClienteCard | null>(null);
+
+  const abrirClienteDoTop = (item: TopCliente) => {
+    setClienteTop({
+      id: item.id,
+      nome_razao_social: item.nome,
+      cpf_cnpj: item.cliente?.cpf_cnpj ?? item.documento ?? null,
+      telefone: item.cliente?.telefone ?? null,
+      email: item.cliente?.email ?? null,
+      cidade: item.cliente?.cidade ?? null,
+      estado: item.cliente?.estado ?? null,
+      status: item.cliente?.status ?? "ativo",
+      // item sem cadastro não tem tipo gravado — deduz do nome (mesma régua do cadastro)
+      tipo: item.cliente?.tipo ?? tipoClientePeloNome(item.nome),
+    });
+  };
+
   const termo = busca.trim();
   const truncado = !termo && total > clientes.length;
 
@@ -217,7 +237,13 @@ export function PainelInferior({ onAbrirConversa }: PainelInferiorProps) {
             </p>
           ) : (
             topClientes.map((c, i) => (
-              <div key={c.id} className="flex items-center gap-2.5 px-3 py-1.5">
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => abrirClienteDoTop(c)}
+                title="Ver detalhes do cliente"
+                className="flex w-full items-center gap-2.5 px-3 py-1.5 text-left rounded hover:bg-slate-50 transition-colors"
+              >
                 <span
                   className={`w-5 text-center text-[10px] font-bold shrink-0 ${
                     i < 3 ? "text-amber-500" : "text-slate-400"
@@ -237,7 +263,7 @@ export function PainelInferior({ onAbrirConversa }: PainelInferiorProps) {
                 <span className="text-xs font-bold text-slate-800 shrink-0 tabular-nums">
                   R$ {c.valor.toLocaleString("pt-BR")}
                 </span>
-              </div>
+              </button>
             ))
           )}
         </div>
@@ -323,6 +349,16 @@ export function PainelInferior({ onAbrirConversa }: PainelInferiorProps) {
           )}
         </div>
       </div>
+
+      {/* Linha do Top 20 -> MESMO modal de detalhes da listagem da direita */}
+      <ModalDetalhesCliente
+        cliente={clienteTop}
+        open={clienteTop !== null}
+        onOpenChange={(aberto) => {
+          if (!aberto) setClienteTop(null);
+        }}
+        onAbrirConversa={onAbrirConversa}
+      />
     </div>
   );
 }

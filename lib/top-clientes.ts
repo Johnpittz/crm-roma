@@ -56,6 +56,11 @@ export interface TopCliente {
   documento: string | null;
   pedidos: number;
   valor: number; // em reais
+  /**
+   * Cliente completo (cadastro), para a linha abrir o MESMO modal de detalhes
+   * da listagem da direita. `null` em item `sem-cadastro:` — não há o que abrir.
+   */
+  cliente?: ClienteRanking | null;
 }
 
 /** Uma linha de `vendas` (só as colunas que interessam ao ranking). */
@@ -79,6 +84,13 @@ export interface ClienteRanking {
   id: string;
   nome_razao_social?: string | null;
   cpf_cnpj?: string | null;
+  /** Contato — vem junto para a linha do Top 20 abrir o modal de detalhes. */
+  telefone?: string | null;
+  email?: string | null;
+  cidade?: string | null;
+  estado?: string | null;
+  status?: string | null;
+  tipo?: string | null;
 }
 
 /** O que um cliente comprou, somando as fontes. */
@@ -253,6 +265,7 @@ export function montarRanking(
         documento: null,
         pedidos: contagem.pedidos,
         valor: Math.round(contagem.valor * 100) / 100,
+        cliente: null,
       });
       continue;
     }
@@ -265,6 +278,7 @@ export function montarRanking(
       documento: cliente.cpf_cnpj || null,
       pedidos: contagem.pedidos,
       valor: Math.round(contagem.valor * 100) / 100,
+      cliente,
     });
   }
   return ranking;
@@ -487,7 +501,7 @@ export async function topClientes(
       const { data: clientes, error } = idsReais.length
         ? await db
             .from("clientes")
-            .select("id, nome_razao_social, cpf_cnpj")
+            .select("id, nome_razao_social, cpf_cnpj, telefone, email, cidade, estado, status, tipo")
             .in("id", idsReais)
         : { data: [], error: null };
       if (error) throw new Error(error.message);

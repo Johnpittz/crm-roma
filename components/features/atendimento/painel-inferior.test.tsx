@@ -41,12 +41,26 @@ function cliente(nome: string, contato?: 'atrasado' | 'realizado' | 'em_dia' | '
   }
 }
 
+interface ClienteTopTeste {
+  id: string
+  nome_razao_social: string
+  cpf_cnpj: string | null
+  telefone?: string | null
+  email?: string | null
+  cidade?: string | null
+  estado?: string | null
+  status?: string | null
+  tipo?: string | null
+}
+
 interface TopClienteTeste {
   id: string
   nome: string
   documento: string | null
   pedidos: number
   valor: number
+  /** Cliente completo — é ele que o modal de detalhes abre ao clicar na linha */
+  cliente?: ClienteTopTeste | null
 }
 
 interface Contagens {
@@ -267,6 +281,66 @@ describe('PainelInferior — Top 20 clientes (os que mais compraram)', () => {
 
     expect(document.body.textContent).toContain('EDGAR PEREIRA DO NASCIMENTO')
     expect(chamadas(fetchMock, '/api/clientes/top')).toHaveLength(0)
+  })
+
+  it('clicar numa linha do Top 20 abre os MESMOS detalhes da listagem da direita', async () => {
+    vi.useFakeTimers()
+    mockFetch({
+      clientes: [],
+      total: 1928,
+      top: [
+        {
+          id: 'edgar-uuid',
+          nome: '03.064.950 EDGAR PEREIRA DO NASCIMENTO',
+          documento: '03064950000195',
+          pedidos: 1,
+          valor: 1000,
+          cliente: {
+            id: 'edgar-uuid',
+            nome_razao_social: '03.064.950 EDGAR PEREIRA DO NASCIMENTO',
+            cpf_cnpj: '03064950000195',
+            telefone: '556284329503',
+            email: 'edgar@example.com',
+            cidade: 'Goiania',
+            estado: 'GO',
+            status: 'bloqueado',
+            tipo: 'pf',
+          },
+        },
+      ],
+    })
+
+    render(<PainelInferior onAbrirConversa={() => {}} />)
+    await descarregar()
+
+    // a linha do ranking vira botão clicável, como as linhas da direita
+    const linha = screen.getByRole('button', { name: /03.064.950 EDGAR PEREIRA/ })
+    fireEvent.click(linha)
+    await descarregar()
+
+    const dialogo = screen.getByRole('dialog')
+    expect(dialogo.textContent).toContain('Detalhes do Cliente')
+    expect(dialogo.textContent).toContain('03064950000195')
+    expect(dialogo.textContent).toContain('556284329503')
+  })
+
+  it('item sem cadastro também abre (mostra o nome, sem telefone)', async () => {
+    vi.useFakeTimers()
+    mockFetch({
+      clientes: [],
+      total: 1928,
+      top: [
+        { id: 'sem-cadastro:e-commerce', nome: 'E-commerce', documento: null, pedidos: 2, valor: 1500, cliente: null },
+      ],
+    })
+
+    render(<PainelInferior onAbrirConversa={() => {}} />)
+    await descarregar()
+
+    fireEvent.click(screen.getByRole('button', { name: /E-commerce/ }))
+    await descarregar()
+
+    expect(screen.getByRole('dialog').textContent).toContain('E-commerce')
   })
 
   it('resposta sem `top` (servidor antigo): o card cai para /api/clientes/top', async () => {

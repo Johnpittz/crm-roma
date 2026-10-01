@@ -233,6 +233,8 @@ describe("montarRanking com venda vinda do kanban", () => {
       documento: null,
       pedidos: 1,
       valor: 1000,
+      // item clicável: sem cadastro não há cliente para abrir o modal
+      cliente: null,
     });
   });
 
@@ -255,6 +257,60 @@ describe("montarRanking com venda vinda do kanban", () => {
   });
 });
 
+
+// ── Item clicável: o ranking carrega o cliente completo (01/10/2026) ──
+// A linha do Top 20 passou a abrir o MESMO modal de detalhes da listagem da
+// direita, então o item precisa trazer telefone/contato/status do cliente.
+
+describe("topClientes — item carrega o cliente para o modal", () => {
+  it("cliente cadastrado vem com telefone e status no item (`cliente`)", async () => {
+    const chamadas: Record<string, number> = {};
+    const banco: Record<string, unknown[]> = {
+      vendas: [],
+      tarefas: [
+        { cliente_id: UUID_EDGAR, cliente_nome: "03.064.950 EDGAR", valor_venda: 1000, resultado: "sucesso" },
+      ],
+      clientes: [
+        {
+          id: UUID_EDGAR,
+          nome_razao_social: "03.064.950 EDGAR",
+          cpf_cnpj: "03064950000195",
+          telefone: "556284329503",
+          email: "edgar@example.com",
+          cidade: "Goiania",
+          estado: "GO",
+          status: "bloqueado",
+          tipo: "pf",
+        },
+      ],
+    };
+
+    const itens = await topClientes(dbFake(banco, chamadas), opcoes("u-top-cliente-1"));
+
+    expect(itens).toHaveLength(1);
+    expect(itens[0].documento).toBe("03064950000195");
+    // RED: hoje o item vem sem `cliente`
+    expect(itens[0].cliente?.telefone).toBe("556284329503");
+    expect(itens[0].cliente?.status).toBe("bloqueado");
+    expect(itens[0].cliente?.cidade).toBe("Goiania");
+  });
+
+  it("item sem cadastro vem com `cliente: null` (o modal não tem o que abrir)", async () => {
+    const banco: Record<string, unknown[]> = {
+      vendas: [],
+      tarefas: [
+        { cliente_id: null, cliente_nome: "E-commerce", valor_venda: 1000, resultado: "sucesso" },
+      ],
+      clientes: [],
+    };
+
+    const itens = await topClientes(dbFake(banco, {}), opcoes("u-top-cliente-2"));
+
+    expect(itens).toHaveLength(1);
+    expect(itens[0].id).toContain("sem-cadastro");
+    expect(itens[0].cliente).toBeNull();
+  });
+});
 
 // ── Regressão (30/09/2026): card apagado no kanban sumia do Top 20 ──
 // Na época o ranking ficava 2 min em cache: o vendedor apagava o card e ele
