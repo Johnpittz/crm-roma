@@ -579,6 +579,23 @@ EVOLUTION_API_KEY=e3186c32139f79c7566a1d6a3f5bc702fae199c725a313ce9b7f8ff035123b
   excluir devolvendo o id) — suíte **141/141**, `tsc --noEmit` e `next build` limpos
 - [ ] Pendência de dados: quando o histórico do Millennium entrar em `vendas`, as duas fontes somam sozinhas (scripts em `scripts/sync-millennium*`, credenciais não estão no repo)
 
+### 01/10/2026 (5) — Telefone do WhatsApp aparece no modal mesmo sem telefone no cadastro
+- [x] **Sintoma:** clicar em `E-commerce` no Top 20 abria o modal **sem telefone** — mas a conversa no
+  WhatsApp tem número (`atendimentos.telefone_cliente = 556234165003`, conversa "E-commerce" de 30/09).
+- [x] **Causa:** a tarefa foi criada 30/09 **19:31**, 51 min **antes** do auto-cadastro entrar em
+  produção (20:22) → o número que o formulário enviava foi descartado e nenhum cliente nasceu.
+- [x] **Correção (sem dado inventado):** `ModalDetalhesCliente` — cadastro **sem telefone** ⇒ procura a
+  conversa de WhatsApp com o **MESMO nome** (a mesma regra de ligação que o painel de contato já usa em
+  `GET /api/tarefas?cliente_nome=`), `.ilike(nome_cliente)`, 20 últimas. **Só exibe quando todas as
+  conversas com esse nome apontam para UM número só** — dois números divergentes ⇒ não mostra nada.
+- [x] O número vindo da conversa aparece como **"Telefone · WhatsApp"** e alimenta também o botão
+  "Abrir conversa no WhatsApp" (`telefoneInternacional`). Cadastro com telefone ⇒ nenhuma consulta.
+- [x] Verificado nos dados reais: `E-commerce` → 1 conversa → **MOSTRA**; `Cliente` → 13 conversas /
+  13 números → **NÃO mostra**; nome sem conversa → nada.
+- [x] TDD: `components/features/clientes/modal-detalhes-cliente.test.tsx` (4 casos: mostra, ambiguo
+  não mostra, cadastro com telefone não consulta, sem conversa não inventa) → **181/181**, `tsc` e
+  `next build` limpos.
+
 ### 01/10/2026 (4) — Linha do TOP 20 ficou clicável (mesmo modal da direita)
 - [x] **Pedido do João:** clicar numa linha do Top 20 abre o **mesmo `ModalDetalhesCliente`** que as
   linhas da listagem CLIENTES abrem (nome, status/tipo, CPF/CNPJ, telefone, e-mail, cidade, botão de

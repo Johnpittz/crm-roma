@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { User, Phone, Mail, MapPin, Building2, FileText, Tag } from "lucide-react";
 import {
@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { urlWaMe, telefoneInternacional } from "@/lib/telefone";
+import { createClient } from "@/lib/supabase/client";
 
 interface Cliente {
   id: string;
@@ -50,6 +51,54 @@ function getStatusColor(status: string) {
 export function ModalDetalhesCliente({ cliente, open, onOpenChange, onAbrirConversa }: ModalDetalhesClienteProps) {
   const router = useRouter();
 
+  // ── Telefone do WhatsApp (01/10/2026) ──
+  // O cadastro nem sempre tem número — caso do "E-commerce", tarefa criada em
+  // 30/09 às 19:31, 51 min antes do auto-cadastro entrar em produção. A
+  // conversa de WhatsApp (atendimentos) TEM o número, então sem telefone no
+  // cadastro a gente procura a conversa com o MESMO nome: é a mesma regra de
+  // ligação que o painel de contato já usa ao listar tarefas por cliente_nome.
+  // Só exibe quando todas as conversas com esse nome apontam para UM número só —
+  // número divergente não é exibido (número errado é pior que nenhum número).
+  const nomeCliente = cliente?.nome_razao_social ?? null;
+  const telefoneCadastro = cliente?.telefone ?? null;
+  const [telefoneWhats, setTelefoneWhats] = useState<string | null>(null);
+
+  useEffect(() => {
+    let vivo = true;
+    if (!open || !nomeCliente || telefoneCadastro) {
+      setTelefoneWhats(null);
+      return;
+    }
+    (async () => {
+      try {
+        const supabase = createClient();
+        const nome = nomeCliente.trim().toLowerCase();
+        const { data } = await supabase
+          .from("atendimentos")
+          .select("nome_cliente, telefone_cliente")
+          .ilike("nome_cliente", nomeCliente)
+          .order("ultima_mensagem_data", { ascending: false })
+          .limit(20);
+
+        const numeros = new Set<string>();
+        for (const conversa of data || []) {
+          const mesmoNome = String(conversa.nome_cliente ?? "").trim().toLowerCase() === nome;
+          if (mesmoNome && conversa.telefone_cliente) numeros.add(conversa.telefone_cliente);
+        }
+        if (vivo) setTelefoneWhats(numeros.size === 1 ? Array.from(numeros)[0] : null);
+      } catch (err) {
+        if (vivo) setTelefoneWhats(null);
+      }
+    })();
+    return () => {
+      vivo = false;
+    };
+  }, [open, nomeCliente, telefoneCadastro]);
+
+  /** Número exibido: do cadastro; faltando, o da conversa de WhatsApp. */
+  const telefone = telefoneCadastro || telefoneWhats || null;
+  const telefoneEhDoWhats = !telefoneCadastro && !!telefoneWhats;
+
   if (!cliente) return null;
 
   // Abre a conversa no CRM (mesmo fluxo do "Buscar Contatos WhatsApp"):
@@ -57,7 +106,7 @@ export function ModalDetalhesCliente({ cliente, open, onOpenChange, onAbrirConve
   // /atendimento?telefone=... (a página abre o chat e limpa a URL).
   const handleAbrirConversa = () => {
     onOpenChange(false);
-    const intl = telefoneInternacional(cliente.telefone);
+    const intl = telefoneInternacional(telefone);
     if (!intl) return;
     if (onAbrirConversa) {
       onAbrirConversa(intl, cliente.nome_razao_social);
@@ -115,13 +164,15 @@ export function ModalDetalhesCliente({ cliente, open, onOpenChange, onAbrirConve
             </div>
           )}
 
-          {/* Telefone */}
-          {cliente.telefone && (
+          {/* Telefone (do cadastro; faltando, o que está na conversa de WhatsApp) */}
+          {telefone && (
             <div className="flex items-start gap-3">
               <Phone className="h-4 w-4 text-slate-400 mt-0.5" />
               <div>
-                <p className="text-xs text-slate-500">Telefone</p>
-                <p className="text-sm font-medium">{cliente.telefone}</p>
+                <p className="text-xs text-slate-500">
+                  {telefoneEhDoWhats ? "Telefone · WhatsApp" : "Telefone"}
+                </p>
+                <p className="text-sm font-medium">{telefone}</p>
               </div>
             </div>
           )}
@@ -152,7 +203,7 @@ export function ModalDetalhesCliente({ cliente, open, onOpenChange, onAbrirConve
         </div>
 
         {/* Abrir conversa no CRM (mesmo fluxo do Buscar Contatos) */}
-        {cliente.telefone && (
+        {telefone && (
           <button
             type="button"
             onClick={handleAbrirConversa}
