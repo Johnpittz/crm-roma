@@ -579,6 +579,23 @@ EVOLUTION_API_KEY=e3186c32139f79c7566a1d6a3f5bc702fae199c725a313ce9b7f8ff035123b
   excluir devolvendo o id) — suíte **141/141**, `tsc --noEmit` e `next build` limpos
 - [ ] Pendência de dados: quando o histórico do Millennium entrar em `vendas`, as duas fontes somam sozinhas (scripts em `scripts/sync-millennium*`, credenciais não estão no repo)
 
+### 01/10/2026 (2) — Card TOP 20 e corte da listagem passam a vir da MESMA resposta
+- [x] **BUG relatado pelo João:** cliente com tarefa concluída (R$ 1.000) sumiu dos **DOIS lados** — nem
+  na listagem CLIENTES nem no card TOP 20. Reproduzido com os dados da produção: a listagem excluía ele
+  (badge 1927 = 1928 − 1, ou seja o cálculo do Top 20 **tinha** ele) enquanto o card vinha de **outra
+  chamada** (`GET /api/clientes/top`) com o **cache de 5 s de outra instância**, ainda do instante
+  anterior à venda (só depois de concluir a tarefa entram `resultado`/`valor_venda`). Duas respostas
+  diferentes no mesmo instante => o cliente não estava em lugar nenhum.
+- [x] **Correção: uma resposta só alimenta os dois.** `GET /api/clientes` calcula o ranking **uma vez**,
+  usa ele no corte (`idsReaisParaExcluir`) e devolve em **`top`**; o card (`painel-inferior.tsx`) passa a
+  renderizar de lá. `GET /api/clientes/top` continua existindo só como **fallback** (resposta sem `top`
+  ou falha da listagem). Card e corte agora são atomicamente iguais — no pior caso os dois estão até 5 s
+  defasados **juntos** (o cliente continua na lista até o Top 20 atualizar; ele nunca some dos dois).
+- [x] TDD RED→GREEN: novo `app/api/clientes/route.test.ts` (3 testes: PostgREST falso + rota de verdade —
+  `top` vem junto de quem foi cortado, caminho antigo sem `contato`, e sem `excluir_top20` não calcula)
+  + 3 no `painel-inferior.test.tsx` (card sem chamada separada, renderiza o `top` da resposta, fallback)
+  — suíte **169/169**, `tsc --noEmit` e `next build` limpos
+
 ### 01/10/2026 — Listagem CLIENTES: prioridade de CONTATO (atrasados vermelho / realizados verde)
 
 - [x] **Regra combinada com o João** (confirmou as 4 definições): quem tem **tarefa aberta em dia DESCE para

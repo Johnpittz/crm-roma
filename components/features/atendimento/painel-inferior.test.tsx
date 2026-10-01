@@ -226,20 +226,57 @@ describe('PainelInferior — Top 20 clientes (os que mais compraram)', () => {
     expect(document.body.textContent).toContain('R$ 1.500')
   })
 
-  it('busca o ranking uma única vez na carga inicial', async () => {
+  it('o ranking vem na MESMA resposta da listagem (sem segunda chamada)', async () => {
     vi.useFakeTimers()
     const fetchMock = mockFetch({ clientes: [], total: 1928, top: [] })
 
     render(<PainelInferior onAbrirConversa={() => {}} />)
     await descarregar()
 
-    expect(chamadas(fetchMock, '/api/clientes/top')).toHaveLength(1)
+    // Card e exclusão são o MESMO cálculo: a lista devolve `top` junto, então o
+    // card não faz uma chamada própria que poderia divergir do corte (bug de
+    // 01/10/2026 — o card vinha de outro request com cache de 5 s e o cliente
+    // sumia dos dois lados ao mesmo tempo).
+    expect(chamadas(fetchMock, '/api/clientes/top')).toHaveLength(0)
 
     fireEvent.change(screen.getByPlaceholderText(/Filtrar por/i), { target: { value: 'rio' } })
     await descarregar(400)
 
-    expect(chamadas(fetchMock, '/api/clientes/top')).toHaveLength(1)
+    expect(chamadas(fetchMock, '/api/clientes/top')).toHaveLength(0)
     expect(chamadas(fetchMock, '/api/clientes?')).toHaveLength(2)
+  })
+
+  it('renderiza o Top 20 que veio junto com a listagem', async () => {
+    vi.useFakeTimers()
+    const fetchMock = mockFetch({
+      clientes: [],
+      total: 1927,
+      top: [
+        {
+          id: 'edgar-uuid',
+          nome: '03.064.950 EDGAR PEREIRA DO NASCIMENTO',
+          documento: null,
+          pedidos: 1,
+          valor: 1000,
+        },
+      ],
+    })
+
+    render(<PainelInferior onAbrirConversa={() => {}} />)
+    await descarregar()
+
+    expect(document.body.textContent).toContain('EDGAR PEREIRA DO NASCIMENTO')
+    expect(chamadas(fetchMock, '/api/clientes/top')).toHaveLength(0)
+  })
+
+  it('resposta sem `top` (servidor antigo): o card cai para /api/clientes/top', async () => {
+    vi.useFakeTimers()
+    const fetchMock = mockFetch({ clientes: [], total: 1928 })
+
+    render(<PainelInferior onAbrirConversa={() => {}} />)
+    await descarregar()
+
+    expect(chamadas(fetchMock, '/api/clientes/top')).toHaveLength(1)
   })
 })
 

@@ -3,7 +3,8 @@
 /**
  * Painel inferior do Atendimento — dois containers lado a lado ocupando a
  * faixa entre os cards de métrica e a área de chat:
- *  - Esquerda: TOP 20 CLIENTES (os que mais compraram) — GET /api/clientes/top
+ *  - Esquerda: TOP 20 CLIENTES — vem em `top` na resposta de GET /api/clientes
+ *    (mesmo cálculo do corte; fallback GET /api/clientes/top)
  *  - Direita:  CLIENTES REAIS da carteira + FILTRO — o vendedor acha o cliente
  *              por nome, CNPJ, telefone ou e-mail sem sair da tela.
  *
@@ -132,11 +133,6 @@ export function PainelInferior({ onAbrirConversa }: PainelInferiorProps) {
     }
   }, []);
 
-  // O ranking não muda enquanto ele digita: busca só na carga inicial.
-  useEffect(() => {
-    void buscarTop();
-  }, [buscarTop]);
-
   const buscar = useCallback(async (termo: string, filtroContato: ContatoFiltro) => {
     try {
       setCarregando(true);
@@ -153,14 +149,27 @@ export function PainelInferior({ onAbrirConversa }: PainelInferiorProps) {
       const res = await fetch(`/api/clientes?${params.toString()}`, {
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
-      if (!res.ok) return;
+      if (!res.ok) {
+        void buscarTop();
+        return;
+      }
 
       const data = await res.json();
       setClientes(Array.isArray(data.clientes) ? data.clientes : []);
       setTotal(typeof data.total === "number" ? data.total : 0);
       setContagens(data.contatos ?? null);
+      // REGRA (bug de 01/10/2026): o Top 20 vem na MESMA resposta da listagem —
+      // é o mesmo cálculo que tirou esses clientes da lista, então card e corte
+      // nunca divergem. GET /api/clientes/top só como fallback de resposta antiga.
+      if (Array.isArray(data.top)) {
+        setTopClientes(data.top);
+        setTopCarregando(false);
+      } else {
+        void buscarTop();
+      }
     } catch (err) {
       console.error("[PainelInferior] falha ao buscar clientes:", err);
+      void buscarTop();
     } finally {
       setCarregando(false);
     }

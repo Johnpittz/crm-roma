@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient, createClient as createServiceClient } from "@supabase/supabase-js";
 import { escopoCarteira, aplicarEscopoClientes, idsDaEquipe } from "@/lib/carteira";
 import { filtroBuscaClientes } from "@/lib/busca-clientes";
-import { idsTopClientes, TOP_CLIENTES_LIMITE } from "@/lib/top-clientes";
+import { topClientes, idsReaisParaExcluir, TOP_CLIENTES_LIMITE } from "@/lib/top-clientes";
 import {
   aplicarFiltroContato,
   situacoesDoEscopo,
@@ -61,15 +61,20 @@ export async function GET(request: NextRequest) {
     // Nome, CPF/CNPJ, telefone, celular ou e-mail (ver lib/busca-clientes.ts)
     const filtroBusca = filtroBuscaClientes(busca);
 
-    // Ids do Top 20 no mesmo escopo da listagem (falha => não corta nada)
-    const idsExcluidos = excluirTop20
-      ? await idsTopClientes(supabase, {
+    // REGRA (bug de 01/10/2026): o ranking é calculado UMA vez — ele tira o
+    // Top 20 da listagem E volta em `top` para o card. Antes o card pedia em
+    // outra chamada e o cache de 5 s podia estar desatualizado: o cliente saía
+    // da lista (corte novo) mas não aparecia no card (ranking velho) — sumia
+    // dos DOIS lados. Com uma resposta só, card e exclusão nunca divergem.
+    const ranking = excluirTop20
+      ? await topClientes(supabase, {
           escopo,
           userId: userData.user.id,
           equipeIds: equipe,
           limite: TOP_CLIENTES_LIMITE,
         })
       : [];
+    const idsExcluidos = idsReaisParaExcluir(ranking);
     const semTop20 = (q: any) =>
       idsExcluidos.length ? q.not("id", "in", `(${idsExcluidos.join(",")})`) : q;
 
@@ -156,6 +161,8 @@ export async function GET(request: NextRequest) {
         escopo,
         limite,
         excluidos_top20: idsExcluidos.length,
+        // o mesmo ranking que gerou o corte — o card renderiza daqui
+        top: ranking,
         contato: filtroContato,
         contatos: contagem,
       });
@@ -204,6 +211,8 @@ export async function GET(request: NextRequest) {
       limite,
       // Quantos do Top 20 saíram desta listagem (0 quando não pediu o corte)
       excluidos_top20: idsExcluidos.length,
+      // o mesmo ranking que gerou o corte — o card renderiza daqui
+      top: ranking,
     });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || "Erro interno" }, { status: 500 });
