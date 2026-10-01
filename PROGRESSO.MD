@@ -579,6 +579,26 @@ EVOLUTION_API_KEY=e3186c32139f79c7566a1d6a3f5bc702fae199c725a313ce9b7f8ff035123b
   excluir devolvendo o id) — suíte **141/141**, `tsc --noEmit` e `next build` limpos
 - [ ] Pendência de dados: quando o histórico do Millennium entrar em `vendas`, as duas fontes somam sozinhas (scripts em `scripts/sync-millennium*`, credenciais não estão no repo)
 
+### 01/10/2026 (3) — Pré-cadastro do cliente ao FECHAR tarefa (+ diagnóstico do dashboard)
+- [x] **Pedido do João:** fechar tarefa de cliente que não existe na base => criar o cliente automático
+  ("pré-criado" com as info do WhatsApp, resto preenchido depois). Hoje só o `POST /api/tarefas` já fazia
+  isso (desde o deploy **30/09 20:22**) — a tarefa do E-commerce foi criada **30/09 19:31, 51 min antes**,
+  por isso ficou com `cliente_id = null`.
+- [x] **`PATCH /api/tarefas` agora casa/cria o cliente** antes de gravar: se a tarefa não tem `cliente_id`
+  e tem nome, casa por nome (`ilike` exato) e, não achando, insere o pré-cadastro (nome + telefone do
+  WhatsApp + `vendedor_responsavel_id` = vendedor da tarefa, `status ativo`). Vale para concluir **e para
+  qualquer edição** (auto-cura de tarefa antiga); falha de cadastro **nunca bloqueia** a conclusão.
+  `telefone` passou a ser aceito no corpo — manda o **painel de contato** (número da conversa) e o
+  **modal de conclusão do kanban** (vem do join `clientes.telefone/celular`).
+- [x] **Diagnóstico (não era bug de cliente):** o card de métricas do atendimento é **do mês corrente**
+  (`/api/tarefas/resumo?periodo=mes` filtra `created_at`). Venda do E-commerce: **30/09 → conta em
+  SETEMBRO**; EDGAR: 01/10 → conta em OUTUBRO. Números medidos na produção: **set = R$ 1.000 ·
+  out = R$ 1.000 · sem filtro de mês (Top 20) = R$ 2.000**. Ou seja: em 30/09 o card mostrava 1.000, hoje
+  mostra 1.000 (outubro) — as duas vendas existem, só caem em meses diferentes.
+- [x] TDD: novo `app/api/tarefas/route.patch.test.ts` (4 testes, rota real + Supabase falso: cria e vincula,
+  casa sem duplicar, já vinculada não mexe, falha de cadastro não bloqueia) — suíte **173/173**,
+  `tsc --noEmit` e `next build` limpos.
+
 ### 01/10/2026 (2) — Card TOP 20 e corte da listagem passam a vir da MESMA resposta
 - [x] **BUG relatado pelo João:** cliente com tarefa concluída (R$ 1.000) sumiu dos **DOIS lados** — nem
   na listagem CLIENTES nem no card TOP 20. Reproduzido com os dados da produção: a listagem excluía ele

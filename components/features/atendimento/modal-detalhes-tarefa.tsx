@@ -49,7 +49,12 @@ interface TarefaCompleta {
   observacao_resultado: string | null;
   valor_venda: number | null;
   cliente_nome: string | null;
-  clientes: { id: string; nome_razao_social: string } | null;
+  clientes: {
+    id: string;
+    nome_razao_social: string;
+    telefone?: string | null;
+    celular?: string | null;
+  } | null;
 }
 
 const iconesTarefa: Record<string, string> = {
@@ -252,6 +257,9 @@ export function ModalDetalhesTarefa({
         id: tarefa.id,
         coluna_kanban: "concluida",
         status: "concluida",
+        // telefone do WhatsApp (quando a tarefa já tem cliente vinculado ele
+        // vem no join): o servidor usa para pré-cadastrar quem não existe
+        telefone: tarefa.clientes?.telefone || tarefa.clientes?.celular || null,
         titulo: form.titulo,
         descricao: form.descricao,
         prioridade: form.prioridade,

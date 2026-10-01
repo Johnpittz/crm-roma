@@ -215,7 +215,7 @@ export async function PATCH(request: NextRequest) {
   }
 
   const body = await request.json();
-  const { id, titulo, descricao, prioridade, coluna_kanban, ordem, status, resultado, observacao_resultado, valor_venda, cliente_nome, data_fim, hora_fim } = body;
+  const { id, titulo, descricao, prioridade, coluna_kanban, ordem, status, resultado, observacao_resultado, valor_venda, cliente_nome, data_fim, hora_fim, telefone } = body;
 
   if (!id) {
     return NextResponse.json({ error: "ID da tarefa é obrigatório" }, { status: 400 });
@@ -258,6 +258,28 @@ export async function PATCH(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
+
+  // REGRA (01/10/2026) — pré-cadastro do cliente: tarefa sem cliente vinculado
+  // casa o cliente pelo nome e, não achando, CRIA um "pré-cadastro" com o que
+  // veio do WhatsApp (nome + telefone quando o chamador manda) — lead que virou
+  // venda vira cliente, preenche-se o resto depois. Vale para concluir e para
+  // qualquer edição (auto-cura de tarefa antiga). A falha nunca bloqueia.
+  if (!updateData.cliente_id) {
+    const { data: atual } = await supabaseAdmin
+      .from("tarefas")
+      .select("cliente_id, cliente_nome, vendedor_id")
+      .eq("id", id)
+      .single();
+    const nomeFinal = cliente_nome ?? atual?.cliente_nome ?? null;
+    if (atual && !atual.cliente_id && nomeFinal) {
+      const clienteId = await vincularOuCriarCliente({
+        nome: nomeFinal,
+        telefone: telefone || null,
+        vendedorId: atual.vendedor_id || user.id,
+      });
+      if (clienteId) updateData.cliente_id = clienteId;
+    }
+  }
 
   const { data: tarefa, error } = await supabaseAdmin
     .from("tarefas")

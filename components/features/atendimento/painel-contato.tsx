@@ -263,6 +263,9 @@ export function PainelContato({ atendimento, onFechar, onMarcarConcluido, onEtiq
           coluna_kanban: "concluida",
           valor_venda: valor,
           resultado: "sucesso",
+          // telefone do WhatsApp: com ele o servidor pré-cadastra o cliente
+          // quando a tarefa ainda não tem ninguém vinculado (ver PATCH)
+          telefone: telefone || null,
           data_fim: new Date().toISOString().split("T")[0],
           hora_fim: new Date().toTimeString().slice(0, 5),
         }),
