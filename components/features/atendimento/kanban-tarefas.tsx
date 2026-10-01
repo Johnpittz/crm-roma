@@ -14,7 +14,7 @@ import {
   Draggable,
   DropResult,
 } from "@hello-pangea/dnd";
-import { MoreHorizontal, Clock, AlertCircle, Trash2, MessageCircle } from "lucide-react";
+import { MessageCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +22,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { NovaTarefaModal } from "./nova-tarefa-modal";
+import { PreviewTarefa } from "./preview-tarefa";
 import { ModalDetalhesTarefa } from "./modal-detalhes-tarefa";
 import { CardAtendimentoKanban } from "./card-atendimento-kanban";
 
@@ -31,35 +32,6 @@ const colunas = [
   { id: "concluida", titulo: "Concluído", cor: "bg-emerald-50" },
 ];
 
-const iconesTarefa: Record<string, string> = {
-  visita: "🏢",
-  ligacao: "📞",
-  whatsapp: "💬",
-  email: "📧",
-  reuniao: "🤝",
-  follow_up: "🔄",
-  prospeccao: "🔍",
-  outro: "📋",
-};
-
-const coresPrioridade: Record<string, string> = {
-  baixa: "bg-slate-100 text-slate-700",
-  media: "bg-blue-100 text-blue-700",
-  alta: "bg-orange-100 text-orange-700",
-  urgente: "bg-red-100 text-red-700",
-};
-
-const origemConfig: Record<string, { icone: string; nome: string; cor: string }> = {
-  prospeccao_b2b: { icone: "🔍", nome: "Prospecção", cor: "bg-emerald-100 text-emerald-700" },
-  whatsapp: { icone: "💬", nome: "WhatsApp", cor: "bg-green-100 text-green-700" },
-  indicacao: { icone: "🤝", nome: "Indicação", cor: "bg-purple-100 text-purple-700" },
-  site: { icone: "🌐", nome: "Site", cor: "bg-blue-100 text-blue-700" },
-  pixel: { icone: "📊", nome: "Pixel", cor: "bg-orange-100 text-orange-700" },
-  api: { icone: "🔗", nome: "API", cor: "bg-cyan-100 text-cyan-700" },
-  importacao: { icone: "📁", nome: "Importação", cor: "bg-slate-100 text-slate-700" },
-  manual: { icone: "✋", nome: "Manual", cor: "bg-slate-100 text-slate-500" },
-  evento: { icone: "🎪", nome: "Evento", cor: "bg-amber-100 text-amber-700" },
-};
 
 interface Tarefa {
   id: string;
@@ -282,10 +254,6 @@ export function KanbanTarefas({ atendimentos, onAbrirChat, onRefresh, onTarefaAt
     return [];
   };
 
-  const formatHora = (hora: string | null) => {
-    if (!hora) return "";
-    return hora.substring(0, 5);
-  };
 
   return (
     <Card className="h-full flex flex-col">
@@ -371,69 +339,7 @@ export function KanbanTarefas({ atendimentos, onAbrirChat, onRefresh, onTarefaAt
                                     snapshot.isDragging && "shadow-lg ring-2 ring-blue-500 rotate-2"
                                   )}
                                 >
-                                  <div className="flex items-start justify-between mb-1">
-                                    <Badge
-                                      variant="secondary"
-                                      className={cn(
-                                        "text-[10px] px-1.5 py-0.5",
-                                        coresPrioridade[tarefa.prioridade] || coresPrioridade.media
-                                      )}
-                                    >
-                                      {tarefa.prioridade === "urgente" && (
-                                        <AlertCircle className="h-3 w-3 mr-1" />
-                                      )}
-                                      {tarefa.prioridade}
-                                    </Badge>
-                                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-6 w-6 text-slate-400 hover:text-red-500"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleDelete(tarefa.id);
-                                        }}
-                                      >
-                                        <Trash2 className="h-3 w-3" />
-                                      </Button>
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-6 w-6"
-                                      >
-                                        <MoreHorizontal className="h-4 w-4 text-slate-400" />
-                                      </Button>
-                                    </div>
-                                  </div>
-
-<div className="flex items-center gap-1.5 mb-1 flex-wrap">
-  <p className="font-medium text-slate-900 text-xs truncate">
-    {iconesTarefa[tarefa.tipo] || "📋"} {tarefa.titulo}
-  </p>
-  {tarefa.origem_lead && origemConfig[tarefa.origem_lead] && (
-    <Badge
-      variant="secondary"
-      className={cn(
-        "text-[9px] px-1.5 py-0 flex-shrink-0",
-        origemConfig[tarefa.origem_lead].cor
-      )}
-    >
-      {origemConfig[tarefa.origem_lead].icone} {origemConfig[tarefa.origem_lead].nome}
-    </Badge>
-  )}
-</div>
-
-                                  <div className="flex items-center justify-between text-xs text-slate-500">
-                                    <span className="truncate max-w-[100px]">
-                                      {tarefa.clientes?.nome_razao_social || tarefa.cliente_nome || "—"}
-                                    </span>
-                                    {tarefa.hora_inicio && (
-                                      <span className="flex items-center gap-1">
-                                        <Clock className="h-3 w-3" />
-                                        {formatHora(tarefa.hora_inicio)}
-                                      </span>
-                                    )}
-                                  </div>
+                                  <PreviewTarefa tarefa={tarefa} onExcluir={handleDelete} />
                                 </div>
                               )}
                             </Draggable>

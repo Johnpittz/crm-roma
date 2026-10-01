@@ -566,6 +566,17 @@ EVOLUTION_API_KEY=e3186c32139f79c7566a1d6a3f5bc702fae199c725a313ce9b7f8ff035123b
 - [x] **Verificação em produção (leitura):** com as 2 vendas do kanban, o ranking devolve `E-commerce (sem-cadastro, R$ 1.000)` + `03.064.950 EDGAR PEREIRA DO NASCIMENTO` (nome casou com o cliente `e4804261…`); contagem do card CLIENTES **3.073 → 3.072** com o corte aplicado
 - [x] **BUG REPORTADO E CORRIGIDO no mesmo dia — card apagado no kanban continuava no Top 20** (e continuava cortado da listagem CLIENTES): o ranking ficava **2 min** em cache e cada função serverless tem o seu Map. Agora o cache é em **duas camadas**: ranking **5 s** (só coalesce a rajada de requests — apagar/criar card reflete em segundos) e varredura de `vendas` **5 min** (única fonte cara de varrer). Regressão em `lib/top-clientes.test.ts` com PostgREST falso + timers falso: apagou o card → o Top 20 zera e a varredura de `vendas` não se repete. Conferência em produção: com o card apagado, o ranking calulado ao vivo já saía com 1 item e **0 exclusões** (o visto pelo usuário era o cache)
 - [x] **Resolução de nome em lote:** os nomes sem cadastro casam com a base numa única consulta `in.(...)` (fallback 1 a 1 por `ilike` só para o que não veio — nome com vírgula/aspas ou caixa diferente) — antes eram até 30 queries por cálculo
+- [x] **Card do kanban ganhou prévia rica** (o card tinha muito espaço vazio): o corpo inteiro saiu do
+  `kanban-tarefas.tsx` para o componente puro **`components/features/atendimento/preview-tarefa.tsx`**
+  (`PreviewTarefa` — junto ficaram `iconesTarefa`/`coresPrioridade`/`origemConfig` e o tipo
+  `TarefaKanban`; o `Draggable` ficou onde estava). Além de prioridade/título/origem/cliente, a prévia
+  mostra agora: telefone do cliente formatado no padrão BR (formato que não bate volta como está, sem
+  inventar), **data · hora**, **valor da venda** em verde (`Intl` pt-BR, U+00A0 normalizado para espaço),
+  **descrição** (`line-clamp-2`, não estoura o card) e **badge de resultado + observação** — cada linha
+  só renderiza se o campo existir (campo vazio nunca vira linha vazia)
+- [x] TDD: novo `components/features/atendimento/preview-tarefa.test.tsx` (7 testes: mantém o essencial,
+  linha completa, descrição em 2 linhas, **caso vazio sem linha vazia**, 2 formatações de telefone,
+  excluir devolvendo o id) — suíte **141/141**, `tsc --noEmit` e `next build` limpos
 - [ ] Pendência de dados: quando o histórico do Millennium entrar em `vendas`, as duas fontes somam sozinhas (scripts em `scripts/sync-millennium*`, credenciais não estão no repo)
 
 ### 23/09/2026 (Escopo de carteira: vendedor só vê os próprios clientes)
