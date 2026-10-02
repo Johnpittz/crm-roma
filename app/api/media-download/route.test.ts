@@ -75,11 +75,10 @@ const ctx = vi.hoisted(() => {
     }
     // arquivo no WAHA
     if (url.includes("/api/files/")) {
+      const mime = ctx.estado.mimeFiles || "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+      const bytes = mime === "video/mp4" ? Buffer.from("FTYP-ISOBMFF-video-bytes") : Buffer.from("PK\x03\x04-arquivo-xlsx");
       return Promise.resolve(
-        new Response(Buffer.from("PK\x03\x04-arquivo-xlsx"), {
-          status: 200,
-          headers: { "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" },
-        })
+        new Response(bytes, { status: 200, headers: { "Content-Type": mime } })
       );
     }
     return Promise.resolve(new Response("chamada inesperada: " + url, { status: 500 }));
@@ -176,6 +175,25 @@ describe("GET /api/media-download — documento do chat", () => {
     expect(res.status).toBe(200);
     expect(res.headers.get("Content-Disposition")).toContain("hikvision-abaixo-minimo-01-10.xlsx");
     expect(ctx.chamadasFetch.some((u) => u.includes("storage/v1/object"))).toBe(true);
+  });
+
+  it("VÍDEO sem url_midia: baixa no WAHA, guarda no Storage e REDIRECIONA (não streama 10MB pela Vercel)", async () => {
+    ctx.estado.mimeFiles = "video/mp4";
+    preparar({ tipo_midia: "video", file_name: null });
+
+    const res = await requisitar("uuid-msg", "video");
+
+    expect(res.status).toBe(307);
+    expect(res.headers.get("location")).toBe(
+      "https://sup.test/storage/v1/object/public/chat-media/whatsapp/auto.xlsx"
+    );
+    expect(ctx.estado.uploads).toHaveLength(1);
+    expect(ctx.estado.uploads[0].mime).toBe("video/mp4");
+    expect(ctx.estado.mensagens[0].url_midia).toBe(
+      "https://sup.test/storage/v1/object/public/chat-media/whatsapp/auto.xlsx"
+    );
+    // o proxy NÃO devolve os bytes: quem toca é o Storage
+    expect((await res.text()).length).toBeLessThan(200);
   });
 
   it("mensagem inexistente devolve 404", async () => {

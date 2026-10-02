@@ -63,9 +63,13 @@ export function urlMidiaDaMensagem(msg: MensagemMidia): string | null {
     return `/api/media?url=${encodeURIComponent(url)}&type=${tipo}`;
   }
 
-  // Documento sem URL (planilhas antigas): baixa pelo id da mensagem.
-  if (tipo === "document" && idUsavel) {
-    return `/api/media-download?msg_id=${encodeURIComponent(msg.id!)}&type=document`;
+  // Mídia SEM URL: baixa pelo id da mensagem e o proxy resolve no WAHA
+  // (com auto-cura no Storage). Cobre as planilhas antigas, os VÍDEOS que não
+  // reproduziam (print 02/10/2026 — o upload deles falhava no webhook) e
+  // áudios/imagens gravados sem URL. Texto (sem tipo) fica de fora.
+  const tiposComProxy = ["document", "video", "audio", "image", "sticker"];
+  if (tiposComProxy.includes(tipo) && idUsavel) {
+    return `/api/media-download?msg_id=${encodeURIComponent(msg.id!)}&type=${tipo}`;
   }
 
   return null;

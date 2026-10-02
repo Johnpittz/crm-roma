@@ -661,6 +661,25 @@ original, servir do Storage com o nome original, auto-cura gravando `url_midia`,
 redirect de mídia, 404) + `lib/media-storage.test.ts` (4: extensão por mime) → **197/197**, `tsc`,
 `build`.
 
+### 02/10/2026 (8) — Vídeos do chat não reproduziam
+
+- **Sintoma (print):** vídeo recebido aparecia só com `🎬 Vídeo recebido`, sem player.
+- **Causa:** a mensagem foi gravada com `url_midia = NULL` (mesma doença das planilhas):
+  o webhook baixa a mídia no instante da chegada e o arquivo do vídeo (10,86 MB) ainda não
+  estava pronto/entregue pelo WAHA → upload falhou → ficou só `conteudo: "[video]"`.
+- **Correções:**
+  1. `lib/midia-chat.ts`: **qualquer** mídia (vídeo/áudio/imagem/figurinha/documento) com id e
+     **sem URL** agora vira `/api/media-download?msg_id=…&type=…` (antes só documento);
+     texto continua sem link.
+  2. `app/api/media-download`: mídia **inline** (vídeo/áudio/imagem) resolvida no WAHA →
+     **auto-cura e 307 pro Storage** (o player precisa de Range; não se passa 10 MB pela
+     função da Vercel). Documento continua servido com `attachment` + nome original.
+     Cache em memória só até 2 MB (vídeo não mora na memória do pod).
+  3. **Bucket `chat-media`:** `file_size_limit` de **10 MB → 50 MB** (o vídeo tem 10,86 MB e
+     a auto-cura seria rejeitada). 26 mimes já incluíam `video/mp4`.
+- **Testes:** `lib/midia-chat.test.ts` (4 novos) + `media-download/route.test.ts` (vídeo →
+  307 pro Storage) → **218/218**, `tsc` e build limpos.
+
 ### 01/10/2026 (5) — Telefone do WhatsApp aparece no modal mesmo sem telefone no cadastro
 - [x] **Sintoma:** clicar em `E-commerce` no Top 20 abria o modal **sem telefone** — mas a conversa no
   WhatsApp tem número (`atendimentos.telefone_cliente = 556234165003`, conversa "E-commerce" de 30/09).

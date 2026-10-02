@@ -28,6 +28,9 @@ const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY || "";
 // Simple in-memory cache for decoded media (TTL: 1 hour)
 const mediaCache = new Map<string, { data: ArrayBuffer; contentType: string; timestamp: number }>();
 const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+// Só mídia pequena entra na memória: vídeo de 10 MB estouraria o pod
+// (o player recebe redirect pro Storage, não precisa de cache aqui).
+const CACHE_MAX_BYTES = 2_000_000;
 
 function getCachedMedia(key: string): { data: ArrayBuffer; contentType: string } | null {
   const entry = mediaCache.get(key);
@@ -83,17 +86,19 @@ function headersArquivo(file_name: unknown, contentType: string): Record<string,
  * varrer o histórico do chat de novo. Qualquer falha aqui é irrelevante:
  * o arquivo já foi entregue.
  */
-async function guardarNoStorage(mensagem: any, buffer: ArrayBuffer, contentType: string): Promise<void> {
+async function guardarNoStorage(mensagem: any, buffer: ArrayBuffer, contentType: string): Promise<string | null> {
   try {
     const base64 = Buffer.from(buffer).toString("base64");
     const url = await uploadMediaToStorage(base64, contentType, "whatsapp");
-    if (!url) return;
+    if (!url) return null;
     await getSupabase()
       .from("atendimento_mensagens")
       .update({ url_midia: url })
       .eq("id", mensagem.id);
+    return url;
   } catch (err: any) {
     console.error("[MediaDownload] Auto-cura falhou (o arquivo já foi servido):", err?.message || err);
+    return null;
   }
 }
 
@@ -224,8 +229,16 @@ export async function GET(request: NextRequest) {
       if (resposta.ok) {
         const buffer = await resposta.arrayBuffer();
         const contentType = resposta.headers.get("content-type") || contentTypePorPadrao(type);
-        setCachedMedia(cacheKey, buffer, contentType);
-        await guardarNoStorage(mensagem, buffer, contentType);
+        const urlSalva = await guardarNoStorage(mensagem, buffer, contentType);
+
+        // Vídeo/áudio/imagem curado → REDIRECIONA: o Storage serve com Range
+        // (o player precisa disso) e a Vercel não passa 10 MB pela função.
+        if (urlSalva && !ehDocumento(contentType)) {
+          console.log(`[MediaDownload] Mídia curada e redirecionada: ${whatsappMsgId}`);
+          return NextResponse.redirect(urlSalva);
+        }
+
+        if (buffer.byteLength <= CACHE_MAX_BYTES) setCachedMedia(cacheKey, buffer, contentType);
 
         console.log(`[MediaDownload] Mídia servida via WAHA: ${whatsappMsgId}`);
         return new Response(buffer, {

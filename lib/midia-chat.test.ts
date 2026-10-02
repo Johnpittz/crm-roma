@@ -34,8 +34,35 @@ describe("urlMidiaDaMensagem — documento do WhatsApp", () => {
     expect(url).toBe(`/api/media-download?msg_id=${DOC.id}&type=document`);
   });
 
-  it("regressão: imagem sem url continua sem link (mostra o estado vazio)", () => {
-    expect(urlMidiaDaMensagem({ id: "x", tipo_midia: "imagem", url_midia: null })).toBeNull();
+  it("QUALQUER mídia sem url_midia passa a ter link pelo msg_id (print 02/10: vídeo não reproduzia)", () => {
+    const id = "0dedea07-8016-4687-81fe-0b6c229a602b";
+    for (const [tipo, esperado] of [
+      ["video", "video"],
+      ["vídeo", "video"],
+      ["audio", "audio"],
+      ["imagem", "image"],
+      ["documento", "document"],
+    ] as const) {
+      expect(urlMidiaDaMensagem({ id, tipo_midia: tipo, url_midia: null })).toBe(
+        `/api/media-download?msg_id=${id}&type=${esperado}`
+      );
+    }
+  });
+
+  it("texto (sem tipo de mídia) continua sem link — não manda texto pro proxy", () => {
+    expect(urlMidiaDaMensagem({ id: "abc", url_midia: null })).toBeNull();
+    expect(urlMidiaDaMensagem({ id: "abc", tipo_midia: null, url_midia: null })).toBeNull();
+  });
+
+  it("vídeo sem url e SEM id utilizável não vira link", () => {
+    expect(urlMidiaDaMensagem({ id: "virtual-9", tipo_midia: "video", url_midia: null })).toBeNull();
+    expect(urlMidiaDaMensagem({ id: undefined, tipo_midia: "video", url_midia: null })).toBeNull();
+  });
+
+  it("vídeo já salvo no Storage usa a própria URL", () => {
+    expect(
+      urlMidiaDaMensagem({ id: "x", tipo_midia: "video", url_midia: "https://x.supabase.co/storage/v1/object/public/chat-media/whatsapp/a.mp4" })
+    ).toBe("https://x.supabase.co/storage/v1/object/public/chat-media/whatsapp/a.mp4");
   });
 
   it("imagem com url de Storage usa a própria URL (comportamento antigo)", () => {
