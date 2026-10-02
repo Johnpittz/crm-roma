@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ConectarWhatsApp } from "@/components/features/configuracoes/conectar-whatsapp";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils/cn";
@@ -339,6 +340,7 @@ export default function ConfiguracoesPage() {
           <TabsTrigger value="notificacoes">Notificações</TabsTrigger>
           <TabsTrigger value="seguranca">Segurança</TabsTrigger>
           <TabsTrigger value="aparencia">Aparência</TabsTrigger>
+          <TabsTrigger value="whatsapp">WhatsApp</TabsTrigger>
           {isGestor && <TabsTrigger value="integracoes">Integrações</TabsTrigger>}
           {isGestor && <TabsTrigger value="equipe">Equipe</TabsTrigger>}
         </TabsList>
@@ -722,6 +724,22 @@ export default function ConfiguracoesPage() {
             </CardHeader>
             <CardContent className="space-y-6">
               <AparenciaContent />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* WhatsApp — visível para todos (01/10/2026) */}
+        <TabsContent value="whatsapp" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Conectar WhatsApp</CardTitle>
+              <CardDescription>
+                O número que o CRM usa para receber e responder mensagens. Clique em conectar e
+                escaneie o QR pelo celular — a configuração é automática.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ConectarWhatsApp />
             </CardContent>
           </Card>
         </TabsContent>

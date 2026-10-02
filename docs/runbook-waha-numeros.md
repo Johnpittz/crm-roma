@@ -31,6 +31,13 @@
 5. O **dashboard** guarda a API key na configuração dele (Workers → lápis → API key).
    Se mostrar "not connected"/toast vermelho, a chave dele está errada — não é o servidor.
 
+## 1.1 Atalho (01/10/2026) — botão no CRM
+
+**Configurações → aba WhatsApp → "Conectar WhatsApp"** faz os passos 1–5 sozinho (cria a sessão,
+configura o webhook, dá start, mostra o QR na tela e renova até o scan). O "Conectar outro número"
+gera o próximo `ROMA_N`. Esta API fica como **fallback manual** (servidor/outro agente) e para
+operação fora do CRM.
+
 ## 2. Processo para conectar um novo número (passo a passo)
 
 Substitua `ROMA_N` pelo nome da sessão (convenção: `ROMA_1`, `ROMA_2`, … um nome por número).

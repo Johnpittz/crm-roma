@@ -579,6 +579,30 @@ EVOLUTION_API_KEY=e3186c32139f79c7566a1d6a3f5bc702fae199c725a313ce9b7f8ff035123b
   excluir devolvendo o id) — suíte **141/141**, `tsc --noEmit` e `next build` limpos
 - [ ] Pendência de dados: quando o histórico do Millennium entrar em `vendas`, as duas fontes somam sozinhas (scripts em `scripts/sync-millennium*`, credenciais não estão no repo)
 
+### 01/10/2026 (7) — Configurações → botão CONECTAR WHATSAPP (automatiza o runbook)
+
+- [x] **Pedido do João:** parar de ficar pedindo pra pessoa escanear QR com setup manual; um botão
+  em Configurações que faz toda a configuração e em alguns segundos mostra o QR na tela.
+- [x] **Escopo combinado (clarify):** as duas coisas — reconectar o número atual **e** cadastrar
+  número novo (o número de teste atual fica enquanto valida o resto).
+- [x] **Rota nova `app/api/whatsapp/conectar`** (autenticada):
+  - `GET` → status das sessões **do CRM só** (prefixo `WAHA_SESSION_PREFIX`, padrão `ROMA`) — nunca
+    mexe nas sessões de outro projeto (`STK-*` rodam na mesma instância);
+  - `POST {action:"iniciar", novo?}` → cria `ROMA_N` se não existir, **configura o webhook**
+    (`message.any`, `message.ack`, `session.status` → `/api/webhooks/waha`) e dá `start`;
+  - `POST {action:"qr", session}` → devolve o QR como **data URL** (PNG conferido pelos 4 bytes
+    `89 50 4e 47`), confirma `WORKING` pós-scan, ou **reinicia sozinha** se a sessão caiu/QR expirou.
+  - Dois passos rápidos de propósito: QR expira em ~20 s e a Vercel limita a função — quem espera e
+    renova é o front (polling de 2,5 s).
+- [x] **UI** `components/features/configuracoes/conectar-whatsapp.tsx` + aba **WhatsApp** visível
+  pra todos em Configurações: badge de status, botões **Conectar WhatsApp** / **Conectar outro
+  número**, QR na tela com instrução (WhatsApp → ⋮ → Aparelhos conectados → Conectar aparelho),
+  renovação automática e lista dos números conectados.
+- **Testes:** `app/api/whatsapp/conectar/route.test.ts` (8: criação com webhook, prefixo bloqueado,
+  WORKING sem reiniciar, QR PNG, QR caindo → reinício, ...) + `components/features/configuracoes/
+  conectar-whatsapp.test.tsx` (4) → **209/209**, `tsc`, `build`.
+- **Manual (runbook) continua de pé** como fallback — `docs/runbook-waha-numeros.md`.
+
 ### 01/10/2026 (6) — Documentos do chat: baixar E enviar (planilhas incluídas)
 
 **Problema (print do João):** a planilha `hikvision-abaixo-minimo-01-10.xlsx` no chat **não podia** ser baixada. Causa raiz em **duas pontas**, provada nos dados:
