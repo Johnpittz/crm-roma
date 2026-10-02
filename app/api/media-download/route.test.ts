@@ -64,6 +64,15 @@ const ctx = vi.hoisted(() => {
         )
       );
     }
+    // arquivo no Storage (url_midia salva)
+    if (url.includes("storage/v1/object")) {
+      return Promise.resolve(
+        new Response(Buffer.from("BYTES-DO-STORAGE"), {
+          status: 200,
+          headers: { "Content-Type": "application/octet-stream" },
+        })
+      );
+    }
     // arquivo no WAHA
     if (url.includes("/api/files/")) {
       return Promise.resolve(
@@ -146,14 +155,27 @@ describe("GET /api/media-download — documento do chat", () => {
     expect(ctx.estado.mensagens[0].url_midia).toBe("https://sup.test/storage/v1/object/public/chat-media/whatsapp/auto.xlsx");
   });
 
-  it("regressão: mensagem com url_midia salva continua redirecionando", async () => {
-    preparar({ url_midia: "https://sup.test/storage/v1/object/public/chat-media/whatsapp/antigo.pdf", file_name: "antigo.pdf" });
+  it("regressão: mídia (imagem) com url salva continua redirecionando", async () => {
+    preparar({ url_midia: "https://sup.test/storage/v1/object/public/chat-media/whatsapp/antigo.jpg", file_name: "antigo.jpg" });
 
-    const res = await requisitar("uuid-msg");
+    const res = await requisitar("uuid-msg", "image");
 
     expect(res.status).toBe(307);
-    expect(res.headers.get("location")).toBe("https://sup.test/storage/v1/object/public/chat-media/whatsapp/antigo.pdf");
+    expect(res.headers.get("location")).toBe("https://sup.test/storage/v1/object/public/chat-media/whatsapp/antigo.jpg");
     expect(ctx.estado.uploads).toHaveLength(0);
+  });
+
+  it("documento já salvo: serve com o NOME ORIGINAL do arquivo (não o nome do Storage)", async () => {
+    preparar({
+      url_midia: "https://sup.test/storage/v1/object/public/chat-media/enviados/1790942832516-qwxe58.docx",
+      file_name: "hikvision-abaixo-minimo-01-10.xlsx",
+    });
+
+    const res = await requisitar("uuid-msg", "document");
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Content-Disposition")).toContain("hikvision-abaixo-minimo-01-10.xlsx");
+    expect(ctx.chamadasFetch.some((u) => u.includes("storage/v1/object"))).toBe(true);
   });
 
   it("mensagem inexistente devolve 404", async () => {

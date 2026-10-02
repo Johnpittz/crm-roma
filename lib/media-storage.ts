@@ -66,7 +66,14 @@ export async function uploadMediaToStorage(
   }
 }
 
-function getExtensionFromMime(mime: string): string {
+/**
+ * Extensão do arquivo salvo no Storage a partir do MIME.
+ * ORDEM IMPORTA: o mime do `.xlsx` é
+ * `…officedocument.spreadsheetml.sheet` e contém "document" — a regra de
+ * planilha precisa vir ANTES da genérica de documento, senão o `.xlsx` é
+ * gravado como `.docx` (bug achado na auto-cura do download do chat).
+ */
+export function getExtensionFromMime(mime: string): string {
   const m = mime.toLowerCase();
   if (m.includes("ogg")) return "ogg";
   if (m.includes("opus")) return "ogg";
@@ -78,7 +85,27 @@ function getExtensionFromMime(mime: string): string {
   if (m.includes("webp")) return "webp";
   if (m.includes("gif")) return "gif";
   if (m.includes("pdf")) return "pdf";
-  if (m.includes("document") || m.includes("msword")) return "docx";
-  if (m.includes("spreadsheet") || m.includes("excel")) return "xlsx";
+  // planilhas (antes da regra genérica de "document")
+  if (m.includes("spreadsheet") || m.includes("excel")) {
+    if (m.includes("ms-excel")) return "xls";
+    if (m.includes("opendocument")) return "ods";
+    return "xlsx";
+  }
+  // apresentações
+  if (m.includes("presentation") || m.includes("powerpoint")) {
+    if (m.includes("ms-powerpoint")) return "ppt";
+    if (m.includes("opendocument")) return "odp";
+    return "pptx";
+  }
+  // texto simples, planilha em CSV e comprimidos
+  if (m.includes("csv")) return "csv";
+  if (m.includes("text/plain")) return "txt";
+  if (m.includes("zip")) return "zip";
+  if (m.includes("x-rar") || m.includes("vnd.rar")) return "rar";
+  if (m.includes("x-7z") || m.includes("7-zip")) return "7z";
+  // documentos de texto
+  if (m.includes("wordprocessing")) return "docx";
+  if (m.includes("msword")) return "doc";
+  if (m.includes("document")) return "docx";
   return "bin";
 }

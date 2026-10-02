@@ -64,6 +64,19 @@ function ehDocumento(contentType: string): boolean {
   return !/^(image|audio|video)\//i.test(contentType);
 }
 
+/** Cabeçalhos de um arquivo servido — anexo com o NOME ORIGINAL quando é documento. */
+function headersArquivo(file_name: unknown, contentType: string): Record<string, string> {
+  const headers: Record<string, string> = {
+    "Content-Type": contentType,
+    "Cache-Control": "private, max-age=3600",
+  };
+  if (file_name && ehDocumento(contentType)) {
+    const nome = String(file_name).replace(/[\r\n\"]/g, "");
+    headers["Content-Disposition"] = `attachment; filename="${nome}"`;
+  }
+  return headers;
+}
+
 /**
  * Auto-cura: depois de servir um arquivo que estava só no WAHA, guarda no
  * Storage e grava `url_midia` — os próximos downloads vão direto, sem
@@ -135,7 +148,25 @@ export async function GET(request: NextRequest) {
   }
 
   // If the message already has a stored URL (not encrypted CDN), just redirect
+  // — EXCETO documento: o nome no Storage é `<data>-<rand>.<ext>` e o download
+  // sairia com o nome errado (ex.: `.docx` no lugar da planilha original).
   if (mensagem.url_midia && !mensagem.url_midia.includes("mmg.whatsapp.net")) {
+    if (type === "document") {
+      try {
+        const resp = await fetch(mensagem.url_midia);
+        if (resp.ok) {
+          const buffer = await resp.arrayBuffer();
+          const contentType = resp.headers.get("content-type") || "application/octet-stream";
+          return new Response(buffer, {
+            status: 200,
+            headers: headersArquivo(mensagem.file_name, contentType),
+          });
+        }
+        console.error(`[MediaDownload] Storage não entregou o documento: HTTP ${resp.status}`);
+      } catch (err: any) {
+        console.error("[MediaDownload] Erro ao baixar documento do Storage:", err?.message || err);
+      }
+    }
     return NextResponse.redirect(mensagem.url_midia);
   }
 
@@ -196,16 +227,11 @@ export async function GET(request: NextRequest) {
         setCachedMedia(cacheKey, buffer, contentType);
         await guardarNoStorage(mensagem, buffer, contentType);
 
-        const headers: Record<string, string> = {
-          "Content-Type": contentType,
-          "Cache-Control": "private, max-age=3600",
-        };
-        if (mensagem.file_name && ehDocumento(contentType)) {
-          const nome = String(mensagem.file_name).replace(/[\r\n\"]/g, "");
-          headers["Content-Disposition"] = `attachment; filename="${nome}"`;
-        }
         console.log(`[MediaDownload] Mídia servida via WAHA: ${whatsappMsgId}`);
-        return new Response(buffer, { status: 200, headers });
+        return new Response(buffer, {
+          status: 200,
+          headers: headersArquivo(mensagem.file_name, contentType),
+        });
       }
       console.error(`[MediaDownload] WAHA devolveu HTTP ${resposta.status} para ${whatsappMsgId}`);
     }

@@ -605,15 +605,23 @@ EVOLUTION_API_KEY=e3186c32139f79c7566a1d6a3f5bc702fae199c725a313ce9b7f8ff035123b
   `download="<nome>"`, e o seletor de arquivos passou a aceitar
   `.pdf .doc .docx .xls .xlsx .csv .ppt .pptx .txt .rtf .zip .rar .7z` (antes: pdf/doc/docx só).
 - **`/api/send/media`:** prefixo de pasta `documento` para documentos (antes caía em `image`).
+- **Extensão trocada no Storage:** o mime do `.xlsx` (`…officedocument.spreadsheetml…`) contém
+  "document" e a regra genérica vinha antes da de planilha → era gravado como `.docx`. Ordem corrigida
+  (+ csv/txt/ppt/pptx/zip/rar/7z/ods) em `lib/media-storage.ts`, função exportada e testada.
+- **Documento já salvo servia com o nome do Storage** (`1790942832516-qwxe58.xlsx` em vez do nome
+  original): a rota agora baixa os bytes do Storage e serve com
+  `attachment; filename="<nome original>"` — imagem/áudio/vídeo seguem em redirect.
 
-**Comprovado na máquina:** histórico do WAHA devolve `media.url` do `hikvision-abaixo-minimo-01-10.xlsx`
-e o arquivo baixa **200 / 32.414 bytes / `application/…spreadsheetml.sheet` / assinatura `PK\x03\x04`** ✓
-(o download real passa a funcionar assim que o deploy subir — `montarUrlArquivo` reescreve o
-`localhost:3000` do WAHA para a URL base configurada).
+**Comprovado em PRODUÇÃO (após deploy `1629301`):**
+`GET /api/media-download?msg_id=e5265b93…` → **200 · `Content-Disposition: attachment;
+filename="hikvision-abaixo-minimo-01-10.xlsx"` · `application/…spreadsheetml.sheet` · 32.414 bytes ·
+`PK\x03\x04`** ✓ — e a **auto-cura** gravou `url_midia` no Storage na mesma chamada (2ª leitura
+confirmada no banco).
 
-**Testes:** `lib/midia-chat.test.ts` (7) + `app/api/media-download/route.test.ts` (4: anexo com nome
-do arquivo, auto-cura gravando `url_midia`, regressão do redirect, 404) → **192/192**, `tsc`, `build`.
-Antes de fechar: 191 testes.
+**Testes:** `lib/midia-chat.test.ts` (7) + `app/api/media-download/route.test.ts` (5: anexo com nome
+original, servir do Storage com o nome original, auto-cura gravando `url_midia`, regressão de
+redirect de mídia, 404) + `lib/media-storage.test.ts` (4: extensão por mime) → **197/197**, `tsc`,
+`build`.
 
 ### 01/10/2026 (5) — Telefone do WhatsApp aparece no modal mesmo sem telefone no cadastro
 - [x] **Sintoma:** clicar em `E-commerce` no Top 20 abria o modal **sem telefone** — mas a conversa no
