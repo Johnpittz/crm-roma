@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { resolverUrlMidia, getWahaConfig } from "@/lib/waha";
+import { uploadMediaToStorage } from "@/lib/media-storage";
 
 export const dynamic = "force-dynamic";
 
@@ -46,6 +48,42 @@ function setCachedMedia(key: string, data: ArrayBuffer, contentType: string) {
   }
 }
 
+/** ContentType quando o WAHA não devolve (fallback pelo ?type=). */
+function contentTypePorPadrao(type: string): string {
+  switch (type) {
+    case "image": return "image/jpeg";
+    case "audio": return "audio/ogg";
+    case "video": return "video/mp4";
+    case "document": return "application/octet-stream";
+    default: return "application/octet-stream";
+  }
+}
+
+/** Só imagem/áudio/vídeo ficam inline; o resto (planilha, PDF…) baixa como anexo. */
+function ehDocumento(contentType: string): boolean {
+  return !/^(image|audio|video)\//i.test(contentType);
+}
+
+/**
+ * Auto-cura: depois de servir um arquivo que estava só no WAHA, guarda no
+ * Storage e grava `url_midia` — os próximos downloads vão direto, sem
+ * varrer o histórico do chat de novo. Qualquer falha aqui é irrelevante:
+ * o arquivo já foi entregue.
+ */
+async function guardarNoStorage(mensagem: any, buffer: ArrayBuffer, contentType: string): Promise<void> {
+  try {
+    const base64 = Buffer.from(buffer).toString("base64");
+    const url = await uploadMediaToStorage(base64, contentType, "whatsapp");
+    if (!url) return;
+    await getSupabase()
+      .from("atendimento_mensagens")
+      .update({ url_midia: url })
+      .eq("id", mensagem.id);
+  } catch (err: any) {
+    console.error("[MediaDownload] Auto-cura falhou (o arquivo já foi servido):", err?.message || err);
+  }
+}
+
 /**
  * GET /api/media-download?msg_id=xxx&type=audio
  * 
@@ -73,7 +111,7 @@ export async function GET(request: NextRequest) {
   // Try by whatsapp_message_id
   const { data: byWppId } = await supabase
     .from("atendimento_mensagens")
-    .select("id, atendimento_id, whatsapp_message_id, tipo_midia, url_midia")
+    .select("id, atendimento_id, whatsapp_message_id, tipo_midia, url_midia, file_name")
     .eq("whatsapp_message_id", msgId)
     .limit(1)
     .maybeSingle();
@@ -84,7 +122,7 @@ export async function GET(request: NextRequest) {
     // Try by message UUID
     const { data: byUuid } = await supabase
       .from("atendimento_mensagens")
-      .select("id, atendimento_id, whatsapp_message_id, tipo_midia, url_midia")
+      .select("id, atendimento_id, whatsapp_message_id, tipo_midia, url_midia, file_name")
       .eq("id", msgId)
       .limit(1)
       .maybeSingle();
@@ -137,6 +175,42 @@ export async function GET(request: NextRequest) {
         "Cache-Control": "public, max-age=3600",
       },
     });
+  }
+
+  // ── WAHA (instância atual): resolve a URL real da mídia e devolve os bytes.
+  // É o caminho dos DOCUMENTOS sem url_midia (planilhas antigas: o bucket só
+  // aceitava imagem/áudio/vídeo/PDF/DOC e o upload delas falhava).
+  try {
+    const urlWaha = await resolverUrlMidia({
+      urlMidia: null,
+      telefone: atendimento.telefone_cliente,
+      messageId: whatsappMsgId,
+      session: instanceName,
+    });
+
+    if (urlWaha) {
+      const resposta = await fetch(urlWaha, { headers: { "X-Api-Key": getWahaConfig().apiKey } });
+      if (resposta.ok) {
+        const buffer = await resposta.arrayBuffer();
+        const contentType = resposta.headers.get("content-type") || contentTypePorPadrao(type);
+        setCachedMedia(cacheKey, buffer, contentType);
+        await guardarNoStorage(mensagem, buffer, contentType);
+
+        const headers: Record<string, string> = {
+          "Content-Type": contentType,
+          "Cache-Control": "private, max-age=3600",
+        };
+        if (mensagem.file_name && ehDocumento(contentType)) {
+          const nome = String(mensagem.file_name).replace(/[\r\n\"]/g, "");
+          headers["Content-Disposition"] = `attachment; filename="${nome}"`;
+        }
+        console.log(`[MediaDownload] Mídia servida via WAHA: ${whatsappMsgId}`);
+        return new Response(buffer, { status: 200, headers });
+      }
+      console.error(`[MediaDownload] WAHA devolveu HTTP ${resposta.status} para ${whatsappMsgId}`);
+    }
+  } catch (err: any) {
+    console.error("[MediaDownload] Erro ao resolver mídia no WAHA:", err?.message || err);
   }
 
   // Call Evolution API to get base64 from media message

@@ -579,6 +579,42 @@ EVOLUTION_API_KEY=e3186c32139f79c7566a1d6a3f5bc702fae199c725a313ce9b7f8ff035123b
   excluir devolvendo o id) — suíte **141/141**, `tsc --noEmit` e `next build` limpos
 - [ ] Pendência de dados: quando o histórico do Millennium entrar em `vendas`, as duas fontes somam sozinhas (scripts em `scripts/sync-millennium*`, credenciais não estão no repo)
 
+### 01/10/2026 (6) — Documentos do chat: baixar E enviar (planilhas incluídas)
+
+**Problema (print do João):** a planilha `hikvision-abaixo-minimo-01-10.xlsx` no chat **não podia** ser baixada. Causa raiz em **duas pontas**, provada nos dados:
+
+1. **Bucket `chat-media` só aceitava 13 mimes** (imagem/áudio/vídeo/PDF/DOC/DOCX). O upload de
+   `.xlsx/.xls/.csv/.ppt/.txt/.zip` era **recusado** → o envio pro WhatsApp ia (WAHA base64), mas o
+   CRM ficava **sem `url_midia`**. Os **20 documentos** da base estão assim (`url_midia = NULL`).
+2. Sem URL, o `chat-inline` só renderizava o nome do arquivo **sem link** (fallback) — e a rota de
+   download ia direto para o caminho legado (Evolution), que falha para a instância WAHA.
+
+**Mudanças:**
+- **Storage (infra, feito via API):** bucket `chat-media` foi de 13 para **26 mimes permitidos** —
+  xlsx, xls, csv, ppt, pptx, ods, txt, rtf, zip, rar, 7z (+ os que já existiam). Verificado por
+  leitura depois da escrita. Com isso **novo envio de planilha grava `url_midia` normalmente**.
+- **`lib/midia-chat.ts` (novo, função pura):** `urlMidiaDaMensagem()` centraliza a URL da mídia no
+  chat. Regra nova: **documento SEM `url_midia` também vira link** — `/api/media-download?msg_id=…`.
+  Mídia virtual (`virtual-`) e imagem sem URL continuam no estado vazio (sem dado inventado).
+- **`/api/media-download`:** antes do caminho legado (Evolution), resolve a URL real **no WAHA**
+  (`resolverUrlMidia` → histórico do chat), baixa com `X-Api-Key`, devolve os bytes com
+  `Content-Disposition: attachment; filename="<arquivo original>"` (só documentos; imagem/áudio/
+  vídeo ficam inline), guarda no cache de 1h e faz **auto-cura**: salva no Storage e grava
+  `url_midia`, para os próximos downloads irem direto.
+- **`chat-inline`:** usa o helper (regras testadas à parte), o link do documento ganhou
+  `download="<nome>"`, e o seletor de arquivos passou a aceitar
+  `.pdf .doc .docx .xls .xlsx .csv .ppt .pptx .txt .rtf .zip .rar .7z` (antes: pdf/doc/docx só).
+- **`/api/send/media`:** prefixo de pasta `documento` para documentos (antes caía em `image`).
+
+**Comprovado na máquina:** histórico do WAHA devolve `media.url` do `hikvision-abaixo-minimo-01-10.xlsx`
+e o arquivo baixa **200 / 32.414 bytes / `application/…spreadsheetml.sheet` / assinatura `PK\x03\x04`** ✓
+(o download real passa a funcionar assim que o deploy subir — `montarUrlArquivo` reescreve o
+`localhost:3000` do WAHA para a URL base configurada).
+
+**Testes:** `lib/midia-chat.test.ts` (7) + `app/api/media-download/route.test.ts` (4: anexo com nome
+do arquivo, auto-cura gravando `url_midia`, regressão do redirect, 404) → **192/192**, `tsc`, `build`.
+Antes de fechar: 191 testes.
+
 ### 01/10/2026 (5) — Telefone do WhatsApp aparece no modal mesmo sem telefone no cadastro
 - [x] **Sintoma:** clicar em `E-commerce` no Top 20 abria o modal **sem telefone** — mas a conversa no
   WhatsApp tem número (`atendimentos.telefone_cliente = 556234165003`, conversa "E-commerce" de 30/09).

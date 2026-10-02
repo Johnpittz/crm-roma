@@ -36,6 +36,7 @@ export async function POST(request: NextRequest) {
         const prefix = mediatype === "audio" ? "audio"
           : mediatype === "video" ? "video"
           : mediatype === "sticker" ? "sticker"
+          : mediatype === "document" ? "documento"
           : "image";
 
         const mime = mimetype || (mediatype === "audio" ? "audio/ogg; codecs=opus" : "image/jpeg");

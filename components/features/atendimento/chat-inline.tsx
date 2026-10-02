@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { ehPlaceholderConteudo } from "@/lib/waha-webhook";
+import { urlMidiaDaMensagem, normalizarTipoMidia } from "@/lib/midia-chat";
 import { Lightbox } from "@/components/features/atendimento/lightbox";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -114,15 +115,8 @@ const diasDiferentes = (a: string, b: string) => {
 };
 
 /** Normaliza tipo de mídia PT → EN */
-const normalizarTipoMidia = (tipo: string | null | undefined): string => {
-  if (!tipo) return "unknown";
-  const map: Record<string, string> = {
-    imagem: "image", áudio: "audio", audio: "audio",
-    vídeo: "video", video: "video", documento: "document",
-    document: "document", figurinha: "sticker", sticker: "sticker",
-  };
-  return map[tipo.toLowerCase()] || tipo;
-};
+// normalizarTipoMidia + urlMidiaDaMensagem vêm de @/lib/midia-chat (testados à parte)
+// ─── Component ───────────────────────────────────────────────────
 
 // ─── Component ───────────────────────────────────────────────────
 
@@ -548,23 +542,14 @@ export function ChatInline({ atendimento, onMarcarResolvido, onMensagemEnviada, 
 
   // ── Renderizar Mídia ──
   const renderMidia = (msg: Mensagem) => {
-    const mediaUrl = msg.url_midia || msg.media_url;
     const mediaType = normalizarTipoMidia(msg.tipo_midia || msg.media_type);
+    const temUrl = !!(msg.url_midia || msg.media_url);
 
-    if (!mediaUrl && mediaType === "unknown") return null;
+    if (!temUrl && mediaType === "unknown") return null;
 
-    const isWhatsAppCdn = mediaUrl?.includes("mmg.whatsapp.net");
-    const isDataUrl = mediaUrl?.startsWith("data:");
-    const isSupabaseStorage = mediaUrl?.includes("supabase.co/storage");
-
-    let resolvedUrl: string | null = null;
-    if (isWhatsAppCdn && msg.id && !msg.id.startsWith("virtual-")) {
-      resolvedUrl = `/api/media-download?msg_id=${msg.id}&type=${mediaType || "image"}`;
-    } else if (isDataUrl || isSupabaseStorage) {
-      resolvedUrl = mediaUrl!;
-    } else if (mediaUrl) {
-      resolvedUrl = `/api/media?url=${encodeURIComponent(mediaUrl)}&type=${mediaType || "image"}`;
-    }
+    // URL da mídia (regras em lib/midia-chat): documento sem url_midia também
+    // vira link de download — é o caso das planilhas antigas.
+    const resolvedUrl = urlMidiaDaMensagem(msg);
 
     switch (mediaType) {
       case "image":
@@ -593,9 +578,8 @@ export function ChatInline({ atendimento, onMarcarResolvido, onMensagemEnviada, 
         );
 
       case "audio": {
-        const audioUrl = msg.id && !msg.id.startsWith("virtual-") && isWhatsAppCdn
-          ? `/api/media-download?msg_id=${msg.id}&type=audio`
-          : resolvedUrl;
+        // urlMidiaDaMensagem já resolve CDN+id para /api/media-download
+        const audioUrl = resolvedUrl;
         if (audioUrl && !audioUrl.includes("[media_proxy_needed]")) {
           return <AudioPlayer url={audioUrl} isCliente={msg.remetente === "cliente"} />;
         }
@@ -633,9 +617,11 @@ export function ChatInline({ atendimento, onMarcarResolvido, onMensagemEnviada, 
           return (
             <a
               href={resolvedUrl}
+              download={msg.file_name || undefined}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-3 p-2 rounded-lg hover:bg-black/5 transition-colors"
+              title={`Baixar ${msg.file_name || "documento"}`}
             >
               <div className="h-10 w-10 rounded bg-[#5F66CD] flex items-center justify-center shrink-0">
                 <FileText className="h-5 w-5 text-white" />
@@ -898,7 +884,7 @@ export function ChatInline({ atendimento, onMarcarResolvido, onMensagemEnviada, 
                   type="file"
                   ref={fileInputRef}
                   className="hidden"
-                  accept="image/*,audio/*,video/*,.pdf,.doc,.docx"
+                  accept="image/*,audio/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.ppt,.pptx,.txt,.rtf,.zip,.rar,.7z"
                   onChange={enviarArquivo}
                 />
 
