@@ -104,6 +104,46 @@ describe("ConectarWhatsApp — configurações", () => {
     expect(screen.getAllByText(/Conectado/i).length).toBeGreaterThan(0);
   });
 
+  it("desconectar só depois do aviso — e o aviso diz o que se perde", async () => {
+    ctx.respostas.set("POST /api/whatsapp/conectar", {
+      status: 200,
+      json: { status: "STOPPED", sessao: "ROMA_1", desconectado: true },
+    });
+
+    render(<ConectarWhatsApp />);
+    await waitFor(() => screen.getByText(/João Pedro/));
+
+    // abre a confirmação: o aviso aparece e NADA é chamado no WAHA ainda
+    fireEvent.click(screen.getByRole("button", { name: /Desconectar número/i }));
+    expect(screen.getByText(/NÃO VERÁ MAIS AS MENSAGENS/i)).toBeTruthy();
+    expect(ctx.chamadas.filter((c) => c.method === "POST")).toHaveLength(0);
+
+    // depois de cortar, a lista volta vazia
+    ctx.respostas.set("GET /api/whatsapp/conectar", {
+      status: 200,
+      json: { sessaoAtual: "ROMA_1", sessoes: [] },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /^Desconectar$/i }));
+    await waitFor(() => expect(ctx.chamadas.filter((c) => c.method === "POST")).toHaveLength(1));
+    const posts = ctx.chamadas.filter((c) => c.method === "POST");
+    expect(posts[0].body).toEqual({ action: "desconectar", session: "ROMA_1" });
+    expect(await screen.findByText(/Nenhum número respondendo/i)).toBeTruthy();
+  });
+
+  it("Cancelar fecha o aviso sem tocar na sessão", async () => {
+    render(<ConectarWhatsApp />);
+    await waitFor(() => screen.getByText(/João Pedro/));
+
+    fireEvent.click(screen.getByRole("button", { name: /Desconectar número/i }));
+    expect(screen.getByText(/NÃO VERÁ MAIS AS MENSAGENS/i)).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: /Cancelar/i }));
+
+    expect(screen.queryByText(/NÃO VERÁ MAIS AS MENSAGENS/i)).toBeNull();
+    expect(ctx.chamadas.filter((c) => c.method === "POST")).toHaveLength(0);
+  });
+
   it("botão de número novo manda action iniciar com novo: true", async () => {
     ctx.respostas.set("POST /api/whatsapp/conectar", { status: 200, json: { sessao: "ROMA_2", status: "WORKING", qr: null } });
 

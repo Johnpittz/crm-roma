@@ -608,6 +608,13 @@ EVOLUTION_API_KEY=e3186c32139f79c7566a1d6a3f5bc702fae199c725a313ce9b7f8ff035123b
 - **Validado na instância de produção** com sessão temporária `ROMA_9` (criar → webhook → start →
   QR PNG 5.348 bytes com magic `89 50 4e 47` → stop → delete): fluxo completo OK e sessão limpa
   (restaram só `ROMA_1` + `STK-1/2/3`).
+- [x] **Restrito a GESTOR (regra do João, mesmo dia):** a rota devolve **403** para quem não é
+  (`ehGestor` = diretor/admin/gerente_comercial, o mesmo `isGestor` da tela) e a aba **WhatsApp**
+  só aparece pra gestor. Vendedor não vê nem consegue chamar.
+- [x] **Desconectar número com aviso:** botão abre um painel vermelho com
+  **"SE VOCÊ DESCONECTAR O NÚMERO, NÃO VERÁ MAIS AS MENSAGENS"** + Cancelar/Desconectar; só o
+  clique em "Desconectar" dispara `POST {action:"desconectar"}` (→ `stop` da sessão no WAHA).
+  Motivo do pedido: ele quer conectar o número pessoal pra teste sem deixar dados lá depois.
 - **Manual (runbook) continua de pé** como fallback — `docs/runbook-waha-numeros.md`.
 
 ### 01/10/2026 (6) — Documentos do chat: baixar E enviar (planilhas incluídas)

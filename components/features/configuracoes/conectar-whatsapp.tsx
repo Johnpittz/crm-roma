@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Plug, Plus, Smartphone, RefreshCw } from "lucide-react";
+import { AlertTriangle, Loader2, Plug, Plus, Smartphone, RefreshCw, Unplug } from "lucide-react";
 
 /**
  * Configurações → "CONECTAR WHATSAPP".
@@ -33,6 +33,8 @@ export function ConectarWhatsApp() {
   const [status, setStatus] = useState<string | null>(null);
   const [trabalhando, setTrabalhando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  /** desconexão é destrutiva: só passa daqui depois do aviso lido (regra 01/10/2026) */
+  const [confirmandoDesc, setConfirmandoDesc] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const carregar = useCallback(async () => {
@@ -122,6 +124,31 @@ export function ConectarWhatsApp() {
     [carregar, consultarQr]
   );
 
+  const desconectar = async () => {
+    const nome = sessaoAtual;
+    setTrabalhando(true);
+    setErro(null);
+    try {
+      const res = await fetch(API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "desconectar", session: nome || undefined }),
+      });
+      const dados = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(dados?.error || "Não consegui desconectar o número.");
+      if (timerRef.current) clearTimeout(timerRef.current);
+      setQr(null);
+      setConfirmandoDesc(false);
+      setStatus(dados.status || "STOPPED");
+      setSessoes((atual) => atual.map((s) => (s.name === nome ? { ...s, status: dados.status || "STOPPED" } : s)));
+      await carregar();
+    } catch (e: any) {
+      setErro(e?.message || "Não consegui desconectar o número.");
+    } finally {
+      setTrabalhando(false);
+    }
+  };
+
   const conectada = sessoes.find((s) => s.status === "WORKING") || null;
   const aguardandoScan = !!qr && status !== "WORKING";
 
@@ -154,7 +181,39 @@ export function ConectarWhatsApp() {
             <Plus className="mr-2 h-4 w-4" />
             Conectar outro número
           </Button>
+          {conectada && !confirmandoDesc && (
+            <Button variant="outline" onClick={() => setConfirmandoDesc(true)} disabled={trabalhando}>
+              <Unplug className="mr-2 h-4 w-4" />
+              Desconectar número
+            </Button>
+          )}
         </div>
+
+        {confirmandoDesc && (
+          <div className="mt-3 rounded-lg border border-red-200 bg-red-50 p-4">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-600" />
+              <div>
+                <p className="text-sm font-semibold text-red-700">
+                  SE VOCÊ DESCONECTAR O NÚMERO, NÃO VERÁ MAIS AS MENSAGENS
+                </p>
+                <p className="mt-1 text-xs text-red-600">
+                  O CRM para de receber (e responder) as conversas daquele número — elas continuam
+                  só no celular. Dá para conectar de novo pelo mesmo botão quando quiser.
+                </p>
+              </div>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button variant="outline" size="sm" onClick={() => setConfirmandoDesc(false)} disabled={trabalhando}>
+                Cancelar
+              </Button>
+              <Button variant="destructive" size="sm" onClick={() => void desconectar()} disabled={trabalhando}>
+                {trabalhando ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Unplug className="mr-2 h-4 w-4" />}
+                Desconectar
+              </Button>
+            </div>
+          </div>
+        )}
 
         {erro && <p className="mt-3 text-sm text-red-600">{erro}</p>}
 

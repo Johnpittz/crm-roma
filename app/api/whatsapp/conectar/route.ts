@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { ehGestor } from "@/lib/carteira";
 
 export const dynamic = "force-dynamic";
 
@@ -76,6 +77,25 @@ async function wahaBytes(caminho: string): Promise<{ ok: boolean; bytes: Uint8Ar
 }
 
 /** Só mexe nas sessões deste CRM (prefixo ROMA) — não em sessões de outros projetos. */
+/**
+ * Só gestor mexe em conexão de número (regra do João, 01/10/2026): trocar ou
+ * desconectar número é decisão da gestão. Mesmos cargos de `ehGestor`
+ * (diretor, admin, gerente_comercial) — o mesmo `isGestor` da tela.
+ */
+async function podeOperar(userId: string): Promise<boolean> {
+  try {
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from("profiles")
+      .select("cargo")
+      .eq("id", userId)
+      .maybeSingle();
+    return ehGestor(data?.cargo);
+  } catch {
+    return false;
+  }
+}
+
 function sessaoPermitida(nome: string): boolean {
   if (!/^[A-Za-z0-9_-]{1,32}$/.test(nome)) return false;
   return new RegExp(`^${prefixoSessao()}(_\\d+)?$`, "i").test(nome);
@@ -128,19 +148,23 @@ async function garantirSessao(nome: string): Promise<{ status: string | null; er
   return { status: depois.dados?.status || consulta.dados?.status || null, erro: null };
 }
 
-async function autenticado(): Promise<boolean> {
+async function usuarioLogado(): Promise<{ id: string } | null> {
   try {
     const supabase = await createClient();
     const { data } = await supabase.auth.getUser();
-    return !!data?.user;
+    return data?.user ? { id: String(data.user.id) } : null;
   } catch {
-    return false;
+    return null;
   }
 }
 
 export async function GET() {
-  if (!(await autenticado())) {
+  const user = await usuarioLogado();
+  if (!user) {
     return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
+  }
+  if (!(await podeOperar(user.id))) {
+    return NextResponse.json({ error: "Apenas gestores podem mexer na conexão de número." }, { status: 403 });
   }
   const consulta = await waha("GET", "/api/sessions");
   const lista: any[] = Array.isArray(consulta.dados) ? consulta.dados : consulta.dados?.sessions || [];
@@ -157,12 +181,17 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  if (!(await autenticado())) {
+  const user = await usuarioLogado();
+  if (!user) {
     return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
+  }
+  if (!(await podeOperar(user.id))) {
+    return NextResponse.json({ error: "Apenas gestores podem mexer na conexão de número." }, { status: 403 });
   }
 
   const body = await request.json().catch(() => ({}));
-  const acao = body?.action === "qr" ? "qr" : "iniciar";
+  const acao =
+    body?.action === "qr" ? "qr" : body?.action === "desconectar" ? "desconectar" : "iniciar";
 
   let nome: string;
   if (acao === "iniciar" && body?.novo) {
@@ -173,6 +202,22 @@ export async function POST(request: NextRequest) {
 
   if (!sessaoPermitida(nome)) {
     return NextResponse.json({ error: "Sessão não permitida" }, { status: 400 });
+  }
+
+  // ── desconectar: corte de verdade — o CRM para de receber as mensagens ──
+  if (acao === "desconectar") {
+    const parada = await waha("POST", `/api/sessions/${nome}/stop`);
+    if (parada.status === 404) {
+      return NextResponse.json({ error: "Sessão não existe" }, { status: 404 });
+    }
+    if (!parada.ok) {
+      return NextResponse.json({ error: "Não consegui parar a sessão" }, { status: 502 });
+    }
+    return NextResponse.json({
+      sessao: nome,
+      status: parada.dados?.status || "STOPPED",
+      desconectado: true,
+    });
   }
 
   // ── iniciar: garante sessão + webhook e dá start ──

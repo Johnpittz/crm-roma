@@ -340,7 +340,7 @@ export default function ConfiguracoesPage() {
           <TabsTrigger value="notificacoes">Notificações</TabsTrigger>
           <TabsTrigger value="seguranca">Segurança</TabsTrigger>
           <TabsTrigger value="aparencia">Aparência</TabsTrigger>
-          <TabsTrigger value="whatsapp">WhatsApp</TabsTrigger>
+          {isGestor && <TabsTrigger value="whatsapp">WhatsApp</TabsTrigger>}
           {isGestor && <TabsTrigger value="integracoes">Integrações</TabsTrigger>}
           {isGestor && <TabsTrigger value="equipe">Equipe</TabsTrigger>}
         </TabsList>

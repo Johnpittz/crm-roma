@@ -89,6 +89,20 @@ vi.stubEnv("VERCEL_PROJECT_PRODUCTION_URL", "crm-roma-ten.vercel.app");
 vi.mock("@/lib/supabase/server", () => ({
   createClient: async () => ({
     auth: { getUser: async () => ({ data: { user: { id: "user-1" } }, error: null }) },
+    // a rota lê profiles.pra checar se é gestor
+    from: (tabela: string) => {
+      let idFiltrado: string | null = null;
+      const q: any = {
+        select: () => q,
+        eq: (_c: string, v: string) => { idFiltrado = v; return q; },
+        maybeSingle: async () => {
+          if (tabela !== "profiles") return { data: null, error: { message: "tabela desconhecida" } };
+          const linha = (ctx.estado.profiles || []).find((p: any) => p.id === idFiltrado) || null;
+          return { data: linha, error: linha ? null : { message: "0 linhas" } };
+        },
+      };
+      return q;
+    },
   }),
 }));
 
@@ -114,6 +128,8 @@ beforeEach(() => {
   ctx.estado.stops = [];
   ctx.estado.qrEhJsonDeErro = false;
   ctx.estado.chamadas = [];
+  // perfil de quem está logado: a rota exige gestor
+  ctx.estado.profiles = [{ id: "user-1", cargo: "gerente_comercial" }];
 });
 
 describe("GET /api/whatsapp/conectar — situação atual", () => {
@@ -172,6 +188,30 @@ describe("POST /api/whatsapp/conectar — iniciar", () => {
     expect(res.status).toBe(200);
     expect(ctx.estado.webhooks).toHaveLength(0);
     expect(ctx.estado.starts).toHaveLength(0);
+  });
+
+  it("só GESTOR mexe: vendedor comum leva 403 e nada é chamado no WAHA", async () => {
+    ctx.estado.profiles = [{ id: "user-1", cargo: "vendedor" }];
+
+    const res = await requisitar({ action: "iniciar" });
+
+    expect(res.status).toBe(403);
+    expect(ctx.estado.starts).toHaveLength(0);
+    expect(ctx.estado.criadas).toHaveLength(0);
+    expect((await GET()).status).toBe(403);
+  });
+
+  it("desconectar: para a sessão do WAHA (nada de QR, é corte mesmo)", async () => {
+    ctx.estado.sessoes = { ROMA_1: { status: "WORKING" } };
+
+    const res = await requisitar({ action: "desconectar" });
+
+    expect(res.status).toBe(200);
+    const corpo = await res.json();
+    expect(corpo.sessao).toBe("ROMA_1");
+    expect(corpo.status).toBe("STOPPED");
+    expect(ctx.estado.stops).toContain("ROMA_1");
+    expect(ctx.estado.chamadas.filter((c: string) => c.includes("auth/qr"))).toHaveLength(0);
   });
 
   it("sessão fora do prefixo do CRM (ex.: do outro projeto) é recusada", async () => {
