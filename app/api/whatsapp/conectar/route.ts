@@ -105,13 +105,25 @@ async function garantirSessao(nome: string): Promise<{ status: string | null; er
       return { status: null, erro: criada.dados?.error || criada.dados || "Não foi possível criar a sessão" };
     }
   }
-  await waha("PUT", `/api/sessions/${nome}`, {
-    webhook: {
-      url: urlWebhook(),
-      events: ["message.any", "message.ack", "session.status"],
-      raiseError: true,
-    },
-  });
+  // O WAHA (2026.9) guarda em `config.webhooks` (array). `webhook` singular devolve
+  // 200 e é IGNORADO — testado na mão na instância de produção.
+  const webhooksAtuais = consulta.dados?.config?.webhooks;
+  const urlAtual = urlWebhook();
+  const jaConfigurado =
+    Array.isArray(webhooksAtuais) &&
+    webhooksAtuais.some((w: any) => String(w?.url || "") === urlAtual);
+  if (!jaConfigurado) {
+    await waha("PUT", `/api/sessions/${nome}`, {
+      config: {
+        webhooks: [
+          {
+            url: urlAtual,
+            events: ["message.any", "message.ack", "session.status"],
+          },
+        ],
+      },
+    });
+  }
   const depois = await waha("GET", `/api/sessions/${nome}`);
   return { status: depois.dados?.status || consulta.dados?.status || null, erro: null };
 }

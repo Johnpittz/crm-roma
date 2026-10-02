@@ -22,7 +22,8 @@ const ctx = vi.hoisted(() => {
 
   function sessaoGet(nome: string) {
     const s = estado.sessoes[nome];
-    return s ? { name: nome, status: s.status } : { name: nome, status: "NOT_FOUND" };
+    if (!s) return { name: nome, status: "NOT_FOUND" };
+    return { name: nome, status: s.status, ...(s as any).config ? { config: (s as any).config } : {} };
   }
 
   function responder(url: string, method: string, body: any): Response {
@@ -138,10 +139,12 @@ describe("POST /api/whatsapp/conectar — iniciar", () => {
     expect(res.status).toBe(200);
     expect(corpo.sessao).toBe("ROMA_2");
     expect(ctx.estado.criadas[0].name).toBe("ROMA_2");
-    // webhook é obrigatório: sem ele a mensagem não chega no CRM
+    // webhook é obrigatório: sem ele a mensagem não chega no CRM.
+    // O WAHA (2026.9) só grava em `config.webhooks` (array) — `webhook` singular
+    // dá 200 mas é ignorado (checado na mão na instância de produção).
     const conf = ctx.estado.webhooks.find((w: any) => w.name === "ROMA_2");
-    expect(conf.body.webhook.url).toContain("/api/webhooks/waha");
-    expect(conf.body.webhook.events).toContain("message.any");
+    expect(conf.body.config.webhooks[0].url).toContain("/api/webhooks/waha");
+    expect(conf.body.config.webhooks[0].events).toContain("message.any");
     expect(ctx.estado.starts).toContain("ROMA_2");
     expect(["STARTING", "SCAN_QR_CODE", "WORKING"]).toContain(corpo.status);
   });
@@ -154,6 +157,21 @@ describe("POST /api/whatsapp/conectar — iniciar", () => {
 
     expect(corpo.sessao).toBe("ROMA_1");
     expect(ctx.estado.starts).toContain("ROMA_1");
+  });
+
+  it("sessão já com o webhook certo não é reconfigurada (não mexe na que está no ar)", async () => {
+    ctx.estado.sessoes = {
+      ROMA_1: {
+        status: "WORKING",
+        config: { webhooks: [{ url: "https://crm-roma-ten.vercel.app/api/webhooks/waha", events: ["message.any"] }] },
+      },
+    };
+
+    const res = await requisitar({ action: "iniciar" });
+
+    expect(res.status).toBe(200);
+    expect(ctx.estado.webhooks).toHaveLength(0);
+    expect(ctx.estado.starts).toHaveLength(0);
   });
 
   it("sessão fora do prefixo do CRM (ex.: do outro projeto) é recusada", async () => {

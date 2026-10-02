@@ -601,6 +601,13 @@ EVOLUTION_API_KEY=e3186c32139f79c7566a1d6a3f5bc702fae199c725a313ce9b7f8ff035123b
 - **Testes:** `app/api/whatsapp/conectar/route.test.ts` (8: criação com webhook, prefixo bloqueado,
   WORKING sem reiniciar, QR PNG, QR caindo → reinício, ...) + `components/features/configuracoes/
   conectar-whatsapp.test.tsx` (4) → **209/209**, `tsc`, `build`.
+- **Armadilha do webhook (peguei na validação):** o WAHA desta versão guarda em
+  `config.webhooks: [{url, events}]` — mandar `webhook` singular devolve **200 e é ignorado**
+  (testado com 4 formatos contra a instância real; só `config.webhooks` grava). A rota só
+  reconfigura quando o webhook ainda não aponta pra ela (não mexe na sessão que está no ar).
+- **Validado na instância de produção** com sessão temporária `ROMA_9` (criar → webhook → start →
+  QR PNG 5.348 bytes com magic `89 50 4e 47` → stop → delete): fluxo completo OK e sessão limpa
+  (restaram só `ROMA_1` + `STK-1/2/3`).
 - **Manual (runbook) continua de pé** como fallback — `docs/runbook-waha-numeros.md`.
 
 ### 01/10/2026 (6) — Documentos do chat: baixar E enviar (planilhas incluídas)
