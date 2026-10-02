@@ -676,7 +676,13 @@ redirect de mídia, 404) + `lib/media-storage.test.ts` (4: extensão por mime) �
      função da Vercel). Documento continua servido com `attachment` + nome original.
      Cache em memória só até 2 MB (vídeo não mora na memória do pod).
   3. **Bucket `chat-media`:** `file_size_limit` de **10 MB → 50 MB** (o vídeo tem 10,86 MB e
-     a auto-cura seria rejeitada). 26 mimes já incluíam `video/mp4`.
+     a auto-cura seria rejeitada); +4 mimes de vídeo (**30 mimes** no total).
+  4. **Mime normalizado:** o WAHA entrega o vídeo como **`application/mp4`** — mime fora da lista
+     do bucket, então a cura falhava e o proxy caía no stream de 10 MB. `normalizarContentType`
+     converte `application/mp4` → `video/mp4` (e genérico → mime padrão do tipo). Achado em
+     produção: sem isso a chamada devolvia 200 com os 10.862.474 bytes e nunca salvava a URL.
+- **Prova em produção:** `GET /api/media-download?msg_id=0dedea07…&type=video` → **307** pro
+  Storage, `Content-Type: video/mp4`, `Accept-Ranges: bytes`, e `url_midia` preenchida no banco.
 - **Testes:** `lib/midia-chat.test.ts` (4 novos) + `media-download/route.test.ts` (vídeo →
   307 pro Storage) → **218/218**, `tsc` e build limpos.
 

@@ -67,6 +67,24 @@ function ehDocumento(contentType: string): boolean {
   return !/^(image|audio|video)\//i.test(contentType);
 }
 
+/**
+ * O WAHA entrega vídeo como `application/mp4` — mime que o bucket NÃO aceita
+ * (só `video/mp4`), então a auto-cura falhava e o proxy caía no stream de 10 MB.
+ * Alias conhecidos viram o mime certo; genérico (vazio/octet-stream) cai no padrão do tipo.
+ */
+const MIME_ALIASES: Record<string, string> = {
+  "application/mp4": "video/mp4",
+  "application/quicktime": "video/quicktime",
+  "application/3gpp": "video/3gpp",
+  "video/3gpp": "video/3gpp",
+};
+
+function normalizarContentType(bruto: string | null, type: string): string {
+  const mime = (bruto || "").split(";")[0].trim().toLowerCase();
+  if (!mime || mime === "application/octet-stream") return contentTypePorPadrao(type);
+  return MIME_ALIASES[mime] || bruto!;
+}
+
 /** Cabeçalhos de um arquivo servido — anexo com o NOME ORIGINAL quando é documento. */
 function headersArquivo(file_name: unknown, contentType: string): Record<string, string> {
   const headers: Record<string, string> = {
@@ -228,7 +246,7 @@ export async function GET(request: NextRequest) {
       const resposta = await fetch(urlWaha, { headers: { "X-Api-Key": getWahaConfig().apiKey } });
       if (resposta.ok) {
         const buffer = await resposta.arrayBuffer();
-        const contentType = resposta.headers.get("content-type") || contentTypePorPadrao(type);
+        const contentType = normalizarContentType(resposta.headers.get("content-type"), type);
         const urlSalva = await guardarNoStorage(mensagem, buffer, contentType);
 
         // Vídeo/áudio/imagem curado → REDIRECIONA: o Storage serve com Range

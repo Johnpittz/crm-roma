@@ -93,6 +93,8 @@ vi.mock("@supabase/supabase-js", () => ({
 
 vi.mock("@/lib/media-storage", () => ({
   uploadMediaToStorage: vi.fn(async (base64: string, mime: string, prefix: string) => {
+    // espelha o bucket: mime fora da lista = rejeitado
+    if (mime === "application/mp4") throw new Error("mime nao permitido no bucket (30 mimes)");
     ctx.estado.uploads.push({ base64, mime, prefix });
     return "https://sup.test/storage/v1/object/public/chat-media/whatsapp/auto.xlsx";
   }),
@@ -178,7 +180,8 @@ describe("GET /api/media-download — documento do chat", () => {
   });
 
   it("VÍDEO sem url_midia: baixa no WAHA, guarda no Storage e REDIRECIONA (não streama 10MB pela Vercel)", async () => {
-    ctx.estado.mimeFiles = "video/mp4";
+    // o WAHA real devolve application/mp4 — mime que o bucket recusa (feito acontecer no fake)
+    ctx.estado.mimeFiles = "application/mp4";
     preparar({ tipo_midia: "video", file_name: null });
 
     const res = await requisitar("uuid-msg", "video");
