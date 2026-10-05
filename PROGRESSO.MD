@@ -639,6 +639,31 @@ EVOLUTION_API_KEY=e3186c32139f79c7566a1d6a3f5bc702fae199c725a313ce9b7f8ff035123b
 - **Testes:** `app/api/atendimentos/mensagens/route.test.ts` (5) → **223/223**; `tsc` e
   `next build` limpos.
 
+### 05/10/2026 (10) — Clique no documento não baixava + duplicação persistia
+
+- **Duplicação (continuou depois do `a0ace32`):** produção gravou
+  `monitoramento.xlsx` **duas vezes com o MESMO `whatsapp_message_id`** (14:06).
+  Causa: o dedup do webhook rodava **antes** de `processarMidia` (baixa do arquivo,
+  ~0,5 s) e o insert do CRM caía nessa janela; quando o insert do webhook vinha,
+  ninguém olhava de novo. **Correção:** `mensagemJaGravada()` checado **duas vezes**
+  (antes de processar mídia + logo antes de gravar) — `webhooks/waha` testado com a
+  corrida simulada (4 testes).
+- **Clique "mudo" (print + resposta do João: "não acontece nada, nem aba nova"):**
+  documento com URL ia **direto ao Storage (cross-origin → `download` ignorado)** e
+  sem URL ia pro proxy **com `download` (aba same-origin = baixagem silenciosa)**,
+  e a primeira ida ao WAHA demora ~10 s → clique sem qualquer feedback.
+  **Correção:** `lib/midia-chat` manda **documento SEMPRE por
+  `/api/media-download`** (mesma origem, `Content-Disposition` com o **nome
+  original**) e a âncora perde o `download` → **a aba abre na hora** (feedback) e o
+  download começa em seguida. Erros da rota viraram **página HTML amigável**
+  (antes: JSON cru na aba).
+- **Limpeza:** par `monitoramento.xlsx` (14:06) mesclado → **0 pares duplicados**
+  na base (backup em `~/.hermes/cache/scratch/pares_dup_rodada2.json`).
+- **Testes:** 4 (webhook) + 2 (midia-chat/media-download) → **229/229**; `tsc` e
+  `next build` limpos.
+- **Conhecido:** `hikvision-abaixo-minimo-NOVA.xlsx` (02/10) o WAHA não serve mais
+  (`fetch failed`) → a rota agora mostra a página de erro em vez de JSON.
+
 ### 01/10/2026 (6) — Documentos do chat: baixar E enviar (planilhas incluídas)
 
 **Problema (print do João):** a planilha `hikvision-abaixo-minimo-01-10.xlsx` no chat **não podia** ser baixada. Causa raiz em **duas pontas**, provada nos dados:

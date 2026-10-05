@@ -49,6 +49,26 @@ function getSupabase() {
   return supabaseInstance;
 }
 
+/**
+ * Já existe linha com este id do WhatsApp? (dedup webhook × CRM)
+ *
+ * Duas checagens: a primeira antes de processar a mídia (economiza trabalho) e a
+ * segunda logo antes de gravar. A janela entre elas é de ~0,5 s (baixa do
+ * arquivo no WAHA) e é EXATAMENTE ali que o insert do próprio CRM pode cair —
+ * foi o que duplicou `monitoramento.xlsx` em produção (05/10 14:06, as duas
+ * linhas com o mesmo `whatsapp_message_id`).
+ */
+async function mensagemJaGravada(whatsappMessageId: string | null | undefined): Promise<boolean> {
+  if (!whatsappMessageId) return false;
+  const { data } = await getSupabase()
+    .from("atendimento_mensagens")
+    .select("id")
+    .eq("whatsapp_message_id", whatsappMessageId)
+    .limit(1)
+    .maybeSingle();
+  return !!data;
+}
+
 // ==================== UPLOAD DE MÍDIA ====================
 
 /**
@@ -218,19 +238,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Mensagem vazia" }, { status: 400 });
     }
 
-    // ==================== DEDUP ====================
-    if (dados.whatsapp_message_id) {
-      const { data: existente } = await getSupabase()
-        .from("atendimento_mensagens")
-        .select("id")
-        .eq("whatsapp_message_id", dados.whatsapp_message_id)
-        .limit(1)
-        .maybeSingle();
-
-      if (existente) {
-        console.log("[Webhook WAHA] Mensagem duplicada ignorada:", dados.whatsapp_message_id);
-        return NextResponse.json({ success: true, action: "dedup_skipped" });
-      }
+    if (await mensagemJaGravada(dados.whatsapp_message_id)) {
+      console.log("[Webhook WAHA] Mensagem duplicada ignorada:", dados.whatsapp_message_id);
+      return NextResponse.json({ success: true, action: "dedup_skipped" });
     }
 
     // ==================== MÍDIA ====================
@@ -244,6 +254,12 @@ export async function POST(request: NextRequest) {
     const instanceName = body?.session || getWahaConfig().session;
 
     const atendimentoExistente = await buscarAtendimentoAberto(telefoneLimpo, instanceName);
+
+    // 2ª checagem: o CRM pode ter gravado o envio enquanto a mídia era baixada
+    if (await mensagemJaGravada(dados.whatsapp_message_id)) {
+      console.log("[Webhook WAHA] Mensagem já gravada pelo CRM, ignorando:", dados.whatsapp_message_id);
+      return NextResponse.json({ success: true, action: "dedup_skipped" });
+    }
 
     if (atendimentoExistente) {
       let vendedorUpdate = atendimentoExistente.vendedor_id;

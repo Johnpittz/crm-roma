@@ -62,6 +62,20 @@ function contentTypePorPadrao(type: string): string {
   }
 }
 
+/**
+ * Erros desta rota são vistos por PESSOA (o clique abre aba nova) — devolve uma
+ * página legível em vez de JSON cru.
+ */
+function paginaErro(status: number, titulo: string, detalhe: string) {
+  const html = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>${titulo}</title></head>
+<body style="font-family:system-ui,sans-serif;max-width:34rem;margin:3rem auto;padding:0 1.25rem;color:#111b21;line-height:1.5">
+<h1 style="font-size:1.15rem;margin:0 0 .5rem">${titulo}</h1>
+<p>${detalhe}</p>
+<p style="color:#667781;font-size:.9rem">Pode fechar esta aba.</p>
+</body></html>`;
+  return new NextResponse(html, { status, headers: { "Content-Type": "text/html; charset=utf-8" } });
+}
+
 /** Só imagem/áudio/vídeo ficam inline; o resto (planilha, PDF…) baixa como anexo. */
 function ehDocumento(contentType: string): boolean {
   return !/^(image|audio|video)\//i.test(contentType);
@@ -167,7 +181,7 @@ export async function GET(request: NextRequest) {
 
   if (!mensagem) {
     console.error(`[MediaDownload] Mensagem não encontrada: ${msgId}`);
-    return NextResponse.json({ error: "Mensagem não encontrada" }, { status: 404 });
+    return paginaErro(404, "Mensagem não encontrada", "Este documento não existe mais na base do CRM.");
   }
 
   // If the message already has a stored URL (not encrypted CDN), just redirect
@@ -205,7 +219,7 @@ export async function GET(request: NextRequest) {
 
   if (!atendimento?.telefone_cliente) {
     console.error(`[MediaDownload] Atendimento sem telefone: ${mensagem.atendimento_id}`);
-    return NextResponse.json({ error: "Atendimento sem telefone" }, { status: 404 });
+    return paginaErro(404, "Conversa sem número", "Não conseguimos identificar o WhatsApp deste atendimento para buscar o arquivo.");
   }
 
   const remoteJid = `${atendimento.telefone_cliente}@s.whatsapp.net`;
@@ -214,7 +228,7 @@ export async function GET(request: NextRequest) {
 
   if (!whatsappMsgId) {
     console.error(`[MediaDownload] Mensagem sem whatsapp_message_id: ${mensagem.id}`);
-    return NextResponse.json({ error: "Mensagem sem ID do WhatsApp" }, { status: 404 });
+    return paginaErro(404, "Arquivo sem rastro no WhatsApp", "Esta mensagem foi gravada sem o ID do WhatsApp, então não dá para recuperar o arquivo. Envie o documento novamente.");
   }
 
   // Check cache
@@ -296,20 +310,14 @@ export async function GET(request: NextRequest) {
     if (!evoResponse.ok) {
       const errorText = await evoResponse.text();
       console.error(`[MediaDownload] Evolution API error ${evoResponse.status}:`, errorText);
-      return NextResponse.json(
-        { error: "Falha ao buscar mídia do WhatsApp", details: errorText },
-        { status: 502 }
-      );
+      return paginaErro(502, "Não foi possível baixar", "O servidor do WhatsApp recusou o pedido do arquivo. Tente novamente em instantes.");
     }
 
     const evoData = await evoResponse.json();
 
     if (!evoData.base64) {
       console.error(`[MediaDownload] Resposta sem base64:`, JSON.stringify(evoData).substring(0, 500));
-      return NextResponse.json(
-        { error: "Resposta da Evolution API não contém base64" },
-        { status: 404 }
-      );
+      return paginaErro(404, "Arquivo indisponível", "O WhatsApp não devolveu o arquivo. Peça para enviar o documento novamente.");
     }
 
     // Parse the base64 data URI: "data:audio/ogg;base64,AAAA..." or raw base64
@@ -360,9 +368,10 @@ export async function GET(request: NextRequest) {
     });
   } catch (err: any) {
     console.error(`[MediaDownload] Erro ao buscar mídia:`, err.message || err);
-    return NextResponse.json(
-      { error: "Erro ao processar mídia", details: err.message },
-      { status: 500 }
+    return paginaErro(
+      500,
+      "Não foi possível baixar",
+      `Falha ao buscar o arquivo no WhatsApp (${String(err.message || err).slice(0, 120)}). Tente de novo — se persistir, peça para reenviar o documento.`
     );
   }
 }

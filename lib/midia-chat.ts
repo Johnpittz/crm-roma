@@ -55,6 +55,15 @@ export function urlMidiaDaMensagem(msg: MensagemMidia): string | null {
   const tipo = normalizarTipoMidia(msg.tipo_midia || msg.media_type);
   const idUsavel = idMensagemUsavel(msg.id);
 
+  // DOCUMENTO: sempre pelo proxy quando existe msg_id. Ele devolve
+  // `Content-Disposition` com o NOME ORIGINAL e a navegação em aba nova dá
+  // feedback imediato do clique — link direto ao Storage era cross-origin (o
+  // `download` é ignorado) e o clique no proxy com `download` era silencioso:
+  // o João clicava e "não acontecia nada" (print 05/10).
+  if (tipo === "document" && idUsavel) {
+    return `/api/media-download?msg_id=${encodeURIComponent(msg.id!)}&type=document`;
+  }
+
   if (url) {
     if (url.includes("mmg.whatsapp.net") && idUsavel) {
       return `/api/media-download?msg_id=${encodeURIComponent(msg.id!)}&type=${tipo}`;

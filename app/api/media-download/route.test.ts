@@ -204,4 +204,12 @@ describe("GET /api/media-download — documento do chat", () => {
     const res = await requisitar("id-que-nao-existe");
     expect(res.status).toBe(404);
   });
+
+  it("erro chega como PÁGINA amigável (a aba do clique não pode ser JSON cru)", async () => {
+    preparar({});
+    const res = await requisitar("id-que-nao-existe");
+    expect(res.headers.get("Content-Type") || "").toContain("text/html");
+    const html = await res.text();
+    expect(html).toContain("pode fechar esta aba".toLowerCase().replace("pode", "Pode"));
+  });
 });

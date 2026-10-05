@@ -24,8 +24,15 @@ describe("urlMidiaDaMensagem — documento do WhatsApp", () => {
     expect(urlMidiaDaMensagem({ id: "virtual-1", tipo_midia: "documento" })).toBeNull();
   });
 
-  it("documento já salvo no Storage usa a própria URL", () => {
+  it("documento já salvo no Storage também baixa pelo proxy (aba visível + nome original)", () => {
+    // com link direto ao Storage o `download` é ignorado (cross-origin) e o
+    // clique no proxy era silencioso: o João clicava e "não acontecia nada".
     const url = urlMidiaDaMensagem({ ...DOC, url_midia: "https://x.supabase.co/storage/v1/object/public/chat-media/whatsapp/a.xlsx" });
+    expect(url).toBe(`/api/media-download?msg_id=${DOC.id}&type=document`);
+  });
+
+  it("documento SEM id usável mantém a URL direta (não há msg_id para buscar)", () => {
+    const url = urlMidiaDaMensagem({ id: "virtual-1", tipo_midia: "documento", url_midia: "https://x.supabase.co/storage/v1/object/public/chat-media/whatsapp/a.xlsx" });
     expect(url).toBe("https://x.supabase.co/storage/v1/object/public/chat-media/whatsapp/a.xlsx");
   });
 

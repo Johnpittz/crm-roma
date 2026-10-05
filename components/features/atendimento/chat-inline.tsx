@@ -630,7 +630,6 @@ export function ChatInline({ atendimento, onMarcarResolvido, onMensagemEnviada, 
           return (
             <a
               href={resolvedUrl}
-              download={msg.file_name || undefined}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-3 p-2 rounded-lg hover:bg-black/5 transition-colors"
