@@ -64,10 +64,28 @@ export async function POST(request: NextRequest) {
     media_url,
     media_type,
     file_name,
+    // id que o WAHA devolveu no envio (documento/áudio/imagem): é ele que faz o
+    // dedup com o webhook `message.any` — sem ele o webhook insere uma 2ª linha
+    // e o documento aparece DUPLICADO no chat (bug 05/10/2026).
+    whatsapp_message_id,
   } = body;
 
   if (!atendimento_id || !conteudo) {
     return NextResponse.json({ error: "atendimento_id e conteudo são obrigatórios" }, { status: 400 });
+  }
+
+  // Webhook pode ter chegado ANTES (corrida): aí a linha já existe com este id —
+  // devolve ela em vez de gravar uma segunda (mesma regra de dedup do webhook).
+  if (whatsapp_message_id) {
+    const { data: existente } = await supabase
+      .from("atendimento_mensagens")
+      .select("*")
+      .eq("whatsapp_message_id", whatsapp_message_id)
+      .limit(1)
+      .maybeSingle();
+    if (existente) {
+      return NextResponse.json({ success: true, mensagem: existente, dedup: true });
+    }
   }
 
   // Insert message into database
@@ -77,6 +95,7 @@ export async function POST(request: NextRequest) {
     conteudo,
     enviada_por: user.id,
   };
+  if (whatsapp_message_id) insertData.whatsapp_message_id = whatsapp_message_id;
   if (media_url) insertData.url_midia = media_url;
   if (media_type) insertData.tipo_midia = mapearTipoMidiaDb(media_type);
   if (file_name) insertData.file_name = file_name;
@@ -108,7 +127,7 @@ export async function POST(request: NextRequest) {
 
   // Send via WhatsApp if vendor is replying (skip if media already sent)
   const isMediaPlaceholder = conteudo.match(/^\[(Áudio|audio|Imagem|image|Vídeo|video|Sticker|sticker|Documento|document)\]$/i);
-  if (remetente === "vendedor" && process.env.WAHA_API_KEY && !isMediaPlaceholder) {
+  if (remetente === "vendedor" && process.env.WAHA_API_KEY && !isMediaPlaceholder && !whatsapp_message_id) {
     try {
       // Get atendimento info (phone + instance)
       const { data: atendimento } = await supabase

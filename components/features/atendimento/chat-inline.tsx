@@ -351,6 +351,9 @@ export function ChatInline({ atendimento, onMarcarResolvido, onMensagemEnviada, 
       const mimetype = file.type || "application/octet-stream";
       let mediaUrlArq: string | null = null;
       let enviado = false;
+      // id no WhatsApp devolvido por /api/send/media — a linha nasce com ele pra
+      // o webhook não duplicar (bug: documento saía DUPLICADO no chat).
+      let messageIdArq: string | null = null;
 
       // Caminho rápido: upload direto ao Storage + envio por URL
       // (contorna o limite de 4,5 MB do corpo da Vercel — arquivos grandes)
@@ -386,7 +389,13 @@ export function ChatInline({ atendimento, onMarcarResolvido, onMensagemEnviada, 
                   instance: atendimento.instance_name,
                 }),
               });
-              enviado = res.ok;
+              const dadosDir = await res.json().catch(() => ({}));
+              if (res.ok) {
+                enviado = true;
+                // id real no WhatsApp: a linha precisa nascer com ele, senão o
+                // webhook `message.any` não acha o dedup e grava em DUPLICADO.
+                messageIdArq = dadosDir.message_id || null;
+              }
             }
           }
         }
@@ -419,6 +428,7 @@ export function ChatInline({ atendimento, onMarcarResolvido, onMensagemEnviada, 
         if (res.ok) {
           const resDataArq = await res.json().catch(() => ({}));
           mediaUrlArq = resDataArq.media_url || mediaUrlArq;
+          messageIdArq = resDataArq.message_id || messageIdArq;
           enviado = true;
         }
       }
@@ -439,6 +449,7 @@ export function ChatInline({ atendimento, onMarcarResolvido, onMensagemEnviada, 
               media_url: mediaUrlArq,
               media_type: mediatype,
               file_name: file.name,
+              whatsapp_message_id: messageIdArq || undefined,
             }),
           });
         }
@@ -490,6 +501,7 @@ export function ChatInline({ atendimento, onMarcarResolvido, onMensagemEnviada, 
               if (res.ok) {
                 const resData = await res.json().catch(() => ({}));
                 const mediaUrlSalvo = resData.media_url || null;
+                const messageIdAudio = resData.message_id || null;
 
                 const { data: { session } } = await supabase.auth.getSession();
                 if (session) {
@@ -505,6 +517,7 @@ export function ChatInline({ atendimento, onMarcarResolvido, onMensagemEnviada, 
                       remetente: "vendedor",
                       media_type: "audio",
                       media_url: mediaUrlSalvo,
+                      whatsapp_message_id: messageIdAudio || undefined,
                     }),
                   });
                 }

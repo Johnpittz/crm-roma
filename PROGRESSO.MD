@@ -617,6 +617,28 @@ EVOLUTION_API_KEY=e3186c32139f79c7566a1d6a3f5bc702fae199c725a313ce9b7f8ff035123b
   Motivo do pedido: ele quer conectar o número pessoal pra teste sem deixar dados lá depois.
 - **Manual (runbook) continua de pé** como fallback — `docs/runbook-waha-numeros.md`.
 
+### 05/10/2026 (9) — Documento enviado saía DUPLICADO no chat
+
+- **Sintoma (print do João):** `hikvision-abaixo-minimo-01-10.xlsx` e `Produto.xls`
+  apareciam **duas vezes**, no mesmo minuto, com o mesmo nome.
+- **Causa:** o fluxo de mídia é `POST /api/send/media` (WAHA entrega `message_id`) →
+  client grava a linha via `POST /api/atendimentos/mensagens` **sem passar o id** → o
+  webhook `message.any` chega ~0,1 s depois, não acha dedup (`whatsapp_message_id`
+  NULL) e **insere uma 2ª linha**. Texto não duplicava porque a rota de texto grava o
+  id devolvido pelo WAHA no mesmo request.
+- **Correção (server, testada):** `POST /api/atendimentos/mensagens` agora aceita
+  `whatsapp_message_id` e — se a linha com aquele id **já existir** (webhook chegou
+  primeiro) — devolve a existente em vez de inserir (cobre as duas ordens da corrida);
+  e não reenvia pelo WAHA quando o id já veio no corpo.
+- **Correção (client):** `chat-inline.tsx` captura `message_id` das três respostas
+  (upload direto, fallback base64 e áudio) e manda junto no corpo da gravação.
+- **Limpeza:** 3 pares duplicados já existentes (23/09 `idRecibo_*.pdf`, 02/10
+  `hikvision-…-01-10.xlsx`, 05/10 `Produto.xls`) → merge (id/ack passaram pra linha do
+  CRM) e a linha vinda do webhook foi removida; backup em
+  `~/.hermes/cache/scratch/pares_dup.json`.
+- **Testes:** `app/api/atendimentos/mensagens/route.test.ts` (5) → **223/223**; `tsc` e
+  `next build` limpos.
+
 ### 01/10/2026 (6) — Documentos do chat: baixar E enviar (planilhas incluídas)
 
 **Problema (print do João):** a planilha `hikvision-abaixo-minimo-01-10.xlsx` no chat **não podia** ser baixada. Causa raiz em **duas pontas**, provada nos dados:
