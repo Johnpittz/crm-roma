@@ -45,7 +45,8 @@ function KanbanContent() {
   const supabase = createClient();
 
   // Filtros
-  const [busca, setBusca] = useState("");
+  // /kanban?tab=tarefas&q=<termo> (usado pela busca global Ctrl+K)
+  const [busca, setBusca] = useState(searchParams.get("q") || "");
   const [dataInicio, setDataInicio] = useState("");
   const [dataFim, setDataFim] = useState("");
 

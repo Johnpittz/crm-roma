@@ -664,6 +664,32 @@ EVOLUTION_API_KEY=e3186c32139f79c7566a1d6a3f5bc702fae199c725a313ce9b7f8ff035123b
 - **Conhecido:** `hikvision-abaixo-minimo-NOVA.xlsx` (02/10) o WAHA não serve mais
   (`fetch failed`) → a rota agora mostra a página de erro em vez de JSON.
 
+### 06/10/2026 (11) — Busca global (Ctrl+K) + resumo diário no Telegram
+
+- [x] **Busca global Ctrl+K** (`components/busca-global.tsx`, montado no
+  `app/(dashboard)/layout.tsx`): painel único que acha **cliente, conversa e
+  tarefa** e só **navega** para filtros que já existiam — nenhuma regra muda:
+  - cliente  → `/clientes?q=<nome>` (a página já lia `?q`);
+  - conversa → `/atendimento?conversa=<id>` (efeito novo na página abre a
+    conversa e limpa o parâmetro);
+  - tarefa   → `/kanban?tab=tarefas&q=<cliente>` (o `useState` do busca agora
+    começa com `?q`).
+  Clientes vão ao servidor (`/api/clientes?busca=` → respeita a carteira);
+  conversas e tarefas vêm de duas listas leves carregadas **uma vez** por abertura
+  do painel e filtradas em memória. Debounce 250 ms, mínimo 2 letras, setas +
+  Enter + Esc. Testes: `components/busca-global.test.tsx` (5).
+- [x] **Resumo diário do CRM no Telegram** — cron `98779a7ebc76`
+  ("Resumo diário do CRM ROMA"), `0 11 * * *` = **08:00 de Brasília**, entrega no
+  grupo, com `attach_to_session` (dá pra responder "mostra as atrasadas" e o agente
+  segue no contexto). Roda `~/.hermes/scripts/resumo-crm.py` (**só GET**, nunca
+  escreve no banco) e o agente formata: conversas novas/não lidas + mais antiga
+  sem resposta, tarefas atrasadas (regra +24 h ou prazo vencido) com idade,
+  criadas/concluídas hoje, orçamentos parados e vendas do mês.
+- [ ] **Pendente: responder citando (↩)** — precisa da coluna nova
+  `respondendo_a` em `atendimento_mensagens` (migração `070`); sem SQL admin não
+  consigo aplicar (não há psql/CLI/URL de banco aqui) → passo a passo entregue
+  ao João no chat de 06/10.
+
 ### 01/10/2026 (6) — Documentos do chat: baixar E enviar (planilhas incluídas)
 
 **Problema (print do João):** a planilha `hikvision-abaixo-minimo-01-10.xlsx` no chat **não podia** ser baixada. Causa raiz em **duas pontas**, provada nos dados:

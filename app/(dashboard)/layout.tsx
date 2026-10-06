@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { Sidebar } from "@/components/layout/sidebar";
+import { BuscaGlobal } from "@/components/busca-global";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils/cn";
 
@@ -40,7 +41,10 @@ export default async function DashboardLayout({
   };
 
   return (
-    <DashboardShell user={user}>{children}</DashboardShell>
+    <DashboardShell user={user}>
+      {children}
+      <BuscaGlobal />
+    </DashboardShell>
   );
 }
 

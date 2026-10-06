@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { ListaAtendimentosLateral } from "@/components/features/atendimento/lista-atendimentos-lateral";
 import { ChatInline } from "@/components/features/atendimento/chat-inline";
@@ -101,6 +102,22 @@ export default function AtendimentoPage() {
       if (!silent) setLoadingAtendimentos(false);
     }
   }, [supabase]);
+
+  // ── Busca global (Ctrl+K): /atendimento?conversa=<id> abre a conversa ──
+  const buscaParams = useSearchParams();
+  const conversaParam = buscaParams.get("conversa");
+  useEffect(() => {
+    if (!conversaParam || atendimentos.length === 0) return;
+    if (atendimentoChat?.id === conversaParam) {
+      window.history.replaceState({}, "", window.location.pathname);
+      return;
+    }
+    const achado = atendimentos.find((a) => a.id === conversaParam);
+    if (achado) {
+      setAtendimentoChat(achado);
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, [conversaParam, atendimentos, atendimentoChat]);
 
   // Buscar todas as etiquetas vinculadas a atendimentos (para o filtro)
   const fetchEtiquetasAtendimentos = useCallback(async () => {
